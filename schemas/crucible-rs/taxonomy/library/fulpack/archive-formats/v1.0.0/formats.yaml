@@ -1,0 +1,86 @@
+# Fulpack Archive Formats Taxonomy
+# Defines canonical archive format identifiers for cross-language consistency
+version: "1.0.0"
+last_updated: "2025-11-12"
+formats:
+  - id: tar
+    name: "TAR"
+    description: "POSIX tar archive (uncompressed)"
+    extensions: [".tar"]
+    mime_types: ["application/x-tar"]
+    compression: none
+    container: tar
+    features:
+      preserves_permissions: true
+      preserves_timestamps: true
+      supports_symlinks: true
+      supports_directories: true
+    use_cases:
+      - "Maximum speed operations (no compression overhead)"
+      - "Pre-compressed data (images, videos, already-compressed files)"
+      - "Streaming scenarios where compression CPU overhead is undesirable"
+      - "Legacy system compatibility"
+    implementation_notes:
+      go: "archive/tar"
+      python: "tarfile module (mode='w' or 'r')"
+      typescript: "tar-stream"
+  - id: tar.gz
+    name: "TAR + GZIP"
+    description: "POSIX tar archive with gzip compression"
+    extensions: [".tar.gz", ".tgz"]
+    mime_types: ["application/gzip", "application/x-gtar"]
+    compression: gzip
+    container: tar
+    features:
+      preserves_permissions: true
+      preserves_timestamps: true
+      supports_symlinks: true
+      supports_directories: true
+    use_cases:
+      - "General purpose archiving"
+      - "Best compatibility across platforms"
+      - "Balanced compression and speed"
+    implementation_notes:
+      go: "archive/tar + compress/gzip"
+      python: "tarfile module (mode='w:gz' or 'r:gz')"
+      typescript: "tar-stream + zlib"
+  - id: zip
+    name: "ZIP"
+    description: "ZIP archive with deflate compression"
+    extensions: [".zip"]
+    mime_types: ["application/zip"]
+    compression: deflate
+    container: zip
+    features:
+      preserves_permissions: false # Limited on Windows
+      preserves_timestamps: true
+      supports_symlinks: false
+      supports_directories: true
+    use_cases:
+      - "Windows compatibility"
+      - "Random access to entries (no sequential scan required)"
+      - "Wide tool support"
+    implementation_notes:
+      go: "archive/zip"
+      python: "zipfile module"
+      typescript: "archiver + yazl"
+  - id: gzip
+    name: "GZIP"
+    description: "GZIP compressed single file"
+    extensions: [".gz"]
+    mime_types: ["application/gzip"]
+    compression: gzip
+    container: none
+    features:
+      preserves_permissions: false
+      preserves_timestamps: true
+      supports_symlinks: false
+      supports_directories: false
+    use_cases:
+      - "Single file compression only"
+      - "Streaming compression"
+      - "Log file compression"
+    implementation_notes:
+      go: "compress/gzip"
+      python: "gzip module"
+      typescript: "zlib"

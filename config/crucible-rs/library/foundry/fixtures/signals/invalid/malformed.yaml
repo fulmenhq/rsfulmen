@@ -1,0 +1,44 @@
+$schema: https://schemas.fulmenhq.dev/library/foundry/v1.0.0/signals.schema.json
+description: Invalid signal configuration - malformed YAML
+version: v1.0.0
+
+signals:
+  - id: term
+    name: SIGTERM
+    unix_number: 15
+    description: Graceful termination
+    default_behavior: graceful_shutdown
+    exit_code: 143
+
+  - id: int
+    name: SIGINT
+    unix_number: 2
+    description: User interrupt
+    default_behavior: graceful_shutdown
+    exit_code: 130
+      # INVALID YAML: incorrect indentation below
+    extra_field
+      nested_wrong: value
+
+behaviors:
+  - id: graceful_shutdown
+    name: Graceful Shutdown
+    description: Clean shutdown
+    phases:
+      - name: exit
+        description: Exit with code
+
+os_mappings:
+  unix:
+    SIGTERM: 15
+    SIGINT: 2
+  windows:
+    CTRL_C_EVENT: 0
+  signal_to_event:
+    SIGTERM: null
+    SIGINT: CTRL_C_EVENT
+
+exit_codes:
+  SIGTERM: 143
+  SIGINT: 130
+  note: Exit codes follow POSIX 128+N pattern

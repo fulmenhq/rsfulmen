@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/devsecops/lorage-central/tenant/v1.0.0/tenant.schema.json",
+  "title": "L'Orage Central Tenant Registry",
+  "description": "Schema for tenant registry (multiple per client; confidential public IDs for no exposure). Loaded via gofulmen shim; enforced in REPL for scoping. Global uniqueness required (e.g., UUID for anon clients). Geo/cloud flags for restrictions (e.g., EU-only for GDPR); PII/PHI for guards.",
+  "type": "object",
+  "properties": {
+    "client": {
+      "type": "object",
+      "description": "Owning client/organization (internal; not exposed in public IDs)",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Internal client ID (slug; confidential)",
+          "pattern": "^[a-z0-9-]+$",
+          "minLength": 1,
+          "maxLength": 63
+        },
+        "name": {
+          "type": "string",
+          "description": "Client name (confidential; for internal reference only)",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "confidential": {
+          "type": "boolean",
+          "description": "Flag for full anonymization (public IDs must obscure; e.g., no name hints)",
+          "default": false
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "tenants": {
+      "type": "array",
+      "description": "List of tenants (infra instantiations; e.g., acme-prod-us, acme-dev-eu)",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "properties": {
+          "publicId": {
+            "type": "string",
+            "description": "Globally unique public ID (slug; obscure for confidential clients)",
+            "pattern": "^[a-z0-9-]+$",
+            "minLength": 1,
+            "maxLength": 127
+          },
+          "purpose": {
+            "type": "string",
+            "description": "Tenant purpose (e.g., production-api, dev-testing)",
+            "pattern": "^[a-z0-9-]+$",
+            "minLength": 1,
+            "maxLength": 127
+          },
+          "geo": {
+            "type": "array",
+            "description": "Allowed geographic regions (from geo taxonomy; e.g., EU-only for compliance)",
+            "items": {
+              "$ref": "../../../../taxonomy/devsecops/geo/v1.0.0/geo-key.schema.json"
+            },
+            "uniqueItems": true,
+            "minItems": 1
+          },
+          "cloud": {
+            "type": "array",
+            "description": "Allowed cloud providers (from infra-providers taxonomy)",
+            "items": {
+              "$ref": "../../../../taxonomy/devsecops/infra-providers/v1.0.0/infra-providers-key.schema.json"
+            },
+            "uniqueItems": true,
+            "minItems": 1
+          },
+          "dataSensitivity": {
+            "type": "object",
+            "description": "Flags for PII/PHI/compliance (aids policy guards, e.g., encrypt PHI)",
+            "properties": {
+              "pii": {
+                "type": "boolean",
+                "description": "Contains PII (e.g., GDPR tagging; enforce EU geo)",
+                "default": false
+              },
+              "phi": {
+                "type": "boolean",
+                "description": "Contains PHI (e.g., HIPAA; encrypt + audit)",
+                "default": false
+              },
+              "other": {
+                "type": "array",
+                "description": "Additional sensitivities (e.g., pci-dss, soc2)",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9-]+$",
+                  "minLength": 1,
+                  "maxLength": 63
+                },
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "pii",
+              "phi"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "publicId",
+          "purpose",
+          "geo",
+          "cloud",
+          "dataSensitivity"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "globalUniqueness": {
+      "type": "boolean",
+      "description": "Registry enforces unique publicIds across all clients (UUID recommended for anon)",
+      "default": true
+    }
+  },
+  "required": [
+    "client",
+    "tenants"
+  ],
+  "additionalProperties": false
+}

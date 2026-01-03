@@ -1,0 +1,353 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/devsecops/lorage-central/recipe/v1.0.0/recipe.schema.json",
+  "title": "L'Orage Central Recipe",
+  "description": "Schema-driven recipe for L'Orage Central deployments/seeding. Loaded via gofulmen shim; executed in REPL. Heavily declarative (components/secrets/validate); procedural opt-in via actions (e.g., bootstrap scripts). Phases/layering via infra-phases taxonomy for dep ordering/review (keys → network → buckets → assets).",
+  "type": "object",
+  "required": [
+    "name",
+    "type",
+    "target",
+    "components"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Slug-compatible recipe ID (lowercase hyphens; e.g., 'mattermost-stack').",
+      "pattern": "^[a-z0-9-]+$",
+      "minLength": 1,
+      "maxLength": 127,
+      "examples": [
+        "mattermost-stack",
+        "open-edx-k3s"
+      ]
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "deploy",
+        "seed"
+      ],
+      "description": "Recipe subtype (deploy: infra/stack; seed: dataset population).",
+      "default": "deploy"
+    },
+    "target": {
+      "type": "object",
+      "description": "Provider/cloud target (focus DO/AWS/GCP; pluggable via taxonomy).",
+      "required": [
+        "provider"
+      ],
+      "properties": {
+        "provider": {
+          "type": "string",
+          "description": "Provider ID (from infra-providers taxonomy).",
+          "$ref": "../../../../taxonomy/devsecops/infra-providers/v1.0.0/infra-providers-key.schema.json"
+        },
+        "region": {
+          "type": "string",
+          "description": "Region (e.g., 'nyc3' for DO; validate against provider.regions).",
+          "pattern": "^[a-z0-9-]+$",
+          "minLength": 1,
+          "maxLength": 63,
+          "examples": [
+            "us-east-1",
+            "nyc3"
+          ]
+        },
+        "backend": {
+          "type": "string",
+          "description": "Execution toolchain (e.g., 'opentofu', 'terraform', 'pulumi').",
+          "pattern": "^[a-z0-9-]+$",
+          "minLength": 1,
+          "maxLength": 63,
+          "default": "opentofu",
+          "examples": [
+            "opentofu",
+            "terraform",
+            "pulumi"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "components": {
+      "type": "array",
+      "description": "Ordered stack (e.g., postgres -> mattermost); dependencies enforced via phases/dependsOn.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "image",
+          "phase"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Slug-compatible component ID (e.g., 'postgres').",
+            "pattern": "^[a-z0-9-]+$",
+            "minLength": 1,
+            "maxLength": 63
+          },
+          "image": {
+            "type": "string",
+            "description": "Container/image (e.g., 'postgres:15')."
+          },
+          "phase": {
+            "type": "string",
+            "description": "Infra phase (from infra-phases taxonomy; auto-orders DAG).",
+            "$ref": "../../../../taxonomy/devsecops/infra-phases/v1.0.0/infra-phases-key.schema.json"
+          },
+          "ports": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "description": "Exposed ports (e.g., [5432])."
+          },
+          "env": {
+            "type": "object",
+            "description": "Env vars (refs for secrets).",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "examples": [
+              {
+                "POSTGRES_DB": "mattermost"
+              }
+            ]
+          },
+          "secrets": {
+            "type": "array",
+            "description": "Secret refs (decrypted via policy backend).",
+            "items": {
+              "type": "object",
+              "required": [
+                "ref"
+              ],
+              "properties": {
+                "ref": {
+                  "type": "string",
+                  "description": "Opaque ref (e.g., 'gpg://keyring/acme/db-pass').",
+                  "pattern": "^[a-z0-9:/.-]+$",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                "injectAs": {
+                  "type": "string",
+                  "description": "Env var name (e.g., 'DB_PASS').",
+                  "pattern": "^[A-Z_][A-Z0-9_]*$"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "dependsOn": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]+$",
+              "minLength": 1,
+              "maxLength": 63
+            },
+            "description": "Predecessors (e.g., ['postgres'] for mattermost; refs other components.name or phases.id)."
+          },
+          "module": {
+            "type": "string",
+            "description": "Tofu/Pulumi module slug (e.g., 'vpc-network'; web-key safe).",
+            "pattern": "^[a-z0-9-]+$",
+            "minLength": 1,
+            "maxLength": 127
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "actions": {
+      "type": "array",
+      "description": "Procedural steps (opt-in for bootstrapping/pain points; runs before/after components by phase).",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "required": [
+          "type",
+          "phase"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "script",
+              "sdk-call",
+              "bootstrap"
+            ],
+            "description": "Action type (script: bash/python; sdk-call: provider API; bootstrap: init keys/network)."
+          },
+          "phase": {
+            "type": "string",
+            "description": "Associated infra phase (from taxonomy; orders execution).",
+            "$ref": "../../../../taxonomy/devsecops/infra-phases/v1.0.0/infra-phases-key.schema.json"
+          },
+          "cmd": {
+            "type": "string",
+            "description": "For script/bootstrap (e.g., 'gpg --gen-key acme'; runs in REPL context).",
+            "pattern": "^[a-zA-Z0-9 /.-]+$",
+            "minLength": 1,
+            "maxLength": 1024
+          },
+          "params": {
+            "type": "object",
+            "description": "For sdk-call (e.g., {resource: 'vpc', action: 'create'}).",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "dependsOn": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]+$",
+              "minLength": 1,
+              "maxLength": 63
+            },
+            "description": "Predecessor steps (components.name or other actions.id)."
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "secrets": {
+      "type": "object",
+      "description": "Global secrets for recipe (per policy isolation).",
+      "properties": {
+        "backend": {
+          "type": "string",
+          "description": "Secret storage backend (e.g., 'gpg-keyring', 'vault', 'aws-secrets-manager').",
+          "pattern": "^[a-z0-9-]+$",
+          "minLength": 1,
+          "maxLength": 63,
+          "examples": [
+            "gpg-keyring",
+            "vault",
+            "aws-secrets-manager"
+          ]
+        },
+        "globalRefs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "ref"
+            ],
+            "properties": {
+              "ref": {
+                "type": "string",
+                "description": "Slug-compatible global secret ref (e.g., 'turso-shared-db').",
+                "pattern": "^[a-z0-9:/.-]+$",
+                "minLength": 1,
+                "maxLength": 255
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "validate": {
+      "type": "array",
+      "description": "Post-deploy checks (e.g., health endpoints, DB connect).",
+      "items": {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "health",
+              "connect",
+              "custom"
+            ]
+          },
+          "endpoint": {
+            "type": "string",
+            "description": "For health/connect (e.g., 'http://localhost:8065/health').",
+            "pattern": "^https?://[a-z0-9./:-]+$"
+          },
+          "script": {
+            "type": "string",
+            "description": "For custom (e.g., 'check-db.sh'; slug-safe).",
+            "pattern": "^[a-z0-9.-]+$",
+            "minLength": 1,
+            "maxLength": 255
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "diff": {
+      "type": "object",
+      "description": "For seed type—immutable diffs for dataset versioning/migrations.",
+      "required": [
+        "from",
+        "to",
+        "changes"
+      ],
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "Starting version slug (e.g., 'v1-0').",
+          "pattern": "^[a-z0-9.-]+$",
+          "minLength": 1,
+          "maxLength": 63
+        },
+        "to": {
+          "type": "string",
+          "description": "Target version slug (e.g., 'v1-1').",
+          "pattern": "^[a-z0-9.-]+$",
+          "minLength": 1,
+          "maxLength": 63
+        },
+        "changes": {
+          "type": "array",
+          "description": "JSON Patch operations (add/remove/replace for secrets/datasets).",
+          "items": {
+            "type": "object",
+            "required": [
+              "op",
+              "path"
+            ],
+            "properties": {
+              "op": {
+                "type": "string",
+                "enum": [
+                  "add",
+                  "remove",
+                  "replace",
+                  "move",
+                  "copy",
+                  "test"
+                ]
+              },
+              "path": {
+                "type": "string",
+                "description": "JSON Pointer (e.g., '/entries/db-pass').",
+                "pattern": "^/[a-z0-9/-]+$"
+              },
+              "value": {
+                "description": "New value (encrypted ref for secrets)."
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,489 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/observability/logging/logger-config-v1.0.0.json",
+  "title": "LoggerConfig",
+  "description": "Progressive logger configuration with profile-based complexity and policy enforcement",
+  "type": "object",
+  "properties": {
+    "profile": {
+      "type": "string",
+      "enum": [
+        "SIMPLE",
+        "STRUCTURED",
+        "ENTERPRISE",
+        "CUSTOM"
+      ],
+      "default": "SIMPLE",
+      "description": "Logging profile for progressive complexity (SIMPLE=CLI tooling, STRUCTURED=services/APIs, ENTERPRISE=full production, CUSTOM=user-defined)."
+    },
+    "service": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "description": "Service or application name (e.g., 'gofulmen', 'tsfulmen')."
+    },
+    "environment": {
+      "type": "string",
+      "default": "development",
+      "maxLength": 32,
+      "description": "Deployment environment identifier (development, staging, production, etc.)."
+    },
+    "policyFile": {
+      "type": "string",
+      "maxLength": 512,
+      "description": "Optional policy file path for organizational governance (search order: .goneat/logging-policy.yaml, /etc/fulmen/logging-policy.yaml, /org/logging-policy.yaml)."
+    },
+    "defaultLevel": {
+      "$ref": "#/$defs/logLevel",
+      "default": "INFO",
+      "description": "Default minimum log level."
+    },
+    "sinks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/sinkConfig"
+      },
+      "description": "Configured sinks for log output (required for STRUCTURED and ENTERPRISE profiles)."
+    },
+    "middleware": {
+      "type": "array",
+      "items": {
+        "$ref": "https://schemas.fulmenhq.dev/crucible/observability/logging/middleware-config-v1.0.0.json"
+      },
+      "description": "Middleware pipeline applied to log events (required for ENTERPRISE profile)."
+    },
+    "throttling": {
+      "$ref": "#/$defs/throttlingConfig",
+      "description": "Throttling and backpressure configuration (available for ENTERPRISE/CUSTOM profiles)."
+    },
+    "staticFields": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Static fields merged into every log event (e.g., version, region)."
+    },
+    "enableCaller": {
+      "type": "boolean",
+      "default": false,
+      "description": "Include caller information (file and line) in log events."
+    },
+    "enableStacktrace": {
+      "type": "boolean",
+      "default": false,
+      "description": "Attach stack traces for ERROR and FATAL log entries."
+    },
+    "customConfig": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Custom configuration payload for CUSTOM profiles."
+    }
+  },
+  "required": [
+    "service"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "profile": {
+            "const": "STRUCTURED"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "sinks"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "profile": {
+            "const": "ENTERPRISE"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "sinks",
+          "middleware"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "profile": {
+            "const": "CUSTOM"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "customConfig"
+        ]
+      }
+    }
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "logLevel": {
+      "type": "string",
+      "enum": [
+        "TRACE",
+        "DEBUG",
+        "INFO",
+        "WARN",
+        "ERROR",
+        "FATAL",
+        "NONE"
+      ]
+    },
+    "sinkConfig": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "console",
+            "file",
+            "rolling-file",
+            "external"
+          ],
+          "description": "Sink implementation type."
+        },
+        "name": {
+          "type": "string",
+          "description": "Optional sink identifier."
+        },
+        "level": {
+          "$ref": "#/$defs/logLevel",
+          "description": "Minimum level for this sink (overrides defaultLevel)."
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "json",
+            "text",
+            "console"
+          ],
+          "default": "json",
+          "description": "Output format (console allows ANSI formatting)."
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "console"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "stream": {
+                "type": "string",
+                "enum": [
+                  "stderr"
+                ],
+                "default": "stderr",
+                "description": "Output stream for console logs (stderr only)."
+              },
+              "colorize": {
+                "type": "boolean",
+                "default": false,
+                "description": "Enable ANSI color sequences (only when format=console)."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "file"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "description": "File path for log output."
+              },
+              "maxSize": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Maximum file size in megabytes before rotation."
+              },
+              "maxAge": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Maximum file age in days before deletion."
+              },
+              "maxBackups": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Number of rotated files to retain."
+              },
+              "compress": {
+                "type": "boolean",
+                "default": false,
+                "description": "Compress rotated files with gzip."
+              }
+            },
+            "required": [
+              "path"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "rolling-file"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "description": "File path for rolling log output."
+              },
+              "maxSize": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Maximum file size in megabytes before rotation."
+              },
+              "maxAge": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Maximum file age in days before rotation."
+              },
+              "maxBackups": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Number of rotated files to retain."
+              },
+              "compress": {
+                "type": "boolean",
+                "default": false,
+                "description": "Compress rotated files with gzip."
+              },
+              "rotationInterval": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Optional rotation interval in minutes."
+              }
+            },
+            "required": [
+              "path"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "external"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "endpoint": {
+                "type": "string",
+                "format": "uri",
+                "description": "HTTP(S) endpoint for remote log ingestion."
+              },
+              "method": {
+                "type": "string",
+                "enum": [
+                  "POST",
+                  "PUT",
+                  "PATCH"
+                ],
+                "default": "POST",
+                "description": "HTTP method used for log delivery."
+              },
+              "headers": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "Additional request headers."
+              },
+              "batchSize": {
+                "type": "integer",
+                "minimum": 1,
+                "default": 500,
+                "description": "Maximum number of log events per batch."
+              },
+              "flushInterval": {
+                "type": "integer",
+                "minimum": 1,
+                "default": 60,
+                "description": "Flush interval in seconds."
+              },
+              "timeout": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "HTTP request timeout in seconds."
+              }
+            },
+            "required": [
+              "endpoint"
+            ]
+          }
+        }
+      ]
+    },
+    "throttlingConfig": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable throttling to protect downstream sinks."
+        },
+        "maxRate": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum log events per second."
+        },
+        "burstSize": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Burst capacity for throttling buckets."
+        },
+        "windowSize": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Time window in seconds for rate limiting."
+        },
+        "dropPolicy": {
+          "type": "string",
+          "enum": [
+            "drop-oldest",
+            "drop-newest",
+            "block"
+          ],
+          "default": "drop-oldest",
+          "description": "Handling strategy when throttling limits are exceeded."
+        }
+      },
+      "required": [
+        "enabled"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "examples": [
+    {
+      "profile": "SIMPLE",
+      "service": "mycli",
+      "environment": "development",
+      "defaultLevel": "INFO"
+    },
+    {
+      "profile": "STRUCTURED",
+      "service": "api-gateway",
+      "environment": "staging",
+      "defaultLevel": "INFO",
+      "sinks": [
+        {
+          "type": "console",
+          "format": "json"
+        },
+        {
+          "type": "file",
+          "path": "logs/gateway.log"
+        }
+      ]
+    },
+    {
+      "profile": "ENTERPRISE",
+      "service": "datawhirl",
+      "environment": "production",
+      "policyFile": "/org/logging-policy.yaml",
+      "defaultLevel": "DEBUG",
+      "sinks": [
+        {
+          "type": "console",
+          "level": "INFO",
+          "format": "json"
+        },
+        {
+          "type": "rolling-file",
+          "path": "logs/datawhirl.log",
+          "maxSize": 100,
+          "maxAge": 7,
+          "maxBackups": 5,
+          "compress": true
+        },
+        {
+          "type": "external",
+          "endpoint": "https://logs.company.com/api/v1/logs",
+          "batchSize": 500,
+          "flushInterval": 60
+        }
+      ],
+      "middleware": [
+        {
+          "name": "redact-secrets",
+          "order": 1
+        },
+        {
+          "name": "correlation",
+          "order": 2,
+          "config": {
+            "generator": "uuidv7",
+            "headerName": "X-Correlation-ID"
+          }
+        },
+        {
+          "name": "throttle",
+          "order": 3,
+          "config": {
+            "maxRate": 1000,
+            "burstSize": 100,
+            "dropPolicy": "drop-oldest"
+          }
+        }
+      ],
+      "throttling": {
+        "enabled": true,
+        "maxRate": 1000,
+        "burstSize": 100,
+        "windowSize": 60,
+        "dropPolicy": "drop-oldest"
+      },
+      "staticFields": {
+        "region": "us-east-1",
+        "version": "2025.10.2"
+      }
+    },
+    {
+      "profile": "CUSTOM",
+      "service": "lab-tooling",
+      "customConfig": {
+        "adapter": "experimental",
+        "options": {
+          "buffer": 1024,
+          "fanout": [
+            "console",
+            "in-memory"
+          ]
+        }
+      }
+    }
+  ]
+}

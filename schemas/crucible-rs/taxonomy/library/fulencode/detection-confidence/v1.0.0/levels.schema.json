@@ -1,0 +1,253 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/taxonomy/library/fulencode/detection-confidence-v1.0.0.json",
+  "title": "Detection Confidence Taxonomy Schema",
+  "description": "Schema for encoding detection confidence levels taxonomy",
+  "type": "object",
+  "required": [
+    "confidence_levels",
+    "detection_sources"
+  ],
+  "properties": {
+    "confidence_levels": {
+      "type": "object",
+      "description": "Confidence level definitions",
+      "patternProperties": {
+        "^(high|medium|low)$": {
+          "$ref": "#/$defs/confidenceLevel"
+        }
+      }
+    },
+    "detection_sources": {
+      "type": "object",
+      "description": "Detection source definitions",
+      "patternProperties": {
+        "^[a-z_]+$": {
+          "$ref": "#/$defs/detectionSource"
+        }
+      }
+    },
+    "ambiguous_cases": {
+      "type": "object",
+      "description": "Ambiguous detection cases",
+      "patternProperties": {
+        "^[a-z_]+$": {
+          "$ref": "#/$defs/ambiguousCase"
+        }
+      }
+    },
+    "confidence_calculation": {
+      "type": "object",
+      "description": "Confidence calculation formula and weights",
+      "required": [
+        "formula",
+        "weights"
+      ],
+      "properties": {
+        "formula": {
+          "type": "string"
+        },
+        "weights": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-z_]+$": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        },
+        "example": {
+          "type": "object"
+        }
+      }
+    },
+    "telemetry_buckets": {
+      "type": "object",
+      "description": "Telemetry bucket definitions",
+      "properties": {
+        "high": {
+          "type": "string"
+        },
+        "medium": {
+          "type": "string"
+        },
+        "low": {
+          "type": "string"
+        },
+        "label_name": {
+          "type": "string"
+        },
+        "metric": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "confidenceLevel": {
+      "type": "object",
+      "required": [
+        "threshold_min",
+        "threshold_max",
+        "description",
+        "recommended_action"
+      ],
+      "properties": {
+        "threshold_min": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "threshold_max": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "recommended_action": {
+          "type": "string"
+        },
+        "typical_sources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "examples": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "encoding",
+              "confidence",
+              "reason"
+            ],
+            "properties": {
+              "encoding": {
+                "type": "string"
+              },
+              "confidence": {
+                "type": "number"
+              },
+              "reason": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "detectionSource": {
+      "type": "object",
+      "required": [
+        "type",
+        "confidence_contribution",
+        "description"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "definitive",
+            "structural",
+            "probabilistic",
+            "advanced",
+            "prefix"
+          ]
+        },
+        "confidence_contribution": {
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "signatures": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-z0-9_-]+$": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            }
+          }
+        },
+        "methods": {
+          "type": "object"
+        },
+        "techniques": {
+          "type": "object"
+        },
+        "algorithms": {
+          "type": "object"
+        },
+        "prefixes": {
+          "type": "object"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "confidence_factors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "availability": {
+          "type": "string"
+        }
+      }
+    },
+    "ambiguousCase": {
+      "type": "object",
+      "required": [
+        "description",
+        "resolution_strategy"
+      ],
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "ambiguous_between": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "distinguishing_bytes": {
+          "type": "object"
+        },
+        "resolution_strategy": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "confidence": {
+          "type": "number"
+        },
+        "indicators": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "recommended_encoding": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "handling": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

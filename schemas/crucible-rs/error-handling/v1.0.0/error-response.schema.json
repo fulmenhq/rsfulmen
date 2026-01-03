@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/error-handling/v1.0.0/error-response.schema.json",
+  "title": "Fulmen Error Response",
+  "description": "Extends the Pathfinder error envelope with optional telemetry fields used across Fulmen libraries.",
+  "$comment": "Consumers SHOULD continue to emit the pathfinder base fields; new fields are optional and additive.",
+  "allOf": [
+    {
+      "$ref": "../../pathfinder/v1.0.0/error-response.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "severity": {
+          "$ref": "../../assessment/v1.0.0/severity-definitions.schema.json#/$defs/severityName",
+          "description": "Optional severity classification aligned with assessment severity levels."
+        },
+        "severity_level": {
+          "$ref": "../../assessment/v1.0.0/severity-definitions.schema.json#/$defs/severityLevel",
+          "description": "Numeric severity for sorting/comparison (info=0 … critical=4)."
+        },
+        "correlation_id": {
+          "type": "string",
+          "description": "Correlation identifier used by observability logging integrations."
+        },
+        "trace_id": {
+          "type": "string",
+          "description": "Optional tracing identifier (OTel trace/span)."
+        },
+        "exit_code": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "description": "Optional process exit code associated with the error."
+        },
+        "context": {
+          "type": "object",
+          "description": "Structured context key/values (non-sensitive).",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          }
+        },
+        "original": {
+          "description": "Optional serialized form of the wrapped/original error.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object",
+              "additionalProperties": true
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    }
+  ]
+}

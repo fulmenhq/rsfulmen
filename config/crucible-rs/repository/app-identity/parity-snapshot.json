@@ -1,0 +1,125 @@
+{
+  "schema_version": "v1.0.0",
+  "description": "Canonical parity snapshot for app-identity parser behavior. All language implementations (Go, Python, TypeScript) must produce identical results for these test cases.",
+  "test_cases": {
+    "valid": {
+      "minimal": {
+        "input_file": "fixtures/valid/minimal.yaml",
+        "expected_output": {
+          "binary_name": "myapp",
+          "vendor": "acmecorp",
+          "env_prefix": "MYAPP_",
+          "config_name": "myapp",
+          "description": "Minimal valid application identity",
+          "metadata": {}
+        },
+        "validation_result": "pass"
+      },
+      "complete": {
+        "input_file": "fixtures/valid/complete.yaml",
+        "expected_output": {
+          "binary_name": "percheron",
+          "vendor": "fulmenhq",
+          "env_prefix": "PERCHERON_",
+          "config_name": "percheron",
+          "description": "Production-ready Python HTTP workhorse with observability",
+          "metadata": {
+            "project_url": "https://github.com/fulmenhq/forge-workhorse-percheron",
+            "support_email": "support@fulmenhq.io",
+            "license": "MIT",
+            "repository_category": "workhorse",
+            "telemetry_namespace": "percheron",
+            "python": {
+              "distribution_name": "percheron",
+              "package_name": "percheron",
+              "console_scripts": [
+                {
+                  "name": "percheron",
+                  "entry_point": "percheron.cli:main"
+                }
+              ]
+            },
+            "custom_field": "allowed for extensibility"
+          }
+        },
+        "validation_result": "pass"
+      },
+      "monorepo_api": {
+        "input_file": "fixtures/valid/monorepo-api.yaml",
+        "expected_output": {
+          "binary_name": "myproject-api",
+          "vendor": "acmecorp",
+          "env_prefix": "MYPROJECT_API_",
+          "config_name": "myproject-api",
+          "description": "API server component of myproject monorepo",
+          "metadata": {
+            "repository_category": "service",
+            "telemetry_namespace": "myproject_api"
+          }
+        },
+        "validation_result": "pass"
+      },
+      "monorepo_worker": {
+        "input_file": "fixtures/valid/monorepo-worker.yaml",
+        "expected_output": {
+          "binary_name": "myproject-worker",
+          "vendor": "acmecorp",
+          "env_prefix": "MYPROJECT_WORKER_",
+          "config_name": "myproject-worker",
+          "description": "Background worker component of myproject monorepo",
+          "metadata": {
+            "repository_category": "service",
+            "telemetry_namespace": "myproject_worker"
+          }
+        },
+        "validation_result": "pass"
+      }
+    },
+    "invalid": {
+      "missing_required": {
+        "input_file": "fixtures/invalid/missing-required.yaml",
+        "expected_error": {
+          "type": "ValidationError",
+          "field": "app.binary_name",
+          "message": "required field missing"
+        },
+        "validation_result": "fail"
+      },
+      "invalid_binary_name": {
+        "input_file": "fixtures/invalid/invalid-binary-name.yaml",
+        "expected_error": {
+          "type": "ValidationError",
+          "field": "app.binary_name",
+          "message": "must be lowercase"
+        },
+        "validation_result": "fail"
+      },
+      "invalid_env_prefix": {
+        "input_file": "fixtures/invalid/invalid-env-prefix.yaml",
+        "expected_error": {
+          "type": "ValidationError",
+          "field": "app.env_prefix",
+          "message": "must end with underscore"
+        },
+        "validation_result": "fail"
+      },
+      "invalid_vendor": {
+        "input_file": "fixtures/invalid/invalid-vendor.yaml",
+        "expected_error": {
+          "type": "ValidationError",
+          "field": "app.vendor",
+          "message": "must be alphanumeric only"
+        },
+        "validation_result": "fail"
+      },
+      "malformed_yaml": {
+        "input_file": "fixtures/invalid/malformed-yaml.yaml",
+        "expected_error": {
+          "type": "ParseError",
+          "message": "invalid YAML syntax"
+        },
+        "validation_result": "fail"
+      }
+    }
+  }
+}

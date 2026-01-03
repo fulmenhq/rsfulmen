@@ -1,0 +1,10 @@
+# Identity for worker in monorepo
+app:
+  binary_name: myproject-worker
+  vendor: acmecorp
+  env_prefix: MYPROJECT_WORKER_
+  config_name: myproject-worker
+  description: Background worker component of myproject monorepo
+metadata:
+  repository_category: service
+  telemetry_namespace: myproject_worker

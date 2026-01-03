@@ -1,0 +1,33 @@
+# Fulmen helper language taxonomy (machine-readable source)
+version: "2025.10.2"
+languages:
+  - key: go
+    name: Go
+    libraryName: gofulmen
+    status: active
+    minimumRuntime: "1.23"
+    notes: "Reference implementation for core helper standards"
+  - key: python
+    name: Python
+    libraryName: pyfulmen
+    status: active
+    minimumRuntime: "3.12"
+    notes: "Productionizing logging/context upgrades in 2025.10.2"
+  - key: typescript
+    name: TypeScript
+    libraryName: tsfulmen
+    status: active
+    minimumRuntime: "5.0"
+    notes: "Publishes ESM bundles targeting Bun/Node runtimes"
+  - key: rust
+    name: Rust
+    libraryName: rsfulmen
+    status: active
+    minimumRuntime: "1.70"
+    notes: "Foundation enabled in v0.2.21; consumes generated codegen artifacts"
+  - key: csharp
+    name: C#
+    libraryName: csfulmen
+    status: planned
+    minimumRuntime: "8.0"
+    notes: "Focus on ASP.NET and worker scenarios post-rust foundation"

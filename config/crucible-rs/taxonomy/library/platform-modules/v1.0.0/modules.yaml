@@ -1,0 +1,591 @@
+# Fulmen Helper Library Platform Modules Registry
+# THE canonical SSOT for platform code modules (config, logging, pathfinder, etc.)
+# For reference data catalogs, see foundry-catalogs.yaml
+# Manually maintained but automatically validated
+version: "1.0.0"
+last_updated: "2025-11-15"
+modules:
+  # ============================================================================
+  # CORE TIER - Always present, zero optional dependencies
+  # ============================================================================
+  - module_name: config
+    tier: core
+    description: Three-Layer Configuration management for Fulmen applications
+    rationale: Required for all Fulmen apps; zero optional dependencies; foundational capability
+    evidence:
+      has_schema: false
+      has_config: false
+    languages:
+      go:
+        status: available
+        package: github.com/fulmenhq/gofulmen/config
+        version: "0.1.0"
+        implementation: "Custom implementation using stdlib os, path/filepath"
+      python:
+        status: available
+        package: pyfulmen.config
+        version: "0.1.0"
+        implementation: "Custom implementation using stdlib os, pathlib"
+      typescript:
+        status: available
+        package: "@fulmenhq/tsfulmen/config"
+        version: "0.1.0"
+        implementation: "Custom implementation using Node.js fs, path"
+    dependencies:
+      required_modules: []
+      external_deps:
+        go: []
+        python: []
+        typescript: []
+    status: active
+    added_version: "0.1.0"
+  - module_name: logging
+    tier: core
+    description: Structured logging with progressive profiles for Fulmen applications
+    rationale: Core observability requirement; zero optional dependencies; all apps need logging
+    evidence:
+      has_schema: true
+      schema_path: schemas/observability/logging/v1.0.0/
+      has_config: false
+    languages:
+      go:
+        status: available
+        package: github.com/fulmenhq/gofulmen/logging
+        version: "0.1.0"
+        implementation: "Wraps stdlib log/slog with Fulmen conventions"
+      python:
+        status: available
+        package: pyfulmen.logging
+        version: "0.1.0"
+        implementation: "Wraps stdlib logging module with Fulmen conventions"
+      typescript:
+        status: available
+        package: "@fulmenhq/tsfulmen/logging"
+        version: "0.1.0"
+        implementation: "Custom implementation wrapping console with structured output"
+    dependencies:
+      required_modules: []
+      external_deps:
+        go: []
+        python: []
+        typescript: []
+    status: active
+    added_version: "0.1.0"
+  - module_name: schema
+    tier: core
+    description: Schema validation primitives for JSON Schema validation
+    rationale: Foundational validation capability; zero optional dependencies
+    evidence:
+      has_schema: true
+      schema_path: schemas/schema-validation/v1.0.0/
+      has_config: false
+    languages:
+      go:
+        status: available
+        package: github.com/fulmenhq/gofulmen/schema
+        version: "0.1.0"
+        implementation: "Custom JSON Schema validator using stdlib encoding/json"
+      python:
+        status: available
+        package: pyfulmen.schema
+        version: "0.1.0"
+        implementation: "Custom JSON Schema validator using stdlib json"
+      typescript:
+        status: available
+        package: "@fulmenhq/tsfulmen/schema"
+        version: "0.1.0"
+        implementation: "Custom JSON Schema validator using stdlib JSON"
+    dependencies:
+      required_modules: []
+      external_deps:
+        go: []
+        python: []
+        typescript: []
+    status: active
+    added_version: "0.1.0"
+  - module_name: crucible-shim
+    tier: core
+    description: Crucible SSOT access layer for docs, schemas, and config defaults
+    rationale: All Fulmen apps access Crucible through this layer; zero optional dependencies
+    evidence:
+      has_schema: false
+      has_config: false
+    languages:
+      go:
+        status: available
+        package: github.com/fulmenhq/gofulmen/crucible
+        version: "0.1.0"
+        implementation: "Custom implementation using Go embed directive"
+      python:
+        status: available
+        package: pyfulmen.crucible
+        version: "0.1.0"
+        implementation: "Custom implementation using importlib.resources"
+      typescript:
+        status: available
+        package: "@fulmenhq/tsfulmen/crucible"
+        version: "0.1.0"
+        implementation: "Custom implementation bundling YAML/JSON assets"
+    dependencies:
+      required_modules: []
+      external_deps:
+        go: []
+        python: []
+        typescript: []
+    status: active
+    added_version: "0.1.0"
+  - module_name: errors
+    tier: core
+    description: Error handling and standardized exit codes
+    rationale: All apps need error handling; uses stdlib only; foundational capability
+    evidence:
+      has_schema: false
+      has_config: true
+      config_path: config/library/foundry/exit-codes.yaml
+    languages:
+      go:
+        status: available
+        package: github.com/fulmenhq/gofulmen/errors
+        version: "0.1.0"
+        implementation: "Custom error types wrapping stdlib errors"
+      python:
+        status: available
+        package: pyfulmen.errors
+        version: "0.1.0"
+        implementation: "Custom exception classes extending stdlib Exception"
+      typescript:
+        status: available
+        package: "@fulmenhq/tsfulmen/errors"
+        version: "0.1.0"
+        implementation: "Custom Error classes extending stdlib Error"
+    dependencies:
+      required_modules: []
+      external_deps:
+        go: []
+        python: []
+        typescript: []
+    status: active
+    added_version: "0.1.0"
+  - module_name: appidentity
+    tier: core
+    description: Application identity and metadata management
+    rationale: All Fulmen apps need identity configuration; zero optional dependencies
+    evidence:
+      has_schema: false
+      has_config: false
+    languages:
+      go:
+        status: available
+        package: github.com/fulmenhq/gofulmen/appidentity
+        version: "0.1.0"
+        implementation: "Custom implementation using stdlib os for env vars"
+      python:
+        status: available
+        package: pyfulmen.appidentity
+        version: "0.1.0"
+        implementation: "Custom implementation using stdlib os for env vars"
+      typescript:
+        status: available
+        package: "@fulmenhq/tsfulmen/appidentity"
+        version: "0.1.0"
+        implementation: "Custom implementation using process.env"
+    dependencies:
+      required_modules: []
+      external_deps:
+        go: []
+        python: []
+        typescript: []
+    status: active
+    added_version: "0.1.0"
+  - module_name: platform
+    tier: core
+    description: Platform introspection for OS, architecture, and capability detection
+    rationale: All apps need runtime platform detection; uses stdlib only
+    evidence:
+      has_schema: false
+      has_config: false
+    languages:
+      go:
+        status: available
+        package: github.com/fulmenhq/gofulmen/platform
+        version: "0.2.6"
+        implementation: "Wraps stdlib runtime for GOOS, GOARCH detection"
+      python:
+        status: available
+        package: pyfulmen.platform
+        version: "0.2.6"
+        implementation: "Wraps stdlib platform, sys for OS and architecture"
+      typescript:
+        status: available
+        package: "@fulmenhq/tsfulmen/platform"
+        version: "0.2.6"
+        implementation: "Wraps Node.js process.platform and process.arch"
+    dependencies:
+      required_modules: []
+      external_deps:
+        go: []
+        python: []
+        typescript: []
+    status: active
+    added_version: "0.2.6"
+  # ============================================================================
+  # COMMON TIER - Default install, lightweight
+  # ============================================================================
+  - module_name: pathfinder
+    tier: common
+    description: Safe file and directory discovery with constraint enforcement
+    rationale: Frequently used for file operations; lightweight stdlib dependencies
+    evidence:
+      has_schema: true
+      schema_path: schemas/pathfinder/v1.0.0/
+      has_config: false
+    languages:
+      go:
+        status: available
+        package: github.com/fulmenhq/gofulmen/pathfinder
+        version: "0.1.0"
+        implementation: "Custom path traversal using stdlib path/filepath, os"
+      python:
+        status: available
+        package: pyfulmen.pathfinder
+        version: "0.1.0"
+        implementation: "Custom path traversal using stdlib pathlib, os"
+      typescript:
+        status: available
+        package: "@fulmenhq/tsfulmen/pathfinder"
+        version: "0.1.0"
+        implementation: "Custom path traversal using Node.js fs, path"
+    dependencies:
+      required_modules: []
+      external_deps:
+        go: []
+        python: []
+        typescript: []
+    status: active
+    added_version: "0.1.0"
+  - module_name: ascii
+    tier: common
+    description: Unicode-aware string analysis and box drawing utilities
+    rationale: Frequently used for text processing; lightweight stdlib dependencies
+    evidence:
+      has_schema: true
+      schema_path: schemas/ascii/v1.0.0/
+      has_config: false
+    languages:
+      go:
+        status: available
+        package: github.com/fulmenhq/gofulmen/ascii
+        version: "0.1.0"
+        implementation: "Custom implementation using stdlib unicode/utf8, strings"
+      python:
+        status: available
+        package: pyfulmen.ascii
+        version: "0.1.0"
+        implementation: "Custom implementation using stdlib unicodedata"
+      typescript:
+        status: available
+        package: "@fulmenhq/tsfulmen/ascii"
+        version: "0.1.0"
+        implementation: "Custom implementation using native string methods"
+    dependencies:
+      required_modules: []
+      external_deps:
+        go: []
+        python: []
+        typescript: []
+    status: active
+    added_version: "0.1.0"
+  - module_name: foundry
+    tier: common
+    description: Catalog loader for countries, HTTP status codes, MIME types, signals, and similarity data
+    rationale: Widely useful reference data access; zero external dependencies
+    evidence:
+      has_schema: true
+      schema_path: schemas/library/foundry/v2.0.0/
+      has_config: true
+      config_path: config/library/foundry/
+    languages:
+      go:
+        status: available
+        package: github.com/fulmenhq/gofulmen/foundry
+        version: "0.2.0"
+        implementation: "Custom catalog loader using Go embed + stdlib encoding/json"
+      python:
+        status: available
+        package: pyfulmen.foundry
+        version: "0.2.0"
+        implementation: "Custom catalog loader using importlib.resources + stdlib json"
+      typescript:
+        status: available
+        package: "@fulmenhq/tsfulmen/foundry"
+        version: "0.2.0"
+        implementation: "Custom catalog loader bundling JSON/YAML catalogs"
+    dependencies:
+      required_modules: []
+      external_deps:
+        go: []
+        python: []
+        typescript: []
+    status: active
+    added_version: "0.2.0"
+  - module_name: fulhash
+    tier: common
+    description: Enterprise-grade hashing utilities with versioned algorithms
+    rationale: Common need for content hashing; uses stdlib crypto only
+    evidence:
+      has_schema: false
+      has_config: false
+    languages:
+      go:
+        status: available
+        package: github.com/fulmenhq/gofulmen/fulhash
+        version: "0.2.2"
+        implementation: "Wraps stdlib crypto/sha256, crypto/md5 with Fulmen conventions"
+      python:
+        status: available
+        package: pyfulmen.fulhash
+        version: "0.2.2"
+        implementation: "Wraps stdlib hashlib with Fulmen conventions"
+      typescript:
+        status: available
+        package: "@fulmenhq/tsfulmen/fulhash"
+        version: "0.2.2"
+        implementation: "Wraps Node.js crypto module with Fulmen conventions"
+    dependencies:
+      required_modules: []
+      external_deps:
+        go: []
+        python: []
+        typescript: []
+    status: active
+    added_version: "0.2.2"
+  - module_name: signals
+    tier: common
+    description: Cross-platform signal handling for graceful shutdown and Ctrl+C
+    rationale: Common need for server applications; uses stdlib signal APIs only
+    evidence:
+      has_schema: false
+      has_config: true
+      config_path: config/library/foundry/signals.yaml
+    languages:
+      go:
+        status: available
+        package: github.com/fulmenhq/gofulmen/signals
+        version: "0.2.5"
+        implementation: "Wraps stdlib os/signal with cross-platform signal mapping"
+      python:
+        status: available
+        package: pyfulmen.signals
+        version: "0.2.5"
+        implementation: "Wraps stdlib signal with cross-platform signal mapping"
+      typescript:
+        status: available
+        package: "@fulmenhq/tsfulmen/signals"
+        version: "0.2.5"
+        implementation: "Wraps Node.js process.on with cross-platform signal mapping"
+    dependencies:
+      required_modules: []
+      external_deps:
+        go: []
+        python: []
+        typescript: []
+    status: active
+    added_version: "0.2.5"
+  - module_name: telemetry
+    tier: common
+    description: Telemetry coordination and module-level telemetry configuration
+    rationale: Common observability need; lightweight coordination layer
+    evidence:
+      has_schema: false
+      has_config: false
+    languages:
+      go:
+        status: available
+        package: github.com/fulmenhq/gofulmen/telemetry
+        version: "0.2.0"
+        implementation: "Custom telemetry registry and coordination layer"
+      python:
+        status: available
+        package: pyfulmen.telemetry
+        version: "0.2.0"
+        implementation: "Custom telemetry registry and coordination layer"
+      typescript:
+        status: available
+        package: "@fulmenhq/tsfulmen/telemetry"
+        version: "0.2.0"
+        implementation: "Custom telemetry registry and coordination layer"
+    dependencies:
+      required_modules: []
+      external_deps:
+        go: []
+        python: []
+        typescript: []
+    status: active
+    added_version: "0.2.0"
+  - module_name: docscribe
+    tier: common
+    description: Documentation metadata extraction and frontmatter parsing
+    rationale: Useful for doc-driven tooling; lightweight YAML parsing only
+    evidence:
+      has_schema: false
+      has_config: false
+    languages:
+      go:
+        status: available
+        package: github.com/fulmenhq/gofulmen/docscribe
+        version: "0.2.0"
+        implementation: "Custom frontmatter parser using stdlib strings, regexp"
+      python:
+        status: available
+        package: pyfulmen.docscribe
+        version: "0.2.0"
+        implementation: "Custom frontmatter parser using stdlib re, yaml"
+      typescript:
+        status: available
+        package: "@fulmenhq/tsfulmen/docscribe"
+        version: "0.2.0"
+        implementation: "Custom frontmatter parser using string methods + yaml lib"
+    dependencies:
+      required_modules: []
+      external_deps:
+        go: []
+        python: []
+        typescript: []
+    status: active
+    added_version: "0.2.0"
+  - module_name: ssot-sync
+    tier: common
+    description: SSOT synchronization utilities for pulling Crucible assets
+    rationale: Common need for SSOT consumers; lightweight utilities
+    evidence:
+      has_schema: false
+      has_config: false
+    languages:
+      go:
+        status: available
+        package: github.com/fulmenhq/gofulmen/ssotsync
+        version: "0.2.0"
+        implementation: "Custom sync logic using stdlib io, os for file operations"
+      python:
+        status: available
+        package: pyfulmen.ssot_sync
+        version: "0.2.0"
+        implementation: "Custom sync logic using stdlib shutil, pathlib"
+      typescript:
+        status: available
+        package: "@fulmenhq/tsfulmen/ssot-sync"
+        version: "0.2.0"
+        implementation: "Custom sync logic using Node.js fs, path"
+    dependencies:
+      required_modules: []
+      external_deps:
+        go: []
+        python: []
+        typescript: []
+    status: active
+    added_version: "0.2.0"
+  - module_name: metrics
+    tier: common
+    description: Metrics taxonomy and standardized metrics collection
+    rationale: Common observability need; lightweight taxonomy and helpers
+    evidence:
+      has_schema: false
+      has_config: true
+      config_path: config/taxonomy/metrics.yaml
+    languages:
+      go:
+        status: available
+        package: github.com/fulmenhq/gofulmen/metrics
+        version: "0.2.7"
+        implementation: "Custom metrics registry wrapping taxonomy catalog"
+      python:
+        status: available
+        package: pyfulmen.metrics
+        version: "0.2.7"
+        implementation: "Custom metrics registry wrapping taxonomy catalog"
+      typescript:
+        status: available
+        package: "@fulmenhq/tsfulmen/metrics"
+        version: "0.2.7"
+        implementation: "Custom metrics registry wrapping taxonomy catalog"
+    dependencies:
+      required_modules: []
+      external_deps:
+        go: []
+        python: []
+        typescript: []
+    status: active
+    added_version: "0.2.7"
+  - module_name: fulpack
+    tier: common
+    description: Archive operations (tar.gz, zip, gzip) with Pathfinder integration
+    rationale: Common need for archive handling; uses stdlib only (tar, zip, gzip); Pathfinder integration for glob searches
+    evidence:
+      has_schema: true
+      schema_path: schemas/library/fulpack/v1.0.0/
+      has_config: true
+      config_path: config/library/fulpack/
+    languages:
+      go:
+        status: planned
+        package: github.com/fulmenhq/gofulmen/fulpack
+        version: "0.1.10"
+        implementation: "Wraps stdlib archive/tar, archive/zip, compress/gzip"
+      python:
+        status: planned
+        package: pyfulmen.fulpack
+        version: "0.1.10"
+        implementation: "Wraps stdlib tarfile, zipfile, gzip"
+      typescript:
+        status: planned
+        package: "@fulmenhq/tsfulmen/fulpack"
+        version: "0.1.10"
+        implementation: "Wraps tar-stream and archiver for cross-platform compatibility"
+    dependencies:
+      required_modules: [pathfinder]
+      external_deps:
+        go: []
+        python: []
+        typescript: []
+    status: active
+    added_version: "0.2.10"
+    # ============================================================================
+    # SPECIALIZED TIER - Opt-in via extras/optional installs
+    # ============================================================================
+    # (Currently empty - fulencode planned for future releases)
+  - module_name: fulencode
+    tier: specialized
+    description: Encoding/decoding operations (Base64, Base32, Hex, UTF detection, Unicode normalization)
+    rationale: Specialized encoding needs; Common-tier operations with security-first design
+    evidence:
+      has_schema: true
+      schema_path: schemas/library/fulencode/v1.0.0/
+      has_config: false
+    languages:
+      go:
+        status: planned
+        package: github.com/fulmenhq/gofulmen/fulencode
+        version: "0.2.12"
+        implementation: "Wraps stdlib encoding/base64, encoding/hex, unicode/utf8"
+      python:
+        status: planned
+        package: pyfulmen.fulencode
+        version: "0.2.12"
+        implementation: "Wraps stdlib base64, binascii, unicodedata"
+      typescript:
+        status: planned
+        package: "@fulmenhq/tsfulmen/fulencode"
+        version: "0.2.12"
+        implementation: "Wraps Node.js Buffer API and native encoding methods"
+    dependencies:
+      required_modules: []
+      external_deps:
+        go: []
+        python: []
+        typescript: []
+    status: active
+    added_version: "0.2.12"
+    graduation_metrics:
+      adoption_threshold: "Used in 3+ production applications"
+      stability_threshold: "6 months without breaking changes"
+    sunset_date: "2026-11-16"

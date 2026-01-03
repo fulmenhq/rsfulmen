@@ -1,0 +1,141 @@
+$schema: https://schemas.fulmenhq.dev/server/management/v1.0.0/server-management.schema.json
+description: Default server management configuration for Fulmen web templates and applications
+version: v1.0.0
+# Environment variable prefix - typically derived from application identity
+# Example: FULMEN_PULSAR for Forge Codex Pulsar
+# Results in env vars like: FULMEN_PULSAR_DEV_PORT, FULMEN_PULSAR_A11Y_RANGE_MIN
+envPrefix: FULMEN_APP
+# Standard configuration classes for server orchestration
+configurations:
+  # Local development server
+  dev:
+    preferredPort: 4321
+    range:
+      min: 4321
+      max: 4322
+    healthCheck:
+      method: GET
+      path: /
+      timeout: 5000
+      retries: 3
+      interval: 1000
+    exitBehavior:
+      portInUse: 11 # EXIT_PORT_IN_USE
+      healthCheckFailed: 50 # EXIT_HEALTH_CHECK_FAILED
+      startupTimeout: 52 # EXIT_TIMEOUT
+    envOverrides:
+      - FULMEN_APP_DEV_PORT
+      - FULMEN_APP_DEV_RANGE_MIN
+      - FULMEN_APP_DEV_RANGE_MAX
+    pidFile: .server/dev.pid
+    logFile: .server/dev.log
+  # Test/CI server
+  test:
+    preferredPort: 4380
+    range:
+      min: 4380
+      max: 4389
+    healthCheck:
+      method: GET
+      path: /health
+      timeout: 3000
+      retries: 2
+      interval: 500
+    exitBehavior:
+      portInUse: 11
+      healthCheckFailed: 50
+      startupTimeout: 52
+    envOverrides:
+      - FULMEN_APP_TEST_PORT
+      - FULMEN_APP_TEST_RANGE_MIN
+      - FULMEN_APP_TEST_RANGE_MAX
+    pidFile: .server/test.pid
+    logFile: .server/test.log
+  # Accessibility testing server
+  a11y:
+    preferredPort: 4323
+    range:
+      min: 4323
+      max: 4340
+    healthCheck:
+      method: GET
+      path: /
+      timeout: 5000
+      retries: 3
+      interval: 1000
+    exitBehavior:
+      portInUse: 11
+      healthCheckFailed: 50
+      startupTimeout: 52
+    envOverrides:
+      - FULMEN_APP_A11Y_PORT
+      - FULMEN_APP_A11Y_RANGE_MIN
+      - FULMEN_APP_A11Y_RANGE_MAX
+    pidFile: .server/a11y.pid
+    logFile: .server/a11y.log
+  # Preview/staging server
+  preview:
+    preferredPort: 4341
+    range:
+      min: 4341
+      max: 4350
+    healthCheck:
+      method: GET
+      path: /health
+      timeout: 10000
+      retries: 5
+      interval: 2000
+    exitBehavior:
+      portInUse: 11
+      healthCheckFailed: 50
+      startupTimeout: 52
+    envOverrides:
+      - FULMEN_APP_PREVIEW_PORT
+      - FULMEN_APP_PREVIEW_RANGE_MIN
+      - FULMEN_APP_PREVIEW_RANGE_MAX
+    pidFile: .server/preview.pid
+    logFile: .server/preview.log
+  # Production-like server for final verification
+  prod_like:
+    preferredPort: 4351
+    range:
+      min: 4351
+      max: 4360
+    healthCheck:
+      method: HEAD
+      path: /health
+      timeout: 10000
+      retries: 5
+      interval: 2000
+    exitBehavior:
+      portInUse: 11
+      healthCheckFailed: 50
+      startupTimeout: 52
+    envOverrides:
+      - FULMEN_APP_PROD_LIKE_PORT
+      - FULMEN_APP_PROD_LIKE_RANGE_MIN
+      - FULMEN_APP_PROD_LIKE_RANGE_MAX
+    pidFile: .server/prod_like.pid
+    logFile: .server/prod_like.log
+
+# Example of additional custom configurations (must use x- prefix)
+# additionalConfigurations:
+#   x-storybook:
+#     preferredPort: 6006
+#     range:
+#       min: 6006
+#       max: 6010
+#     healthCheck:
+#       method: GET
+#       path: /
+#       timeout: 5000
+#       retries: 3
+#       interval: 1000
+#     exitBehavior:
+#       portInUse: 11
+#       healthCheckFailed: 50
+#       startupTimeout: 52
+#     envOverrides:
+#       - FULMEN_APP_STORYBOOK_PORT
+#     pidFile: .server/x-storybook.pid
+#     logFile: .server/x-storybook.log

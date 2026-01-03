@@ -1,0 +1,54 @@
+# Fulmen geographic taxonomy (machine-readable source)
+# Status: EXPERIMENTAL - Per ADR-0011, breaking changes allowed until L'Orage Central v0.2.0
+version: "0.2.9"
+countries:
+  - key: us
+    name: United States
+    isoAlpha2: US
+    compliance:
+      - ccpa
+      - hipaa
+  - key: gb
+    name: United Kingdom
+    isoAlpha2: GB
+    compliance:
+      - uk-gdpr
+  - key: de
+    name: Germany
+    isoAlpha2: DE
+    compliance:
+      - gdpr
+  - key: fr
+    name: France
+    isoAlpha2: FR
+    compliance:
+      - gdpr
+  - key: ch
+    name: Switzerland
+    isoAlpha2: CH
+    compliance:
+      - swiss-dpa
+  - key: ca
+    name: Canada
+    isoAlpha2: CA
+    compliance:
+      - pipeda
+regions:
+  - key: eu
+    name: European Union + Conventions
+    countries:
+      - de
+      - fr
+      - gb
+      - ch
+    description: GDPR core + UK/CH for practical IT hosting (e.g., Amsterdam for Swiss firms).
+    compliance:
+      - gdpr
+  - key: na
+    name: North America
+    countries:
+      - us
+      - ca
+    description: US/CA for proximity and data flow conventions.
+    compliance:
+      - ccpa

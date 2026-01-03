@@ -1,0 +1,185 @@
+$schema: https://schemas.fulmenhq.dev/library/foundry/v1.0.0/patterns.schema.json
+description: Canonical regex/glob/literal patterns shared across Fulmen helper libraries.
+version: v0.1.0
+patterns:
+  - id: ansi-email
+    name: RFC 5322 Email
+    kind: regex
+    pattern: '^[\p{Letter}\p{Number}._%+-]+@[\p{Letter}\p{Number}.-]+\.[\p{Letter}]{2,}$'
+    flags:
+      python:
+        unicode: true
+        ignoreCase: true
+      go:
+        unicode: true
+        ignoreCase: true
+      typescript:
+        ignoreCase: true
+      rust:
+        unicode: true
+        ignoreCase: true
+      csharp:
+        unicode: true
+        ignoreCase: true
+    description: 'Internationalized email address with Unicode letters; case-insensitive.'
+    examples:
+      - 'user@example.com'
+      - '你好@例子.公司'
+  - id: slug
+    name: Slug (kebab/underscore)
+    kind: regex
+    pattern: '^[a-z0-9]+(?:[-_][a-z0-9]+)*$'
+    description: 'Lowercase slug with hyphen/underscore separators.'
+    examples:
+      - 'fulmen-hq'
+      - 'data_pipeline'
+  - id: path-segment
+    name: Path Segment
+    kind: regex
+    pattern: '^[a-z0-9]+(?:[/_-][a-z0-9]+)*$'
+    description: 'Lowercase path fragment allowing slash, underscore, hyphen separators.'
+    examples:
+      - 'foo/bar'
+      - 'docs_v1'
+  - id: identifier
+    name: Identifier (Alpha + underscore)
+    kind: regex
+    pattern: '^[A-Za-z][A-Za-z0-9_]*[A-Za-z0-9]$'
+    description: 'Camel/snake compatible identifier, starts with letter.'
+    examples:
+      - 'ConfigValue'
+      - 'config_value1'
+  - id: uri-scheme
+    name: URI Scheme (RFC 3986)
+    kind: regex
+    pattern: '^[a-z][a-z0-9+.-]*$'
+    description: 'Lowercase URI scheme (e.g., http, git+ssh).'
+    examples:
+      - 'https'
+      - 'git+ssh'
+  - id: logger-name
+    name: Logger Name
+    kind: regex
+    pattern: '^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)*$'
+    description: 'Dot-separated logger names (e.g., package.module.component).'
+    examples:
+      - 'fulmen.logger'
+      - 'app.core.worker'
+  - id: env-prefix
+    name: Environment Prefix
+    kind: regex
+    pattern: '^[A-Z][A-Z0-9_]*_$'
+    description: 'Uppercase environment variable prefix ending with underscore.'
+    examples:
+      - 'FULMEN_'
+      - 'CRUCIBLE_'
+  - id: tag
+    name: Tag (ASCII)
+    kind: regex
+    pattern: '^[A-Za-z0-9][A-Za-z0-9_\-\s]*[A-Za-z0-9]$'
+    description: 'Label allowing spaces, underscores, hyphens; no leading/trailing separators.'
+    examples:
+      - 'stable release'
+      - 'beta-1'
+  - id: unicode-tag
+    name: Tag (Unicode)
+    kind: regex
+    pattern: '^[\p{L}\p{N}][\p{L}\p{N}_\-\s]*[\p{L}\p{N}]$'
+    flags:
+      python:
+        unicode: true
+      go:
+        unicode: true
+      rust:
+        unicode: true
+      csharp:
+        unicode: true
+    description: 'Unicode-aware tag allowing letters/numbers from any script.'
+    examples:
+      - '国际化 标签'
+      - 'データ-01'
+  - id: domain-name
+    name: Fully Qualified Domain Name
+    kind: regex
+    pattern: '^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$'
+    description: 'Lowercase ASCII domain labels per RFC 1035 (no wildcard).'
+    examples:
+      - 'example.com'
+      - 'api.fulmenhq.net'
+  - id: ipv6
+    name: IPv6 Address (Full/Compressed)
+    kind: regex
+    pattern: '^(?:[A-Fa-f0-9]{1,4}:){7}[A-Fa-f0-9]{1,4}$|^(?:[A-Fa-f0-9]{1,4}:){1,7}:$|^:(?::[A-Fa-f0-9]{1,4}){1,7}$|^(?:[A-Fa-f0-9]{1,4}:){1,6}:[A-Fa-f0-9]{1,4}$|^(?:[A-Fa-f0-9]{1,4}:){1,5}(?::[A-Fa-f0-9]{1,4}){1,2}$|^(?:[A-Fa-f0-9]{1,4}:){1,4}(?::[A-Fa-f0-9]{1,4}){1,3}$|^(?:[A-Fa-f0-9]{1,4}:){1,3}(?::[A-Fa-f0-9]{1,4}){1,4}$|^(?:[A-Fa-f0-9]{1,4}:){1,2}(?::[A-Fa-f0-9]{1,4}){1,5}$|^[A-Fa-f0-9]{1,4}:(?:(?::[A-Fa-f0-9]{1,4}){1,6})$|^:(?::[A-Fa-f0-9]{1,4}){1,7}$|^(?:[A-Fa-f0-9]{1,4}:){1,4}:(?:[A-Fa-f0-9]{1,4}:){1,2}[A-Fa-f0-9]{1,4}$'
+    description: 'IPv6 address with support for shorthand compression (RFC 4291).'
+    examples:
+      - '2001:0db8:85a3:0000:0000:8a2e:0370:7334'
+      - '2001:db8::1428:57ab'
+  - id: hex-lower
+    name: Lowercase Hex String
+    kind: regex
+    pattern: '^[0-9a-f]+$'
+    description: 'Lowercase hexadecimal characters (length validated by consumer).'
+    examples:
+      - 'deadbeef'
+      - '0123456789abcdef'
+  - id: base64
+    name: Base64 Encoded String
+    kind: regex
+    pattern: '^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$'
+    description: 'Standard Base64 encoding with padding.'
+    examples:
+      - 'SGVsbG8gd29ybGQ='
+  - id: jwt
+    name: JSON Web Token (compact)
+    kind: regex
+    pattern: '^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$'
+    description: 'JWT compact serialization (header.payload.signature).'
+    examples:
+      - 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U'
+  - id: strict-iso-date
+    name: ISO Date (YYYY-MM-DD)
+    kind: regex
+    pattern: '^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$'
+    description: 'ISO 8601 calendar date with validated month/day ranges.'
+    examples:
+      - '2025-10-09'
+  - id: iso-timestamp-z
+    name: ISO Timestamp (UTC)
+    kind: regex
+    pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$'
+    description: 'UTC timestamp with optional fractional seconds.'
+    examples:
+      - '2025-10-09T14:15:16Z'
+      - '2025-10-09T14:15:16.123456Z'
+  - id: uuid-v4
+    name: UUID v4
+    kind: regex
+    pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$'
+    description: 'RFC 4122 version 4 UUID.'
+    examples:
+      - '123e4567-e89b-42d3-a456-426614174000'
+  - id: ulid
+    name: ULID
+    kind: regex
+    pattern: '^[0-9A-HJKMNP-TV-Z]{26}$'
+    description: 'Crockford-base32 ULID (26 chars, upper-case).'
+    examples:
+      - '01HCP5MZF1H84D0CW7V5T9FQ0P'
+  - id: semantic-version
+    name: Semantic Version
+    kind: regex
+    pattern: '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$'
+    description: 'SemVer 2.0.0 specification-compliant version string.'
+    examples:
+      - '1.2.3'
+      - '1.2.3-beta.1+build.5'
+  - id: glob-any-json
+    name: Glob – JSON Files
+    kind: glob
+    pattern: '**/*.json'
+    description: 'Recursive glob matching all JSON files.'
+  - id: glob-any-yaml
+    name: Glob – YAML Files
+    kind: glob
+    pattern: '**/*.{yml,yaml}'
+    description: 'Recursive glob matching YAML files.'

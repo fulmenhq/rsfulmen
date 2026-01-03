@@ -1,0 +1,330 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: https://schemas.fulmenhq.dev/config/taxonomy/metrics-v1.0.0.schema.json
+title: Fulmen Metrics Taxonomy
+description: Canonical registry of metric identifiers and default units used by Fulmen helper libraries.
+type: object
+$defs:
+  metricName:
+    type: string
+    enum:
+      - schema_validations
+      - schema_validation_errors
+      - config_load_ms
+      - config_load_errors
+      - pathfinder_find_ms
+      - pathfinder_validation_errors
+      - pathfinder_security_warnings
+      - foundry_lookup_count
+      - logging_emit_count
+      - logging_emit_latency_ms
+      - goneat_command_duration_ms
+      - prometheus_exporter_refresh_duration_seconds
+      - prometheus_exporter_refresh_total
+      - prometheus_exporter_refresh_errors_total
+      - prometheus_exporter_refresh_inflight
+      - prometheus_exporter_http_requests_total
+      - prometheus_exporter_http_errors_total
+      - prometheus_exporter_restarts_total
+      - foundry_mime_detections_total_json
+      - foundry_mime_detections_total_xml
+      - foundry_mime_detections_total_yaml
+      - foundry_mime_detections_total_csv
+      - foundry_mime_detections_total_plain_text
+      - foundry_mime_detections_total_unknown
+      - foundry_mime_detection_ms_json
+      - foundry_mime_detection_ms_xml
+      - foundry_mime_detection_ms_yaml
+      - foundry_mime_detection_ms_csv
+      - foundry_mime_detection_ms_plain_text
+      - foundry_mime_detection_ms_unknown
+      - error_handling_wraps_total
+      - error_handling_wrap_ms
+      - fulhash_operations_total_xxh3_128
+      - fulhash_operations_total_sha256
+      - fulhash_hash_string_total
+      - fulhash_bytes_hashed_total
+      - fulhash_operation_ms
+      - http_requests_total
+      - http_request_duration_seconds
+      - http_request_size_bytes
+      - http_response_size_bytes
+      - http_active_requests
+  metricUnit:
+    type: string
+    enum:
+      - count
+      - ms
+      - bytes
+      - percent
+      - s
+properties:
+  version:
+    type: string
+    description: Taxonomy version (SemVer, aligned with Crucible releases).
+    pattern: "^\\d+\\.\\d+\\.\\d+$"
+  defaults:
+    type: object
+    description: Default configuration applied across metrics.
+    properties:
+      histogram_buckets:
+        type: object
+        description: Default histogram bucket boundaries grouped by metric suffix or unit.
+        properties:
+          ms_metrics:
+            type: array
+            description: Default millisecond buckets used when metric name ends with `_ms`.
+            items:
+              type: number
+          seconds_metrics:
+            type: array
+            description: Default second buckets used when metric unit is `s` (for HTTP latency and duration metrics).
+            items:
+              type: number
+          bytes_metrics:
+            type: array
+            description: Default byte buckets used when metric name ends with `_bytes` (for HTTP request/response size metrics).
+            items:
+              type: number
+        additionalProperties: false
+    additionalProperties: false
+  metrics:
+    type: array
+    description: Canonical metric entries.
+    items:
+      type: object
+      properties:
+        name:
+          $ref: "#/$defs/metricName"
+        unit:
+          $ref: "#/$defs/metricUnit"
+        description:
+          type: string
+      required:
+        - name
+        - unit
+      additionalProperties: false
+    minItems: 1
+required:
+  - version
+  - metrics
+additionalProperties: false
+version: "0.4.1"
+defaults:
+  histogram_buckets:
+    ms_metrics:
+      - 1
+      - 5
+      - 10
+      - 50
+      - 100
+      - 500
+      - 1000
+      - 5000
+      - 10000
+    seconds_metrics:
+      - 0.005
+      - 0.01
+      - 0.025
+      - 0.05
+      - 0.1
+      - 0.25
+      - 0.5
+      - 1
+      - 2.5
+      - 5
+      - 10
+    bytes_metrics:
+      - 1024
+      - 10240
+      - 102400
+      - 1048576
+      - 10485760
+      - 104857600
+metrics:
+  - name: schema_validations
+    unit: count
+    description: Total schema validation attempts.
+  - name: schema_validation_errors
+    unit: count
+    description: Failed schema validation attempts.
+  - name: config_load_ms
+    unit: ms
+    description: Duration of configuration load operations.
+  - name: config_load_errors
+    unit: count
+    description: Failed configuration load attempts.
+  - name: pathfinder_find_ms
+    unit: ms
+    description: Duration of pathfinder file discovery operations.
+  - name: pathfinder_validation_errors
+    unit: count
+    description: Failed pathfinder validation attempts.
+  - name: pathfinder_security_warnings
+    unit: count
+    description: Pathfinder security warnings (e.g., path traversal attempts).
+  - name: foundry_lookup_count
+    unit: count
+    description: Number of catalog lookups performed.
+  - name: logging_emit_count
+    unit: count
+    description: Total structured log events emitted.
+  - name: logging_emit_latency_ms
+    unit: ms
+    description: Time spent emitting structured log events.
+  - name: goneat_command_duration_ms
+    unit: ms
+    description: Duration of goneat command execution (instrumentation helper).
+  - name: prometheus_exporter_refresh_duration_seconds
+    unit: s
+    description: >
+      Time to refresh/export registry data into Prometheus collectors. Uses ADR-0007 buckets converted to seconds: [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0]. Required labels: phase (collect|convert|export), result (success|error). Optional labels: error_type.
+
+  - name: prometheus_exporter_refresh_total
+    unit: count
+    description: >
+      Total refresh cycles attempted. Use with result label for success/error breakdown. Exporters SHOULD emit both this and prometheus_exporter_refresh_errors_total. Required labels: result (success|error). Optional labels: error_type.
+
+  - name: prometheus_exporter_refresh_errors_total
+    unit: count
+    description: >
+      Failed refresh cycles with detailed error classification. Sum MUST equal prometheus_exporter_refresh_total{result="error"}. Required labels: error_type (validation|io|timeout|other). Optional labels: phase.
+
+  - name: prometheus_exporter_refresh_inflight
+    unit: count
+    description: >
+      Number of concurrent refresh operations currently running. Optional labels: phase.
+
+  - name: prometheus_exporter_http_requests_total
+    unit: count
+    description: >
+      HTTP scrape/exposition requests handled by exporter. Distinct from prom-client defaults; recommend disabling client defaults when using this. Required labels: status (HTTP code), path. Optional labels: client (high cardinality warning).
+
+  - name: prometheus_exporter_http_errors_total
+    unit: count
+    description: >
+      HTTP exposition failures (5xx, auth failures, timeouts). Required labels: status (HTTP code), path. Optional labels: client (high cardinality warning).
+
+  - name: prometheus_exporter_restarts_total
+    unit: count
+    description: >
+      Exporter refresh loop or HTTP server restarts. Required labels: reason (config_change|error|manual|other).
+
+  - name: foundry_mime_detections_total_json
+    unit: count
+    description: >
+      Total JSON MIME type detections performed by the Foundry module. Tracks usage patterns for JSON content processing.
+
+  - name: foundry_mime_detections_total_xml
+    unit: count
+    description: >
+      Total XML MIME type detections performed by the Foundry module. Tracks usage patterns for XML content processing.
+
+  - name: foundry_mime_detections_total_yaml
+    unit: count
+    description: >
+      Total YAML MIME type detections performed by the Foundry module. Tracks usage patterns for YAML content processing.
+
+  - name: foundry_mime_detections_total_csv
+    unit: count
+    description: >
+      Total CSV MIME type detections performed by the Foundry module. Tracks usage patterns for CSV content processing.
+
+  - name: foundry_mime_detections_total_plain_text
+    unit: count
+    description: >
+      Total plain text MIME type detections performed by the Foundry module. Tracks usage patterns for plain text content processing.
+
+  - name: foundry_mime_detections_total_unknown
+    unit: count
+    description: >
+      Total unknown/binary MIME type detections performed by the Foundry module. Tracks usage patterns for unknown content types.
+
+  - name: foundry_mime_detection_ms_json
+    unit: ms
+    description: >
+      JSON MIME type detection latency in milliseconds. Uses ADR-0007 buckets: [1, 5, 10, 50, 100, 500, 1000, 5000, 10000]. Enables performance analysis for JSON detection algorithms.
+
+  - name: foundry_mime_detection_ms_xml
+    unit: ms
+    description: >
+      XML MIME type detection latency in milliseconds. Uses ADR-0007 buckets: [1, 5, 10, 50, 100, 500, 1000, 5000, 10000]. Enables performance analysis for XML detection algorithms.
+
+  - name: foundry_mime_detection_ms_yaml
+    unit: ms
+    description: >
+      YAML MIME type detection latency in milliseconds. Uses ADR-0007 buckets: [1, 5, 10, 50, 100, 500, 1000, 5000, 10000]. Enables performance analysis for YAML detection algorithms.
+
+  - name: foundry_mime_detection_ms_csv
+    unit: ms
+    description: >
+      CSV MIME type detection latency in milliseconds. Uses ADR-0007 buckets: [1, 5, 10, 50, 100, 500, 1000, 5000, 10000]. Enables performance analysis for CSV detection algorithms.
+
+  - name: foundry_mime_detection_ms_plain_text
+    unit: ms
+    description: >
+      Plain text MIME type detection latency in milliseconds. Uses ADR-0007 buckets: [1, 5, 10, 50, 100, 500, 1000, 5000, 10000]. Enables performance analysis for plain text detection algorithms.
+
+  - name: foundry_mime_detection_ms_unknown
+    unit: ms
+    description: >
+      Unknown/binary MIME type detection latency in milliseconds. Uses ADR-0007 buckets: [1, 5, 10, 50, 100, 500, 1000, 5000, 10000]. Enables performance analysis for fallback detection logic.
+
+  - name: error_handling_wraps_total
+    unit: count
+    description: >
+      Total error wrap operations performed by the Error Handling module. Tracks error handling patterns and frequency across the application.
+
+  - name: error_handling_wrap_ms
+    unit: ms
+    description: >
+      Error wrap operation latency in milliseconds. Uses ADR-0007 buckets: [1, 5, 10, 50, 100, 500, 1000, 5000, 10000]. Enables detection of error handling performance regressions.
+
+  - name: fulhash_operations_total_xxh3_128
+    unit: count
+    description: >
+      Total XXH3-128 hash operations performed by the FulHash module. Tracks usage of the fast, non-cryptographic hash algorithm for performance-oriented scenarios.
+
+  - name: fulhash_operations_total_sha256
+    unit: count
+    description: >
+      Total SHA256 hash operations performed by the FulHash module. Tracks usage of the cryptographic hash algorithm for security-oriented scenarios.
+
+  - name: fulhash_hash_string_total
+    unit: count
+    description: >
+      Total string hash operations performed by the FulHash module (any algorithm). Tracks the common use case of hashing string data.
+
+  - name: fulhash_bytes_hashed_total
+    unit: bytes
+    description: >
+      Total bytes processed across all hash operations by the FulHash module. Counter value represents cumulative byte count. Enables capacity planning and throughput analysis.
+
+  - name: fulhash_operation_ms
+    unit: ms
+    description: >
+      Hash operation latency in milliseconds for all algorithms. Uses ADR-0007 buckets: [1, 5, 10, 50, 100, 500, 1000, 5000, 10000]. Enables performance benchmarking across XXH3-128 and SHA256.
+
+  - name: http_requests_total
+    unit: count
+    description: >
+      Total HTTP server requests received. Counter metric tracking all HTTP requests by method, route, status, and service. Required labels: method (GET/POST/etc), route (templated path like /users/:id to avoid cardinality), status (HTTP status code), service (service identifier). Optional labels: outcome (2xx/4xx/5xx grouping derived from status). IMPORTANT: Use normalized/templated routes (e.g., /users/:id, not /users/123) to prevent cardinality explosion. Helpers SHOULD provide route normalization utilities.
+
+  - name: http_request_duration_seconds
+    unit: s
+    description: >
+      HTTP server request duration in seconds. Histogram metric measuring request latency from receipt to response. Uses default seconds buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]. Required labels: method, route (templated), status, service. Optional labels: outcome. Helpers exposing millisecond APIs MUST document unit conversion (1 second = 1000 ms). Use templated routes to control cardinality.
+
+  - name: http_request_size_bytes
+    unit: bytes
+    description: >
+      HTTP server request body size in bytes. Histogram metric measuring incoming request payload sizes. Uses default bytes buckets: [1024, 10240, 102400, 1048576, 10485760, 104857600] (1KB to 100MB). Required labels: method, route (templated), service. Enables monitoring payload patterns and capacity planning. Use templated routes to avoid cardinality issues.
+
+  - name: http_response_size_bytes
+    unit: bytes
+    description: >
+      HTTP server response body size in bytes. Histogram metric measuring outgoing response payload sizes. Uses default bytes buckets: [1024, 10240, 102400, 1048576, 10485760, 104857600] (1KB to 100MB). Required labels: method, route (templated), status, service. Optional labels: outcome. Tracks bandwidth usage and response patterns. Use templated routes to prevent cardinality explosion.
+
+  - name: http_active_requests
+    unit: count
+    description: >
+      Number of HTTP requests currently being processed. Gauge metric tracking concurrent request load. Required labels: service. Intentionally minimal labels to avoid cardinality. Helps monitor server capacity and saturation. Increment on request start, decrement on completion.

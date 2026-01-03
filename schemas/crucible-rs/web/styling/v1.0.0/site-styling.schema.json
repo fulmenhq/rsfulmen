@@ -1,0 +1,321 @@
+{
+  "$id": "https://schemas.fulmenhq.dev/crucible/web/styling/v1.0.0/site-styling.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "title": "Fulmen Site Styling",
+  "description": "Standardized styling configuration for Fulmen web templates, including palettes, typography, and icons",
+  "properties": {
+    "themes": {
+      "type": "object",
+      "description": "Light and dark mode palettes",
+      "properties": {
+        "light": {
+          "type": "object",
+          "description": "Light theme color palette",
+          "properties": {
+            "background": {
+              "type": "string",
+              "pattern": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$",
+              "description": "Primary background (hex)"
+            },
+            "foreground": {
+              "type": "string",
+              "pattern": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$",
+              "description": "Primary text (hex)"
+            },
+            "accent": {
+              "type": "string",
+              "pattern": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$",
+              "description": "Accent color (hex)"
+            },
+            "success": {
+              "type": "string",
+              "pattern": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$",
+              "description": "Success indicator (green, hex)"
+            },
+            "failure": {
+              "type": "string",
+              "pattern": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$",
+              "description": "Failure/error (red, hex)"
+            },
+            "warning": {
+              "type": "string",
+              "pattern": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$",
+              "description": "Warning (yellow/orange, hex)"
+            },
+            "critical": {
+              "type": "string",
+              "pattern": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$",
+              "description": "Critical/alert (purple, hex)"
+            },
+            "info": {
+              "type": "string",
+              "pattern": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$",
+              "description": "Info callout (blue, hex, optional)"
+            },
+            "note": {
+              "type": "string",
+              "pattern": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$",
+              "description": "Note callout (cyan/teal, hex, optional)"
+            },
+            "caution": {
+              "type": "string",
+              "pattern": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$",
+              "description": "Caution callout (softer orange, hex, optional)"
+            },
+            "categorical": {
+              "type": "array",
+              "description": "Categorical colors for charts/graphs (5-12 accessible colors)",
+              "items": {
+                "type": "string",
+                "pattern": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$"
+              },
+              "minItems": 5,
+              "maxItems": 12,
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "background",
+            "foreground",
+            "accent",
+            "success",
+            "failure",
+            "warning",
+            "critical"
+          ],
+          "additionalProperties": false
+        },
+        "dark": {
+          "$ref": "#/properties/themes/properties/light"
+        }
+      },
+      "required": [
+        "light",
+        "dark"
+      ],
+      "additionalProperties": false
+    },
+    "typography": {
+      "type": "object",
+      "description": "Font families and embedding options",
+      "properties": {
+        "fonts": {
+          "type": "object",
+          "description": "Font family definitions",
+          "properties": {
+            "body": {
+              "type": "object",
+              "description": "Body text font",
+              "properties": {
+                "family": {
+                  "type": "string",
+                  "description": "CSS font-family string (e.g., 'Inter, sans-serif')"
+                },
+                "src": {
+                  "type": "string",
+                  "format": "uri-reference",
+                  "description": "Path/URL to font file (WOFF2 in public/fonts/, or external URL)"
+                },
+                "weights": {
+                  "type": "array",
+                  "items": {
+                    "type": "number",
+                    "minimum": 100,
+                    "maximum": 900
+                  },
+                  "description": "Supported weights (e.g., [400, 700])",
+                  "minItems": 1
+                },
+                "size": {
+                  "type": "object",
+                  "properties": {
+                    "base": {
+                      "type": "string",
+                      "pattern": "^[0-9]+(\\.[0-9]+)?(px|rem|em)$",
+                      "description": "Base font size"
+                    }
+                  },
+                  "required": [
+                    "base"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "family",
+                "src"
+              ],
+              "additionalProperties": false
+            },
+            "code": {
+              "$ref": "#/properties/typography/properties/fonts/properties/body"
+            },
+            "heading": {
+              "$ref": "#/properties/typography/properties/fonts/properties/body"
+            }
+          },
+          "required": [
+            "body",
+            "code"
+          ],
+          "additionalProperties": false
+        },
+        "embed": {
+          "type": "boolean",
+          "default": true,
+          "description": "Embed fonts at build-time (true: WOFF2 from src; false: URL/CDN)"
+        },
+        "lineHeight": {
+          "type": "number",
+          "minimum": 1.2,
+          "maximum": 2.0,
+          "default": 1.5,
+          "description": "Base line-height"
+        }
+      },
+      "required": [
+        "fonts"
+      ],
+      "additionalProperties": false
+    },
+    "icons": {
+      "type": "object",
+      "description": "Icon configuration",
+      "properties": {
+        "registry": {
+          "type": "string",
+          "enum": [
+            "mdi",
+            "heroicons",
+            "lucide",
+            "tabler"
+          ],
+          "default": "mdi",
+          "description": "Icon set registry"
+        },
+        "prefix": {
+          "type": "string",
+          "default": "codex-",
+          "description": "CSS class prefix"
+        },
+        "size": {
+          "type": "number",
+          "default": 24,
+          "minimum": 16,
+          "maximum": 48,
+          "description": "Default size (px)"
+        },
+        "custom": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Icon name"
+              },
+              "src": {
+                "type": "string",
+                "format": "uri-reference",
+                "description": "Path to SVG in public/icons/"
+              },
+              "size": {
+                "type": "number",
+                "default": 24,
+                "description": "Icon size in pixels"
+              }
+            },
+            "required": [
+              "name",
+              "src"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Custom icons"
+        },
+        "palette": {
+          "type": "object",
+          "description": "Icon fill colors for light/dark modes",
+          "properties": {
+            "light": {
+              "type": "string",
+              "pattern": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$",
+              "description": "Fill color for light mode"
+            },
+            "dark": {
+              "type": "string",
+              "pattern": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$",
+              "description": "Fill color for dark mode"
+            }
+          },
+          "required": [
+            "light",
+            "dark"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "registry"
+      ],
+      "additionalProperties": false
+    },
+    "a11y": {
+      "type": "object",
+      "description": "Accessibility constraints for colors (WCAG 2.1 AA baseline; build-time validation)",
+      "properties": {
+        "minContrast": {
+          "type": "object",
+          "description": "Minimum contrast ratios for WCAG compliance",
+          "properties": {
+            "normal": {
+              "type": "number",
+              "minimum": 3.0,
+              "maximum": 21.0,
+              "default": 4.5,
+              "description": "Min ratio for normal text (AA: 4.5:1)"
+            },
+            "large": {
+              "type": "number",
+              "minimum": 2.0,
+              "maximum": 21.0,
+              "default": 3.0,
+              "description": "Min ratio for large text (AA: 3:1)"
+            },
+            "graphics": {
+              "type": "number",
+              "minimum": 3.0,
+              "maximum": 21.0,
+              "default": 3.0,
+              "description": "Min ratio for UI components/graphics"
+            }
+          },
+          "required": [
+            "normal",
+            "large"
+          ],
+          "additionalProperties": false
+        },
+        "level": {
+          "type": "string",
+          "enum": [
+            "AA",
+            "AAA"
+          ],
+          "default": "AA",
+          "description": "WCAG conformance level (build enforces ratios)"
+        }
+      },
+      "required": [
+        "minContrast"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "themes",
+    "typography"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,39 @@
+$schema: https://schemas.fulmenhq.dev/library/foundry/v1.0.0/mime-types.schema.json
+description: Common MIME types that helper libraries should recognize.
+version: v0.1.0
+types:
+  - id: json
+    mime: application/json
+    name: JSON
+    extensions: [json, map]
+    description: JavaScript Object Notation
+  - id: yaml
+    mime: application/yaml
+    name: YAML
+    extensions: [yaml, yml]
+    description: YAML Ain't Markup Language
+  - id: ndjson
+    mime: application/x-ndjson
+    name: NDJSON
+    extensions: [ndjson]
+    description: Newline-delimited JSON
+  - id: csv
+    mime: text/csv
+    name: CSV
+    extensions: [csv]
+    description: Comma-separated values
+  - id: xml
+    mime: application/xml
+    name: XML
+    extensions: [xml]
+    description: Extensible Markup Language
+  - id: protobuf
+    mime: application/x-protobuf
+    name: Protocol Buffers
+    extensions: [pb, proto]
+    description: Google Protocol Buffers binary format
+  - id: plain-text
+    mime: text/plain
+    name: Plain Text
+    extensions: [txt]
+    description: UTF-8 plain text

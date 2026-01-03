@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/taxonomy/language/v1.0.0/language-key.schema.json",
+  "title": "Fulmen Language Key",
+  "description": "Enum of canonical Fulmen helper language identifiers",
+  "type": "string",
+  "enum": [
+    "go",
+    "python",
+    "typescript",
+    "rust",
+    "csharp"
+  ],
+  "examples": [
+    "go"
+  ]
+}

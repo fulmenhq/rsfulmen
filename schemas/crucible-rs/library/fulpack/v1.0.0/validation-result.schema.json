@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.fulmenhq.dev/crucible/library/fulpack/v1.0.0/validation-result",
+  "title": "Validation Result",
+  "description": "Result of archive integrity verification (from verify operation)",
+  "type": "object",
+  "required": [
+    "valid",
+    "errors",
+    "warnings",
+    "entry_count"
+  ],
+  "properties": {
+    "valid": {
+      "type": "boolean",
+      "description": "Whether the archive is valid and intact"
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of validation errors (empty if valid)"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of non-critical warnings (e.g., missing checksums)"
+    },
+    "entry_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of entries validated"
+    },
+    "checksums_verified": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of checksums successfully verified"
+    },
+    "checks_performed": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "structure_valid",
+          "checksums_verified",
+          "no_path_traversal",
+          "no_decompression_bomb",
+          "symlinks_safe"
+        ]
+      },
+      "description": "List of security and integrity checks performed"
+    }
+  },
+  "additionalProperties": false
+}

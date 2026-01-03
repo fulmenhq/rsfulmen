@@ -1,0 +1,142 @@
+# Encoding Families Taxonomy for Fulencode v1.0.0
+# Defines supported encoding formats with metadata
+binary_to_text:
+  base64:
+    type: binary_to_text
+    alphabet_size: 64
+    padding: true
+    padding_char: "="
+    characters: "A-Za-z0-9+/"
+    use_case: "General purpose binary encoding, email attachments"
+    rfc: "RFC 4648 §4"
+  base64url:
+    type: binary_to_text
+    alphabet_size: 64
+    padding: optional
+    padding_char: "="
+    characters: "A-Za-z0-9-_"
+    use_case: "URL-safe tokens, JWT, query parameters"
+    rfc: "RFC 4648 §5"
+  base64_raw:
+    type: binary_to_text
+    alphabet_size: 64
+    padding: false
+    characters: "A-Za-z0-9+/"
+    use_case: "Base64 without padding"
+    note: "Non-standard variant, padding-free"
+  base32:
+    type: binary_to_text
+    alphabet_size: 32
+    padding: true
+    padding_char: "="
+    characters: "A-Z2-7"
+    use_case: "Human-readable identifiers, case-insensitive encodings"
+    rfc: "RFC 4648 §6"
+  base32hex:
+    type: binary_to_text
+    alphabet_size: 32
+    padding: true
+    padding_char: "="
+    characters: "0-9A-V"
+    use_case: "Hexadecimal-ordered Base32"
+    rfc: "RFC 4648 §7"
+  hex:
+    type: binary_to_text
+    alphabet_size: 16
+    case_variants: [lowercase, uppercase]
+    padding: false
+    characters: "0-9a-f"
+    use_case: "Checksums, debug output, color codes"
+    rfc: "RFC 4648 §8 (Base16)"
+character_encodings:
+  utf-8:
+    type: character_encoding
+    variable_width: true
+    bytes_per_codepoint: "1-4"
+    bom_required: false
+    bom_bytes: [0xEF, 0xBB, 0xBF]
+    max_codepoint: 0x10FFFF
+    use_case: "Universal text encoding, web, APIs"
+    rfc: "RFC 3629"
+  utf-16le:
+    type: character_encoding
+    variable_width: true
+    bytes_per_codepoint: "2-4"
+    bom_required: false
+    bom_bytes: [0xFF, 0xFE]
+    max_codepoint: 0x10FFFF
+    endianness: little
+    use_case: "Windows internals, Java string storage"
+  utf-16be:
+    type: character_encoding
+    variable_width: true
+    bytes_per_codepoint: "2-4"
+    bom_required: false
+    bom_bytes: [0xFE, 0xFF]
+    max_codepoint: 0x10FFFF
+    endianness: big
+    use_case: "Network protocols, some Unix systems"
+  iso-8859-1:
+    type: character_encoding
+    variable_width: false
+    bytes_per_codepoint: 1
+    bom_required: false
+    max_codepoint: 0xFF
+    aliases: ["latin-1", "latin1"]
+    use_case: "Western European text, HTTP headers"
+    standard: "ISO/IEC 8859-1"
+  cp1252:
+    type: character_encoding
+    variable_width: false
+    bytes_per_codepoint: 1
+    bom_required: false
+    max_codepoint: 0xFF
+    aliases: ["windows-1252", "win1252"]
+    use_case: "Windows Western European (superset of ISO-8859-1)"
+    note: "Adds printable chars in 0x80-0x9F range (smart quotes, etc.)"
+  ascii:
+    type: character_encoding
+    variable_width: false
+    bytes_per_codepoint: 1
+    bom_required: false
+    max_codepoint: 0x7F
+    use_case: "7-bit printable subset of UTF-8"
+    standard: "ANSI X3.4"
+deferred_to_specialized:
+  base58:
+    tier: specialized
+    category: encoding_families
+    formats: ["base58", "base58check"]
+    use_case: "Cryptocurrency addresses, IPFS"
+    module: "fulencode-base58"
+  base85:
+    tier: specialized
+    category: encoding_families
+    formats: ["base85", "ascii85", "z85"]
+    use_case: "PDF embedding, ZeroMQ"
+    module: "fulencode-base85"
+  multibase:
+    tier: specialized
+    category: encoding_families
+    formats: ["multibase"]
+    use_case: "IPFS self-describing encodings"
+    module: "fulencode-multibase"
+    note: "v1.0.0 includes detection only"
+  legacy_cjk:
+    tier: specialized
+    category: legacy_encodings
+    formats: ["shift-jis", "gb2312", "gbk", "big5", "euc-kr"]
+    use_case: "Legacy Asian text"
+    module: "fulencode-legacy-cjk"
+  legacy_mainframe:
+    tier: specialized
+    category: legacy_encodings
+    formats: ["ebcdic", "cp037", "cp500"]
+    use_case: "Mainframe data interchange"
+    module: "fulencode-legacy-mainframe"
+  legacy_european:
+    tier: specialized
+    category: legacy_encodings
+    formats: ["iso-8859-2", "iso-8859-15", "koi8-r"]
+    use_case: "Legacy European text"
+    module: "fulencode-legacy-european"

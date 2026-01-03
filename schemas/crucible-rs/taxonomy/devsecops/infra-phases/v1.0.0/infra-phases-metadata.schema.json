@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/taxonomy/devsecops/infra-phases/v1.0.0/infra-phases-metadata.schema.json",
+  "title": "Fulmen Infra Phases Metadata",
+  "description": "Metadata object describing infrastructure deployment phase characteristics and dependencies",
+  "type": "object",
+  "properties": {
+    "key": {
+      "$ref": "infra-phases-key.schema.json"
+    },
+    "name": {
+      "type": "string",
+      "description": "Full phase name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Overview of phase purpose and typical operations",
+      "minLength": 10,
+      "maxLength": 200
+    },
+    "order": {
+      "type": "integer",
+      "description": "Execution sequence (0=first; same order indicates parallelizable phases)",
+      "minimum": 0,
+      "maximum": 99
+    },
+    "parallel": {
+      "type": "boolean",
+      "description": "Allow concurrent execution within same order group",
+      "default": true
+    },
+    "deps": {
+      "type": "array",
+      "description": "Phase dependencies (references to other phase keys)",
+      "items": {
+        "$ref": "infra-phases-key.schema.json"
+      },
+      "uniqueItems": true
+    },
+    "procedural": {
+      "type": "boolean",
+      "description": "Allows script/SDK procedural calls beyond declarative IaC",
+      "default": false
+    }
+  },
+  "required": [
+    "key",
+    "name",
+    "description",
+    "order"
+  ],
+  "additionalProperties": false
+}

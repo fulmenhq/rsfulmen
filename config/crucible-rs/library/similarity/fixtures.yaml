@@ -1,0 +1,432 @@
+$schema: https://schemas.fulmenhq.dev/library/similarity/v2.0.0/similarity.schema.json
+version: 2025.10.3
+notes: |
+  Fixture values computed by pyfulmen using Rust strsim 0.11.x (canonical)
+  with cross-validation against Python rapidfuzz 3.x.
+
+  All values are authoritative and ready for use in language implementations.
+  Reference implementations: strsim 0.11.x (Rust), rapidfuzz 3.x (Python)
+
+  IMPORTANT - Damerau-Levenshtein Variants:
+  This schema provides BOTH variants of Damerau-Levenshtein:
+
+  1. damerau_osa (Optimal String Alignment):
+     - Cannot edit the same substring more than once
+     - Python: rapidfuzz.distance.OSA
+     - Rust: strsim::osa_distance
+     - Best for: typo correction, spell checking, CLI fuzzy matching
+
+  2. damerau_unrestricted (True Damerau-Levenshtein):
+     - Allows unrestricted edits with transpositions
+     - Python: rapidfuzz.distance.DamerauLevenshtein
+     - Rust: strsim::damerau_levenshtein
+     - Best for: general similarity, DNA sequencing, complex transformations
+
+  Test cases tagged 'osa_distinction' and 'unrestricted_distinction' show where
+  the two variants produce different results. Implementations MUST test against
+  the correct variant to ensure cross-language compatibility.
+test_cases:
+  - category: levenshtein
+    cases:
+      - input_a: ''
+        input_b: ''
+        expected_distance: 0
+        expected_score: 1.0
+        description: Empty strings (identity)
+        tags:
+          - edge_case
+      - input_a: hello
+        input_b: hello
+        expected_distance: 0
+        expected_score: 1.0
+        description: Identical strings
+        tags:
+          - identity
+      - input_a: kitten
+        input_b: sitting
+        expected_distance: 3
+        expected_score: 0.5714285714285714
+        description: Classic Levenshtein example
+        tags:
+          - standard
+      - input_a: Hello
+        input_b: hello
+        expected_distance: 1
+        expected_score: 0.8
+        description: Case difference (single substitution)
+        tags:
+          - case
+      - input_a: café
+        input_b: cafe
+        expected_distance: 1
+        expected_score: 0.75
+        description: Accent difference
+        tags:
+          - unicode
+          - accent
+      - input_a: Hello🔥World
+        input_b: HelloWorld
+        expected_distance: 1
+        expected_score: 0.9090909090909091
+        description: Emoji deletion
+        tags:
+          - emoji
+          - unicode
+      - input_a: 日本語
+        input_b: 日本
+        expected_distance: 1
+        expected_score: 0.6666666666666666
+        description: CJK character deletion
+        tags:
+          - cjk
+          - unicode
+      - input_a: "Line1\nLine2"
+        input_b: "Line1 Line2"
+        expected_distance: 1
+        expected_score: 0.9090909090909091
+        description: Newline substitution
+        tags:
+          - multiline
+      - input_a: "text\r\n"
+        input_b: "text\n"
+        expected_distance: 1
+        expected_score: 0.8333333333333334
+        description: CRLF vs LF difference
+        tags:
+          - multiline
+          - line_endings
+      - input_a: "line1\nline2"
+        input_b: "line1\nline2"
+        expected_distance: 0
+        expected_score: 1.0
+        description: Identical multi-line strings
+        tags:
+          - multiline
+  - category: damerau_osa
+    cases:
+      - input_a: abcd
+        input_b: abdc
+        expected_distance: 1
+        expected_score: 0.75
+        description: Basic transposition (cd -> dc)
+        tags:
+          - transposition
+      - input_a: hello
+        input_b: ehllo
+        expected_distance: 1
+        expected_score: 0.8
+        description: Transposition at start (he -> eh)
+        tags:
+          - transposition
+      - input_a: algorithm
+        input_b: lagorithm
+        expected_distance: 1
+        expected_score: 0.8888888888888888
+        description: Transposition + other edits
+        tags:
+          - transposition
+          - combined
+      - input_a: abcd
+        input_b: acbd
+        expected_distance: 1
+        expected_score: 0.75
+        description: Non-adjacent swap (requires 2 substitutions)
+        tags:
+          - transposition
+          - non_adjacent
+      - input_a: CA
+        input_b: ABC
+        expected_distance: 3
+        expected_score: 0.0
+        description: "OSA distinction: requires delete C + insert A + insert B (dist=3), unrestricted=2"
+        tags:
+          - osa_distinction
+          - critical
+  - category: damerau_unrestricted
+    cases:
+      - input_a: abcd
+        input_b: abdc
+        expected_distance: 1
+        expected_score: 0.75
+        description: Basic transposition (both variants agree)
+        tags:
+          - transposition
+          - baseline
+      - input_a: hello
+        input_b: ehllo
+        expected_distance: 1
+        expected_score: 0.8
+        description: Transposition at start (both variants agree)
+        tags:
+          - transposition
+          - baseline
+      - input_a: kitten
+        input_b: sitting
+        expected_distance: 3
+        expected_score: 0.5714285714285714
+        description: No transpositions, standard edits (both variants agree)
+        tags:
+          - standard
+          - baseline
+      - input_a: CA
+        input_b: ABC
+        expected_distance: 2
+        expected_score: 0.33333333333333337
+        description: "Unrestricted distinction: allows transpose+insert (dist=2), OSA requires 3 ops"
+        tags:
+          - unrestricted_distinction
+          - critical
+      - input_a: algorithm
+        input_b: lagorithm
+        expected_distance: 1
+        expected_score: 0.8888888888888888
+        description: Transposition + other edits (both variants agree)
+        tags:
+          - transposition
+          - combined
+      - input_a: ''
+        input_b: ''
+        expected_distance: 0
+        expected_score: 1.0
+        description: Empty strings (identity, both variants agree)
+        tags:
+          - edge_case
+          - baseline
+  - category: jaro_winkler
+    cases:
+      - input_a: martha
+        input_b: marhta
+        expected_score: 0.9611111111111111
+        description: Classic Jaro-Winkler example
+        tags:
+          - standard
+      - input_a: dixon
+        input_b: dicksonx
+        expected_score: 0.8133333333333332
+        description: Name matching with prefix
+        tags:
+          - prefix
+          - names
+      - input_a: schema
+        input_b: schemas
+        expected_score: 0.9714285714285714
+        description: Common prefix, different suffix
+        tags:
+          - prefix
+          - cli
+      - input_a: test
+        input_b: text
+        expected_score: 0.8666666666666667
+        description: Short strings with typo
+        tags:
+          - typo
+          - short
+      - input_a: hello
+        input_b: world
+        expected_score: 0.4666666666666666
+        description: Completely different strings
+        tags:
+          - edge_case
+  - category: substring
+    cases:
+      - needle: hello
+        haystack: hello world
+        expected_score: 0.4545454545454545
+        expected_range:
+          start: 0
+          end: 5
+        description: Prefix match
+        tags:
+          - prefix
+      - needle: world
+        haystack: hello world
+        expected_score: 0.4545454545454545
+        expected_range:
+          start: 6
+          end: 11
+        description: Suffix match
+        tags:
+          - suffix
+      - needle: schemas
+        haystack: schemas/foundry/patterns.yaml
+        expected_score: 0.2413793103448276
+        expected_range:
+          start: 0
+          end: 7
+        description: Path component match
+        tags:
+          - path
+          - partial
+      - needle: foundry
+        haystack: schemas/foundry/patterns.yaml
+        expected_score: 0.2413793103448276
+        expected_range:
+          start: 8
+          end: 15
+        description: Middle path component
+        tags:
+          - path
+          - middle
+      - needle: test
+        haystack: this is a test case
+        expected_score: 0.2105263157894737
+        expected_range:
+          start: 10
+          end: 14
+        description: Word in sentence
+        tags:
+          - sentence
+      - needle: xyz
+        haystack: abcdef
+        expected_score: 0.0
+        description: No common substring
+        tags:
+          - edge_case
+          - no_match
+  - category: normalization_presets
+    cases:
+      - input: '  Hello  '
+        preset: none
+        expected: '  Hello  '
+        description: No normalization (unchanged)
+        tags:
+          - none
+      - input: '  Café-Zürich!  '
+        preset: minimal
+        expected: Café-Zürich!
+        description: 'Minimal: NFC + trim'
+        tags:
+          - minimal
+          - unicode
+      - input: '  Café-Zürich!  '
+        preset: default
+        expected: café-zürich!
+        description: 'Default: NFC + casefold + trim'
+        tags:
+          - default
+          - unicode
+      - input: '  Café-Zürich!  '
+        preset: aggressive
+        expected: cafezurich
+        description: 'Aggressive: NFKD + casefold + strip accents + remove punctuation + trim'
+        tags:
+          - aggressive
+          - unicode
+      - input: İstanbul
+        preset: default
+        expected: i̇stanbul
+        description: Turkish dotted I (Unicode casefold)
+        tags:
+          - turkish
+          - locale
+      - input: naïve
+        preset: aggressive
+        expected: naive
+        description: Accent stripping (ï -> i)
+        tags:
+          - accent
+          - aggressive
+      - input: Hello, World!
+        preset: aggressive
+        expected: hello world
+        description: Punctuation removal
+        tags:
+          - punctuation
+          - aggressive
+      - input: "Line 1\r\n\nLine 2"
+        preset: default
+        expected: "line 1\r\n\nline 2"
+        description: Preserve CRLF while casefolding
+        tags:
+          - multiline
+          - line_endings
+      - input: "Line 1\n\nLine 2"
+        preset: none
+        expected: "Line 1\n\nLine 2"
+        description: Preserve multi-line with no normalization
+        tags:
+          - multiline
+      - input: "Line 1\n\nLine 2"
+        preset: aggressive
+        expected: "line 1\n\nline 2"
+        description: Multi-line aggressive normalization preserves newlines
+        tags:
+          - multiline
+  - category: suggestions
+    cases:
+      - input: docscrib
+        candidates:
+          - docscribe
+          - crucible-shim
+          - config-path-api
+          - foundry
+        options:
+          min_score: 0.6
+          max_suggestions: 3
+          metric: levenshtein
+          normalize_preset: default
+        expected:
+          - value: docscribe
+            score: 0.8888888888888888
+        description: CLI typo correction
+        tags:
+          - cli
+          - typo
+      - input: schem
+        candidates:
+          - schemas
+          - schema-validation
+          - config-path-api
+        options:
+          min_score: 0.5
+          max_suggestions: 2
+          metric: substring
+          normalize_preset: default
+        expected:
+          - value: schemas
+            score: 0.7142857142857143
+        description: Partial path matching
+        tags:
+          - path
+          - substring
+      - input: Café
+        candidates:
+          - café
+          - cache
+          - config
+        options:
+          min_score: 0.6
+          max_suggestions: 2
+          metric: levenshtein
+          normalize_preset: aggressive
+        expected:
+          - value: café
+            score: 1.0
+          - value: cache
+            score: 0.6
+        description: Normalization impact on suggestions
+        tags:
+          - normalization
+          - unicode
+      - input: test
+        candidates:
+          - testing
+          - tested
+          - best
+        options:
+          min_score: 0.6
+          max_suggestions: 3
+          metric: jaro_winkler
+          normalize_preset: default
+          prefer_prefix: true
+        expected:
+          - value: tested
+            score: 0.9333333333333333
+          - value: testing
+            score: 0.9142857142857143
+          - value: best
+            score: 0.8333333333333334
+        description: Jaro-Winkler with prefix preference
+        tags:
+          - jaro_winkler
+          - prefix

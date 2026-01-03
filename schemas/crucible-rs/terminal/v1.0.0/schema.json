@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/terminal/terminal-config-v1.0.0.json",
+  "title": "TerminalConfig",
+  "description": "Terminal configuration for Unicode width overrides",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Terminal name"
+    },
+    "detection": {
+      "type": "object",
+      "properties": {
+        "env": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Environment variables for detection"
+        },
+        "term_program": {
+          "type": "string",
+          "description": "TERM_PROGRAM value for detection"
+        }
+      },
+      "description": "Detection configuration"
+    },
+    "overrides": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "description": "Character width overrides (character -> width)"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

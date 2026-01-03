@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/standards/adr-adoption-status-v1.0.0.json",
+  "title": "ADR Adoption Status",
+  "description": "Per-library adoption status for ecosystem ADRs. Tracks implementation progress across language foundations (gofulmen, pyfulmen, tsfulmen, etc.).",
+  "type": "string",
+  "enum": [
+    "not-applicable",
+    "planned",
+    "in-progress",
+    "implemented",
+    "verified",
+    "deferred"
+  ],
+  "examples": [
+    "implemented",
+    "in-progress",
+    "verified"
+  ],
+  "definitions": {
+    "adoptionDescriptions": {
+      "not-applicable": "This ADR does not apply to this library/language (e.g., Go-specific decision tracked in Python library).",
+      "planned": "Implementation planned but not started. May have design notes or tracking issue.",
+      "in-progress": "Active implementation underway. May have partial functionality available.",
+      "implemented": "Fully implemented according to ADR specification. Ready for testing and validation.",
+      "verified": "Implemented and validated through tests, production use, or peer review. Recommended status.",
+      "deferred": "Implementation postponed due to dependencies, priorities, or technical constraints. Include rationale."
+    },
+    "sortOrder": {
+      "description": "Numeric sort order for adoption status. Lower numbers indicate earlier stages. Enables comparative operations and progress tracking.",
+      "mapping": {
+        "not-applicable": 0,
+        "planned": 10,
+        "in-progress": 20,
+        "implemented": 30,
+        "verified": 40,
+        "deferred": 5
+      },
+      "ranges": {
+        "active-adoption": {
+          "description": "Library is actively working on or has completed adoption",
+          "values": [
+            10,
+            20,
+            30,
+            40
+          ]
+        },
+        "production-ready": {
+          "description": "Implementation is complete and validated",
+          "values": [
+            30,
+            40
+          ]
+        }
+      }
+    }
+  },
+  "$comment": "Used in library-specific tracking (e.g., gofulmen's implementation of Crucible ADR-0001). Enables adoption matrix visualization."
+}

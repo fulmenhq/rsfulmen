@@ -1,0 +1,51 @@
+$schema: https://schemas.fulmenhq.dev/library/foundry/v1.0.0/signals.schema.json
+description: Invalid signal configuration - exit code out of range
+version: v1.0.0
+signals:
+  - id: term
+    name: SIGTERM
+    unix_number: 15
+    description: Graceful termination
+    default_behavior: graceful_shutdown
+    exit_code: 300 # INVALID: exit codes must be 0-255
+  - id: int
+    name: SIGINT
+    unix_number: 2
+    description: User interrupt
+    default_behavior: graceful_shutdown
+    exit_code: -1 # INVALID: negative exit code
+  - id: hup
+    name: SIGHUP
+    unix_number: 1
+    description: Hangup signal
+    default_behavior: reload_via_restart
+    exit_code: 129
+behaviors:
+  - id: graceful_shutdown
+    name: Graceful Shutdown
+    description: Clean shutdown
+    phases:
+      - name: exit
+        description: Exit with code
+  - id: reload_via_restart
+    name: Reload via Restart
+    description: Restart process
+    phases:
+      - name: exit
+        description: Exit for restart
+os_mappings:
+  unix:
+    SIGTERM: 15
+    SIGINT: 2
+    SIGHUP: 1
+  windows:
+    CTRL_C_EVENT: 0
+  signal_to_event:
+    SIGTERM: null
+    SIGINT: CTRL_C_EVENT
+    SIGHUP: null
+exit_codes:
+  SIGTERM: 300
+  SIGINT: -1
+  SIGHUP: 129
+  note: Exit codes should follow POSIX 128+N pattern

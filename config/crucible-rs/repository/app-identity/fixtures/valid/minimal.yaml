@@ -1,0 +1,7 @@
+# Minimal valid application identity - bare minimum required fields
+app:
+  binary_name: myapp
+  vendor: acmecorp
+  env_prefix: MYAPP_
+  config_name: myapp
+  description: Minimal valid application identity

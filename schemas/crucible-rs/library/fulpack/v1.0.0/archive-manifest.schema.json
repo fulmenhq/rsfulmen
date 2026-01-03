@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.fulmenhq.dev/crucible/library/fulpack/v1.0.0/archive-manifest",
+  "title": "Archive Manifest",
+  "description": "Complete archive table of contents (for large archives and caching)",
+  "type": "object",
+  "required": [
+    "format",
+    "version",
+    "generated",
+    "entry_count",
+    "entries"
+  ],
+  "properties": {
+    "format": {
+      "type": "string",
+      "enum": [
+        "tar",
+        "tar.gz",
+        "zip",
+        "gzip"
+      ],
+      "description": "Archive format from archive-formats taxonomy"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Manifest schema version (semantic versioning)"
+    },
+    "generated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Manifest generation timestamp (ISO 8601 format)"
+    },
+    "entry_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of entries in manifest"
+    },
+    "total_size": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total uncompressed size in bytes"
+    },
+    "compressed_size": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Compressed archive file size in bytes"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "$ref": "https://schemas.fulmenhq.dev/crucible/library/fulpack/v1.0.0/archive-entry"
+      },
+      "description": "Array of archive entries"
+    },
+    "index": {
+      "type": "object",
+      "description": "Optional searchable index for fast lookups",
+      "properties": {
+        "by_path": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "description": "Map of entry paths to array indices"
+        },
+        "by_type": {
+          "type": "object",
+          "properties": {
+            "file": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "directory": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "symlink": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "description": "Map of entry types to array indices"
+        },
+        "by_extension": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "description": "Map of file extensions to array indices"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

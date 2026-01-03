@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/taxonomy/devsecops/infra-providers/v1.0.0/infra-providers-metadata.schema.json",
+  "title": "Fulmen Infra Providers Metadata",
+  "description": "Metadata object describing infrastructure provider characteristics and capabilities",
+  "type": "object",
+  "properties": {
+    "key": {
+      "$ref": "infra-providers-key.schema.json"
+    },
+    "name": {
+      "type": "string",
+      "description": "Full provider name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief overview of provider focus areas and capabilities",
+      "minLength": 10,
+      "maxLength": 200
+    },
+    "tofuSupport": {
+      "type": "string",
+      "description": "OpenTofu provider availability status",
+      "enum": [
+        "official",
+        "community",
+        "none"
+      ],
+      "default": "community"
+    },
+    "regions": {
+      "type": "array",
+      "description": "Provider-specific regions with geographic mappings",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Provider-specific region identifier",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "geo": {
+            "$ref": "../../geo/v1.0.0/geo-key.schema.json",
+            "description": "Geographic reference (country or region group)"
+          },
+          "description": {
+            "type": "string",
+            "description": "Region location and characteristics",
+            "minLength": 10,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "key",
+          "geo",
+          "description"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "sdkLangs": {
+      "type": "array",
+      "description": "Supported SDK languages",
+      "items": {
+        "$ref": "../../../../language/v1.0.0/language-key.schema.json"
+      },
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "key",
+    "name",
+    "description",
+    "tofuSupport"
+  ],
+  "additionalProperties": false
+}

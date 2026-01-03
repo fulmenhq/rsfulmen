@@ -1,0 +1,42 @@
+# Fulmen Application Identity - Complete Example
+# Location: .fulmen/app.yaml
+# Schema: schemas/config/repository/app-identity/v1.0.0/app-identity.schema.json
+# Documentation: docs/standards/library/modules/app-identity.md
+app:
+  # Binary/executable name (lowercase kebab-case, 2-64 chars)
+  binary_name: percheron
+  # Vendor namespace (lowercase alphanumeric, no hyphens)
+  vendor: fulmenhq
+  # Environment variable prefix (UPPERCASE, must end with underscore)
+  env_prefix: PERCHERON_
+  # Config directory name (usually matches binary_name)
+  config_name: percheron
+  # One-line description (10-200 chars)
+  description: Production-ready Python HTTP workhorse with observability
+# Optional metadata (all fields optional, extensible)
+metadata:
+  # Primary project URL
+  project_url: https://github.com/fulmenhq/forge-workhorse-percheron
+  # Support/contact email
+  support_email: support@fulmenhq.io
+  # SPDX license identifier
+  license: MIT
+  # Repository category from Fulmen taxonomy
+  repository_category: workhorse
+  # Telemetry namespace for metrics/logging (defaults to binary_name if omitted)
+  telemetry_namespace: percheron
+  # Python-specific packaging metadata (for PyPI projects)
+  python:
+    # PyPI distribution name (kebab-case allowed)
+    distribution_name: percheron
+    # Python import package name (underscores allowed)
+    package_name: percheron
+    # Console script entry points
+    console_scripts:
+      - name: percheron
+        entry_point: percheron.cli:main
+      - name: percheron-validate
+        entry_point: percheron.validation:cli
+
+# Additional custom fields allowed for extensibility
+# custom_field: value

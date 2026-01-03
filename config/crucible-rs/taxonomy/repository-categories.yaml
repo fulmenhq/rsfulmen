@@ -1,0 +1,256 @@
+# Fulmen repository category taxonomy (machine-readable source)
+version: "2026.01.1"
+categories:
+  - key: cli
+    summary: "Command-line utilities without long-lived servers"
+    primaryEntryPoints:
+      - "Executable binary (Cobra/Click/etc.)"
+      - "make targets"
+    typicalConsumers:
+      - "Developers"
+      - "CI/CD pipelines"
+    notes: "Outputs data to STDOUT, diagnostics to STDERR"
+  - key: microtool
+    summary: "Ultra-narrow, single-purpose CLI deployment/automation tool"
+    primaryEntryPoints:
+      - "Executable binary (single command or minimal subcommands)"
+    typicalConsumers:
+      - "CI/CD pipelines"
+      - "Deployment automation"
+      - "Internal tooling"
+    constraints:
+      - "MUST have single primary purpose (e.g., fixture deployment)"
+      - "MUST be written in Go, TypeScript/Bun, or Rust only (no other languages)"
+      - "SHOULD import helper library (gofulmen, tsfulmen, or rsfulmen)"
+      - "If helper library is NOT imported, MUST NOT recreate any helper functionality (exit codes, logger, signals, config loading must be implemented independently without copying helper patterns)"
+      - "MUST obey exit codes, signals, logger, config standards (whether from helper or independent implementation)"
+      - "MUST NOT export packages or library interfaces (no pkg/ exports)"
+      - "MUST NOT have web server endpoints"
+      - "MUST NOT be imported by other repositories (one-way dependency only)"
+      - "MUST remain narrow in scope (if tool grows multi-purpose, promote to cli category)"
+    languages:
+      - "Go (preferred for binary size and ecosystem)"
+      - "TypeScript/Bun (compiled to binary)"
+      - "Rust (when rsfulmen stable)"
+    notes: "Microtools enforce architectural discipline through narrow scope and helper library dependency. One-way dependency flow (microtool → helper → SSOT) prevents circular dependencies. CDRL templates follow naming: forge-microtool-{instrument} where {instrument} uses hand tools/precision instruments with first letter matching language (grinder/gauge/gouge for Go, tongs/tap/trammel for TypeScript, rasp/reamer/router for Rust) - distinguishes from workhorse (horse breeds)."
+    examples:
+      - "fulmen-fixtures (fixture deployment and generation)"
+    templateNaming:
+      pattern: "forge-microtool-{instrument}"
+      note: "First letter of instrument matches implementation language (Go=G, TypeScript=T, Rust=R)"
+      instruments:
+        - "grinder (Go - heavy processing)"
+        - "gauge (Go - measurement/validation)"
+        - "gouge (Go - data extraction)"
+        - "tongs (TypeScript - data handling)"
+        - "tap (TypeScript - threading/integration)"
+        - "trammel (TypeScript - precision layout)"
+        - "rasp (Rust - file processing)"
+        - "reamer (Rust - data refinement)"
+        - "router (Rust - path/routing tools)"
+    references:
+      - "docs/architecture/fulmen-forge-microtool-standard.md"
+      - "docs/architecture/fulmen-template-cdrl-standard.md"
+  - key: workhorse
+    summary: "Hybrid CLI + HTTP runtime with optional gRPC interfaces"
+    primaryEntryPoints:
+      - "CLI subcommand: serve"
+      - "HTTP /health/* endpoints"
+      - "HTTP /metrics"
+    typicalConsumers:
+      - "Operations automation"
+      - "MCP servers"
+    notes: "Requires request correlation IDs and Prometheus metrics. CDRL templates follow naming: forge-workhorse-{breed} where {breed} uses horse breeds (groningen, percheron, clydesdale, shire, etc.)."
+    templateNaming:
+      pattern: "forge-workhorse-{breed}"
+      breeds:
+        - "groningen (Go implementation)"
+        - "percheron (Python implementation)"
+        - "clydesdale (TypeScript implementation)"
+        - "shire (Rust implementation, future)"
+    references:
+      - "docs/architecture/fulmen-forge-workhorse-standard.md"
+      - "docs/architecture/fulmen-template-cdrl-standard.md"
+  - key: service
+    summary: "Long-running HTTP/gRPC services without interactive CLI UX"
+    primaryEntryPoints:
+      - "HTTP API"
+      - "gRPC service"
+    typicalConsumers:
+      - "Backend microservices"
+      - "Internal APIs"
+    notes: "Must document authn/authz strategy and graceful shutdown"
+  - key: library
+    summary: "Importable language packages without executables"
+    primaryEntryPoints:
+      - "Package manager entry point"
+    typicalConsumers:
+      - "Other Fulmen repos"
+      - "External SDK users"
+    notes: "Follows semantic versioning for public API"
+  - key: pipeline
+    summary: "Batch or streaming data workloads orchestrated by schedulers"
+    primaryEntryPoints:
+      - "CLI driver"
+      - "Job scheduler integration"
+    typicalConsumers:
+      - "Data engineering teams"
+      - "ETL orchestrators"
+    notes: "Expose job duration/throughput metrics and dry-run modes"
+  - key: codex
+    summary: "Documentation or static site repositories published via CI"
+    primaryEntryPoints:
+      - "Static site generator"
+      - "Publishing pipeline"
+    typicalConsumers:
+      - "Fulmen developers"
+      - "External stakeholders"
+    notes: "Generated assets must trace back to committed source. CDRL templates follow naming: forge-codex-{name} (naming pattern TBD - not horse breeds, not instruments)."
+    templateNaming:
+      pattern: "forge-codex-{name}"
+      note: "Naming pattern for codex templates TBD - should be meaningful but distinct from workhorse (horse breeds) and microtool (instruments)"
+    references:
+      - "docs/architecture/fulmen-forge-codex-standard.md"
+      - "docs/architecture/fulmen-template-cdrl-standard.md"
+  - key: missive
+    summary: "Single-page promotional/CTA sites with minimal dependencies"
+    primaryEntryPoints:
+      - "index.html"
+    typicalConsumers:
+      - "Event attendees"
+      - "Donors/supporters"
+      - "Product launch visitors"
+    constraints:
+      - "MUST be single page (or very few pages)"
+      - "MUST NOT include blog, search, or content collections"
+      - "SHOULD use vanilla HTML/CSS with zero build"
+      - "MAY use light CSS framework (Pico.css, Water.css) via CDN"
+      - "MAY use minimal SSG only when partials/reuse justified"
+    notes: >
+      Missive repositories favor vanilla HTML/CSS with zero build. Escalate to Codex when multi-page, search, or content collections are needed.
+
+    templateNaming:
+      pattern: "forge-missive-{name}"
+      note: "Naming pattern TBD - could use message/communication metaphors"
+    references:
+      - "docs/standards/repository-category/missive/README.md"
+  - key: sdk
+    summary: "Client SDKs targeting external services or APIs"
+    primaryEntryPoints:
+      - "Package manager entry point"
+      - "Language initialization scaffolds"
+    typicalConsumers:
+      - "External developers"
+      - "Partner integrations"
+    notes: "Ship compatibility matrix and error taxonomy"
+  - key: spec-host
+    summary: "Machine-first static hosting for self-describing specification artifacts"
+    primaryEntryPoints:
+      - "index.json (optional catalog)"
+      - "v{version}/*.schema.json"
+      - "v{version}/*.openapi.json"
+      - "v{version}/*.asyncapi.json"
+    typicalConsumers:
+      - "JSON Schema validators"
+      - "IDE language servers"
+      - "API client generators"
+      - "CI/CD pipelines"
+    constraints:
+      - "MUST resolve embedded canonical IDs ($id, x-fulmen-id) over HTTPS"
+      - "MUST host self-describing specifications with industry-standard meta-validation"
+      - "MUST use versioned paths for immutability"
+      - "MUST NOT require runtime server (static files only)"
+      - "SHOULD provide index.json catalog for discovery"
+      - "MAY provide optional human-readable index page"
+    notes: >
+      Spec-host repositories host self-describing specifications where assets contain embedded canonical IDs ($id, x-fulmen-id) that must resolve over HTTPS. Assets are validated against industry-standard meta-schemas (JSON Schema, OpenAPI, AsyncAPI). For path-addressed assets without embedded IDs, see doc-host.
+
+    templateNaming:
+      pattern: "forge-spec-host-{name}"
+      note: "Naming pattern TBD - should reflect the corpus being hosted"
+    references:
+      - "docs/standards/publishing/spec-publishing.md"
+      - "docs/standards/repository-category/spec-host/README.md"
+  - key: doc-host
+    summary: "Machine-first static hosting for path-addressed documentation and configuration"
+    primaryEntryPoints:
+      - "index.json (optional catalog)"
+      - "{module}/**/*.md"
+      - "{module}/**/*.yaml"
+      - "{module}/**/*.json"
+    typicalConsumers:
+      - "Helper library shim modules"
+      - "Documentation tools"
+      - "Configuration loaders"
+      - "CI/CD pipelines"
+    constraints:
+      - "MUST serve files at canonical paths matching publish tree structure"
+      - "MUST use module namespace in URL structure per Canonical URI Resolution Standard"
+      - "MUST NOT require runtime server (static files only)"
+      - "SHOULD use versioned paths for versioned content"
+      - "MAY provide index for asset discovery"
+    notes: >
+      Doc-host repositories host path-addressed assets where canonical URLs are derived from file paths, not embedded identifiers. No meta-validation against industry-standard specifications is required. Suitable for Markdown docs, YAML configs, and reference data. For self-describing specifications with embedded IDs, see spec-host.
+
+    templateNaming:
+      pattern: "forge-doc-host-{name}"
+      note: "Naming pattern TBD - should reflect the content being hosted"
+    references:
+      - "docs/standards/publishing/canonical-uri-resolution.md"
+      - "docs/standards/repository-category/doc-host/README.md"
+  - key: fixture
+    summary: "Test infrastructure providing real-but-test-purpose servers, clients, or datastores"
+    primaryEntryPoints:
+      - "docker compose up"
+      - "Container image"
+    typicalConsumers:
+      - "Integration test suites"
+      - "CI/CD pipelines"
+      - "Local development environments"
+    constraints:
+      - "MUST NOT contain PII (use synthetic/anonymized data only)"
+      - "MUST NOT contain NPI/MNPI (regulatory/legal exposure)"
+      - "MUST NOT provide tooling for non-public interfaces in public repos"
+      - "MUST be container-first (docker compose up as primary entry)"
+      - "SHOULD use helper library (gofulmen, tsfulmen, pyfulmen) for observability"
+      - "MUST use scenario-driven configuration (YAML/JSON, not code changes)"
+      - "MUST be stateless by default (clean slate on restart)"
+      - "SHOULD expose structured logs for test assertions"
+      - "SHOULD self-document available endpoints/behaviors"
+    modes:
+      - key: server
+        summary: "Backend APIs (REST, gRPC, GraphQL)"
+        example: "fixture-server-proving-gauntlet-001"
+      - key: client
+        summary: "Clients for server/API testing"
+        example: "fixture-client-proving-probe-001"
+      - key: datastore
+        summary: "Databases, caches, or message queues"
+        example: "fixture-datastore-utility-bucket-001"
+      - key: identity
+        summary: "IdP/authentication services (OIDC, SAML)"
+        example: "fixture-identity-proving-warden-001"
+        status: "planned-v0.4.3"
+    behavioralCategories:
+      - key: proving
+        summary: "Real execution, test-purpose data, validates caller"
+        namingTheme: "Challenge/trial names (gauntlet, sentinel, bastion)"
+      - key: utility
+        summary: "Real execution, trivial but reliable service"
+        namingTheme: "Functional/descriptive (echo, static, relay)"
+      - key: chaos
+        summary: "Real execution, deliberately unreliable/hostile"
+        namingTheme: "Mischief names (gremlin, jinx, havoc)"
+    notes: >
+      Fixtures are real implementations with test-purpose configuration, NOT mocks (simulated responses). They execute real logic with synthetic data. Security constraints are inviolate to prevent data exposure in test artifacts. All fixture names must be registered in config/taxonomy/fixture-catalog.yaml.
+
+    naming:
+      pattern: "fixture-{mode}-{category}-{name}-{variant}"
+      categoryConstraint: "^(proving|utility|chaos)$"
+      nameConstraint: "^[a-z][a-z0-9]{1,20}$"
+      variantConstraint: "^[0-9]{3}$"
+      note: "Names registered in fixture-catalog.yaml. Variant 001 = reference implementation. Category in name for discoverability at scale."
+    registry: "config/taxonomy/fixture-catalog.yaml"
+    references:
+      - "docs/architecture/fulmen-fixture-standard.md"
+      - "docs/standards/repository-category/fixture/README.md"

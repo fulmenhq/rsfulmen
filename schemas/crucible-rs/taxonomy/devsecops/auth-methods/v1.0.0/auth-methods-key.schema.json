@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/taxonomy/devsecops/auth-methods/v1.0.0/auth-methods-key.schema.json",
+  "title": "Fulmen Auth Methods Key",
+  "description": "Enum of canonical authentication/MFA method identifiers for DevSecOps schemas",
+  "type": "string",
+  "enum": [
+    "totp",
+    "webauthn",
+    "yubikey",
+    "sms"
+  ],
+  "examples": [
+    "totp"
+  ]
+}

@@ -1,0 +1,55 @@
+# Fulmen Foundry Reference Data Catalogs
+# THE canonical SSOT for foundry reference data catalogs
+# These are data catalogs, NOT code modules (see platform-modules for code)
+version: "1.0.0"
+last_updated: "2025-11-15"
+catalogs:
+  - catalog_name: countries
+    description: ISO 3166 country codes (alpha-2, alpha-3, numeric)
+    schema_path: schemas/library/foundry/v2.0.0/country-code.schema.json
+    config_path: config/library/foundry/country-codes.yaml
+    format: yaml
+    status: active
+    added_version: "0.2.0"
+  - catalog_name: http-statuses
+    description: HTTP status codes with standard descriptions
+    schema_path: schemas/library/foundry/v2.0.0/http-status.schema.json
+    config_path: config/library/foundry/http-statuses.yaml
+    format: yaml
+    status: active
+    added_version: "0.2.0"
+  - catalog_name: mime-types
+    description: MIME type registry with file extensions
+    schema_path: schemas/library/foundry/v2.0.0/mime-type.schema.json
+    config_path: config/library/foundry/mime-types.yaml
+    format: yaml
+    status: active
+    added_version: "0.2.0"
+  - catalog_name: exit-codes
+    description: Standard exit codes for Fulmen applications
+    schema_path: schemas/library/foundry/v1.0.0/exit-code.schema.json
+    config_path: config/library/foundry/exit-codes.yaml
+    format: yaml
+    status: active
+    added_version: "0.1.0"
+  - catalog_name: signals
+    description: POSIX signal catalog with cross-platform handling
+    schema_path: schemas/library/foundry/v1.0.0/signal.schema.json
+    config_path: config/library/foundry/signals.yaml
+    format: yaml
+    status: active
+    added_version: "0.2.5"
+  - catalog_name: patterns
+    description: Validation pattern catalog (regex, glob patterns)
+    schema_path: schemas/library/foundry/v2.0.0/pattern.schema.json
+    config_path: config/library/foundry/patterns.yaml
+    format: yaml
+    status: active
+    added_version: "0.2.0"
+  - catalog_name: similarity
+    description: Text similarity algorithm fixtures and test cases
+    schema_path: schemas/library/foundry/v2.0.0/similarity.schema.json
+    config_path: config/library/foundry/similarity-fixtures.yaml
+    format: yaml
+    status: active
+    added_version: "0.2.0"

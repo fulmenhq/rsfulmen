@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/devsecops/lorage-central/policy/v1.0.0/policy.schema.json",
+  "title": "L'Orage Central Tenant Policy",
+  "description": "Defines rules for tenant-scoped sessions in L'Orage Central REPL/CLI. Loaded via gofulmen shim from Crucible; enforced at unlock/deploy. Supports pluggable secrets (e.g., Turso for HA, GPG for cloud-free). No persistence MVP—force re-unlock per session.",
+  "type": "object",
+  "properties": {
+    "tenant": {
+      "type": "string",
+      "description": "Public tenant ID (from registry; obscure for confidential clients)",
+      "pattern": "^[a-z0-9-]+$",
+      "minLength": 1,
+      "maxLength": 127
+    },
+    "session": {
+      "type": "object",
+      "description": "In-memory session rules (no disk persistence; TTL enforces re-unlock)",
+      "properties": {
+        "ttl": {
+          "type": "object",
+          "description": "Token TTL (parsed as duration; e.g., '15m' = 15 minutes)",
+          "properties": {
+            "default": {
+              "type": "string",
+              "description": "Default TTL (force re-unlock per REPL session)",
+              "pattern": "^([0-9]+)([smhd])$"
+            },
+            "ops": {
+              "type": "object",
+              "description": "Overrides per operation (e.g., 'deploy' gets 1h)",
+              "additionalProperties": {
+                "type": "string",
+                "pattern": "^([0-9]+)([smhd])$"
+              }
+            }
+          },
+          "required": [
+            "default"
+          ],
+          "additionalProperties": false
+        },
+        "maxConcurrent": {
+          "type": "integer",
+          "description": "Max simultaneous sessions (1 for strict isolation)",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 1
+        }
+      },
+      "required": [
+        "ttl"
+      ],
+      "additionalProperties": false
+    },
+    "mfa": {
+      "type": "object",
+      "description": "Unlock MFA requirements (integrated with CLI/web pop-up)",
+      "properties": {
+        "required": {
+          "type": "boolean",
+          "description": "MFA mandatory for unlock (false for dev/local only; auto-true if registry.dataSensitivity.pii=true)",
+          "default": true
+        },
+        "methods": {
+          "type": "array",
+          "description": "Preferred order (first available used; from auth-methods taxonomy)",
+          "items": {
+            "$ref": "../../../../taxonomy/devsecops/auth-methods/v1.0.0/auth-methods-key.schema.json"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "fallback": {
+          "type": "string",
+          "description": "If all methods fail (e.g., 'none' for air-gapped, risky)",
+          "enum": [
+            "cli-prompt",
+            "none"
+          ],
+          "default": "cli-prompt"
+        }
+      },
+      "required": [
+        "required"
+      ],
+      "additionalProperties": false
+    },
+    "isolation": {
+      "type": "object",
+      "description": "Tenant data separation (separate stores, no cross-access)",
+      "properties": {
+        "store": {
+          "type": "object",
+          "description": "Secrets backend config (opaque refs decrypted at runtime)",
+          "properties": {
+            "type": {
+              "type": "string",
+              "description": "Backend type (Turso for HA, GPG for local)",
+              "enum": [
+                "libsql",
+                "turso",
+                "gpg-file",
+                "vaultwarden"
+              ],
+              "default": "turso"
+            },
+            "conn": {
+              "type": "object",
+              "description": "Connection details (e.g., URL/auth ref; encrypted in storage)",
+              "additionalProperties": true
+            },
+            "enc": {
+              "type": "boolean",
+              "description": "Enable GPG file-level encryption (true for cloud-free HA via CR-SQLite)",
+              "default": false
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        "crossAccess": {
+          "type": "boolean",
+          "description": "Allow admin cross-tenant ops (false for strict multi-tenant)",
+          "default": false
+        }
+      },
+      "required": [
+        "store"
+      ],
+      "additionalProperties": false
+    },
+    "geoRestrictions": {
+      "type": "array",
+      "description": "Enforced geo (from tenant.registry.geo; e.g., EU-only for PII)",
+      "items": {
+        "$ref": "../../../../taxonomy/devsecops/geo/v1.0.0/geo-key.schema.json"
+      },
+      "uniqueItems": true
+    },
+    "cloudRestrictions": {
+      "type": "array",
+      "description": "Allowed clouds (from tenant.registry.cloud; multi-OK)",
+      "items": {
+        "$ref": "../../../../taxonomy/devsecops/infra-providers/v1.0.0/infra-providers-key.schema.json"
+      },
+      "uniqueItems": true
+    },
+    "dataSensitivityGuards": {
+      "type": "object",
+      "description": "Auto-guards from registry.dataSensitivity (e.g., encrypt if PHI=true)",
+      "properties": {
+        "pii": {
+          "type": "boolean",
+          "description": "Enforce PII rules (e.g., mfa.required=true, geo EU-only)",
+          "default": false
+        },
+        "phi": {
+          "type": "boolean",
+          "description": "Enforce PHI (e.g., HIPAA encrypt/audit)",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "audit": {
+      "type": "object",
+      "description": "Observability rules (integrates gofulmen logging schemas)",
+      "properties": {
+        "level": {
+          "type": "string",
+          "description": "Log profile (structured for REPL sessions)",
+          "enum": [
+            "simple",
+            "structured"
+          ],
+          "default": "structured"
+        },
+        "retain": {
+          "type": "string",
+          "description": "Audit retention (e.g., '30d' for compliance)",
+          "pattern": "^([0-9]+)([smhdwMy])$",
+          "default": "30d"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "tenant",
+    "session",
+    "mfa",
+    "isolation"
+  ],
+  "additionalProperties": false
+}

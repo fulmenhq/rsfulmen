@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/standards/adr-lifecycle-status-v1.0.0.json",
+  "title": "ADR Lifecycle Status",
+  "description": "Lifecycle status for Architecture Decision Records (ADRs) and standards documents. Inspired by ThoughtWorks Technology Radar maturity model, adapted for architectural decision tracking.",
+  "type": "string",
+  "enum": [
+    "proposal",
+    "experimental",
+    "accepted",
+    "stable",
+    "deprecated",
+    "superseded",
+    "retired"
+  ],
+  "examples": [
+    "accepted",
+    "stable",
+    "deprecated"
+  ],
+  "definitions": {
+    "statusDescriptions": {
+      "proposal": "Under evaluation, not yet accepted. Teams should review and provide feedback. Not for production use.",
+      "experimental": "Approved for trial use. May change based on implementation feedback. Use with caution in non-critical paths.",
+      "accepted": "Approved and recommended for active use. Implementation details are stable, but adoption is still growing.",
+      "stable": "Widely adopted and battle-tested across multiple implementations. Recommended as best practice.",
+      "deprecated": "Still valid but discouraged. Migration path to replacement available. Plan to migrate by documented deadline.",
+      "superseded": "Replaced by another ADR. See 'superseded_by' field for replacement. Kept for historical reference.",
+      "retired": "No longer relevant to current architecture. Kept for historical reference only."
+    },
+    "sortOrder": {
+      "description": "Numeric sort order for lifecycle status. Lower numbers indicate earlier stages. Enables comparative operations (e.g., status >= accepted, filter active ADRs).",
+      "mapping": {
+        "proposal": 10,
+        "experimental": 20,
+        "accepted": 30,
+        "stable": 40,
+        "deprecated": 50,
+        "superseded": 60,
+        "retired": 70
+      },
+      "ranges": {
+        "active": {
+          "description": "ADRs in active use (proposal through stable)",
+          "min": 10,
+          "max": 40
+        },
+        "phasing-out": {
+          "description": "ADRs being phased out (deprecated through retired)",
+          "min": 50,
+          "max": 70
+        },
+        "production-ready": {
+          "description": "ADRs safe for production use (accepted and stable)",
+          "min": 30,
+          "max": 40
+        }
+      }
+    }
+  },
+  "$comment": "Used in ADR frontmatter to track decision maturity and guide adoption. Maps to adoption tracking in helper libraries."
+}

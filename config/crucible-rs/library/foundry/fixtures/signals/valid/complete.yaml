@@ -1,0 +1,314 @@
+$schema: https://schemas.fulmenhq.dev/library/foundry/v1.0.0/signals.schema.json
+description: Standard signal handling semantics for Fulmen ecosystem
+version: v1.0.0
+signals:
+  - id: term
+    name: SIGTERM
+    unix_number: 15
+    windows_event: CTRL_CLOSE_EVENT
+    description: Graceful termination signal
+    default_behavior: graceful_shutdown
+    exit_code: 143 # 128 + 15
+    timeout_seconds: 30
+    cleanup_actions:
+      - close_connections
+      - flush_buffers
+      - remove_pid_file
+      - log_shutdown
+    usage_notes: Standard termination signal sent by container orchestrators (Kubernetes, Docker). Applications should perform cleanup within timeout period before exiting.
+  - id: int
+    name: SIGINT
+    unix_number: 2
+    windows_event: CTRL_C_EVENT
+    description: User interrupt (Ctrl+C)
+    default_behavior: graceful_shutdown_with_double_tap
+    exit_code: 130 # 128 + 2
+    timeout_seconds: 5
+    double_tap_window_seconds: 2
+    double_tap_message: "Press Ctrl+C again within 2s to force quit"
+    double_tap_behavior: immediate_exit
+    double_tap_exit_code: 130
+    cleanup_actions:
+      - close_connections
+      - flush_buffers
+      - remove_pid_file
+      - log_interrupt
+    usage_notes: Interactive interrupt signal (Ctrl+C). First press initiates graceful shutdown, second press within 2s forces immediate exit for hung processes.
+  - id: hup
+    name: SIGHUP
+    unix_number: 1
+    windows_event: null
+    description: Hangup signal (config reload via restart)
+    default_behavior: reload_via_restart
+    exit_code: 129 # 128 + 1
+    reload_strategy: restart_based
+    validation_required: true
+    timeout_seconds: 30
+    cleanup_actions:
+      - validate_new_config_against_schema
+      - graceful_shutdown
+      - restart_with_new_config
+      - log_reload
+    usage_notes: Historically "hangup" (terminal disconnect). In Fulmen, triggers config reload via restart. MANDATORY schema validation before restart. On Windows, use HTTP /admin/signal endpoint as fallback.
+    windows_fallback:
+      log_level: WARN
+      log_message: "SIGHUP not supported on Windows; use HTTP POST /admin/signal with signal=HUP"
+      telemetry_event: fulmen.signal.unsupported
+      telemetry_tags:
+        signal: SIGHUP
+        platform: windows
+        fallback: http_admin_endpoint
+  - id: quit
+    name: SIGQUIT
+    unix_number: 3
+    windows_event: CTRL_BREAK_EVENT
+    description: Quit with core dump (immediate termination)
+    default_behavior: immediate_exit
+    exit_code: 131 # 128 + 3
+    timeout_seconds: 0
+    usage_notes: Immediate termination signal (Ctrl+\\ on Unix, Ctrl+Break on Windows). Does not perform cleanup. Use for emergency shutdown or debugging (core dumps).
+  - id: pipe
+    name: SIGPIPE
+    unix_number: 13
+    windows_event: null
+    description: Broken pipe (write to closed socket/pipe)
+    default_behavior: observe_only
+    exit_code: 141 # 128 + 13
+    usage_notes: Default POSIX behavior terminates process immediately. Fulmen default is observe_only (log at INFO level + exit gracefully with code 141). Applications may override to ignore SIGPIPE for network services that expect broken pipes. Long-running servers typically ignore; CLI tools typically exit.
+    windows_fallback:
+      log_level: WARN
+      log_message: "SIGPIPE not available on Windows; broken pipe errors handled via exception mechanisms"
+      telemetry_event: fulmen.signal.unsupported
+      telemetry_tags:
+        signal: SIGPIPE
+        platform: windows
+  - id: alrm
+    name: SIGALRM
+    unix_number: 14
+    windows_event: null
+    description: Alarm timer expired (watchdog timeout)
+    default_behavior: immediate_exit
+    exit_code: 142 # 128 + 14
+    timeout_seconds: 0
+    usage_notes: Used by watchdog timers. Treat as timeout-induced exit unless application overrides. Watchdog pattern - call signal.alarm(N) to set timer, reset periodically with progress; if no reset within N seconds, SIGALRM fires and process exits. Out of scope for v1.0.0 module implementations.
+    windows_fallback:
+      log_level: WARN
+      log_message: "SIGALRM not available on Windows; implement watchdog timers via threading.Timer or asyncio"
+      telemetry_event: fulmen.signal.unsupported
+      telemetry_tags:
+        signal: SIGALRM
+        platform: windows
+  - id: usr1
+    name: SIGUSR1
+    unix_number: 10
+    platform_overrides:
+      darwin: 30
+      freebsd: 30
+    windows_event: null
+    description: User-defined signal 1
+    default_behavior: custom
+    exit_code: 138 # 128 + 10
+    usage_notes: Application-specific signal (e.g., reopen log files, dump statistics, toggle verbose logging). Helper libraries provide registration API; application provides custom handler.
+    windows_fallback:
+      log_level: WARN
+      log_message: "SIGUSR1 not available on Windows; use HTTP POST /admin/signal with signal=USR1 for custom operations"
+      telemetry_event: fulmen.signal.unsupported
+      telemetry_tags:
+        signal: SIGUSR1
+        platform: windows
+        fallback: http_admin_endpoint
+  - id: usr2
+    name: SIGUSR2
+    unix_number: 12
+    platform_overrides:
+      darwin: 31
+      freebsd: 31
+    windows_event: null
+    description: User-defined signal 2
+    default_behavior: custom
+    exit_code: 140 # 128 + 12
+    usage_notes: Application-specific signal (e.g., toggle debug mode, trigger profiling, rotate credentials). Helper libraries provide registration API; application provides custom handler.
+    windows_fallback:
+      log_level: WARN
+      log_message: "SIGUSR2 not available on Windows; use HTTP POST /admin/signal with signal=USR2 for custom operations"
+      telemetry_event: fulmen.signal.unsupported
+      telemetry_tags:
+        signal: SIGUSR2
+        platform: windows
+        fallback: http_admin_endpoint
+behaviors:
+  - id: graceful_shutdown
+    name: Graceful Shutdown
+    description: Clean shutdown with timeout and cleanup chain
+    phases:
+      - name: notify
+        description: Log signal receipt with correlation ID
+      - name: stop_accepting
+        description: Stop accepting new work (close listeners, reject requests)
+      - name: drain
+        description: Complete in-flight operations within timeout
+      - name: cleanup
+        description: Run registered cleanup handlers in order
+      - name: exit
+        description: Exit with appropriate code (128+N pattern)
+  - id: graceful_shutdown_with_double_tap
+    name: Graceful Shutdown with Double-Tap
+    description: Graceful shutdown with force-quit option (Ctrl+C pattern)
+    phases:
+      - name: first_signal
+        description: First signal starts graceful shutdown and prints hint message
+      - name: notify
+        description: Log signal receipt with correlation ID
+      - name: stop_accepting
+        description: Stop accepting new work
+      - name: drain
+        description: Complete in-flight operations within timeout
+      - name: cleanup
+        description: Run registered cleanup handlers in order
+      - name: second_signal_check
+        description: If second signal within window, force immediate exit
+      - name: exit
+        description: Exit with appropriate code
+  - id: reload_via_restart
+    name: Configuration Reload via Restart
+    description: Reload configuration by validating and restarting process
+    phases:
+      - name: notify
+        description: Log reload request with correlation ID
+      - name: validate
+        description: Validate new configuration against Crucible schema (MANDATORY)
+      - name: reject_invalid
+        description: If invalid, log error and continue with current config (no restart)
+      - name: graceful_shutdown
+        description: If valid, initiate graceful shutdown
+      - name: exit
+        description: Exit with code 129 (SIGHUP) - process supervisor restarts
+      - name: restart
+        description: Process supervisor (systemd, K8s, etc.) restarts process with new config
+  - id: immediate_exit
+    name: Immediate Exit
+    description: Exit immediately without cleanup (emergency shutdown)
+    phases:
+      - name: notify
+        description: Log signal receipt (no correlation ID needed - too fast)
+      - name: exit
+        description: Exit immediately with appropriate code
+  - id: custom
+    name: Custom Handler
+    description: Application-specific behavior defined by handler registration
+    phases:
+      - name: delegate
+        description: Call application-provided handler function
+      - name: log_completion
+        description: Log custom handler completion (do not exit unless handler exits)
+  - id: observe_only
+    name: Observe Only
+    description: Log the signal and increment telemetry without exiting
+    phases:
+      - name: notify
+        description: Log signal receipt at INFO level
+      - name: telemetry
+        description: Increment signal counter in telemetry system
+      - name: continue
+        description: Continue execution (do not exit)
+os_mappings:
+  unix:
+    SIGTERM: 15
+    SIGINT: 2
+    SIGHUP: 1
+    SIGQUIT: 3
+    SIGPIPE: 13
+    SIGALRM: 14
+    SIGUSR1: 10 # Linux standard
+    SIGUSR2: 12 # Linux standard
+    SIGKILL: 9 # Not catchable, documented for completeness
+  windows:
+    CTRL_C_EVENT: 0
+    CTRL_BREAK_EVENT: 1
+    CTRL_CLOSE_EVENT: 2
+    CTRL_LOGOFF_EVENT: 5
+    CTRL_SHUTDOWN_EVENT: 6
+  # Platform-specific signal number overrides
+  platform_overrides:
+    darwin: # macOS
+      SIGUSR1: 30
+      SIGUSR2: 31
+    freebsd:
+      SIGUSR1: 30
+      SIGUSR2: 31
+  # Mapping Unix signals to Windows console events
+  signal_to_event:
+    SIGTERM: CTRL_CLOSE_EVENT
+    SIGINT: CTRL_C_EVENT
+    SIGQUIT: CTRL_BREAK_EVENT
+    SIGHUP: null # No Windows equivalent - use HTTP fallback
+    SIGPIPE: null # No Windows equivalent - handled via exceptions
+    SIGALRM: null # No Windows equivalent - use timers
+    SIGUSR1: null # No Windows equivalent - use HTTP fallback
+    SIGUSR2: null # No Windows equivalent - use HTTP fallback
+# Platform support matrix for helper library implementations
+platform_support:
+  - signal: SIGTERM
+    linux: native
+    macos: native
+    freebsd: native
+    windows: mapped # CTRL_CLOSE_EVENT
+    notes: Fully supported across all platforms
+  - signal: SIGINT
+    linux: native
+    macos: native
+    freebsd: native
+    windows: mapped # CTRL_C_EVENT
+    notes: Fully supported across all platforms
+  - signal: SIGHUP
+    linux: native
+    macos: native
+    freebsd: native
+    windows: unsupported
+    fallback: http_admin_endpoint
+    notes: On Windows, use HTTP POST /admin/signal with signal=HUP
+  - signal: SIGQUIT
+    linux: native
+    macos: native
+    freebsd: native
+    windows: mapped # CTRL_BREAK_EVENT
+    notes: Fully supported across all platforms
+  - signal: SIGPIPE
+    linux: native
+    macos: native
+    freebsd: native
+    windows: unsupported
+    fallback: exception_handling
+    notes: On Windows, broken pipes generate exceptions instead of signals
+  - signal: SIGALRM
+    linux: native
+    macos: native
+    freebsd: native
+    windows: unsupported
+    fallback: timer_api
+    notes: On Windows, use threading.Timer (Python) or setTimeout (TypeScript)
+  - signal: SIGUSR1
+    linux: native
+    macos: native # signal 30
+    freebsd: native # signal 30
+    windows: unsupported
+    fallback: http_admin_endpoint
+    notes: Signal number varies by platform. On Windows, use HTTP POST /admin/signal with signal=USR1
+  - signal: SIGUSR2
+    linux: native
+    macos: native # signal 31
+    freebsd: native # signal 31
+    windows: unsupported
+    fallback: http_admin_endpoint
+    notes: Signal number varies by platform. On Windows, use HTTP POST /admin/signal with signal=USR2
+# Exit code mappings (128+N pattern per POSIX)
+exit_codes:
+  SIGTERM: 143 # 128 + 15
+  SIGINT: 130 # 128 + 2
+  SIGHUP: 129 # 128 + 1
+  SIGQUIT: 131 # 128 + 3
+  SIGPIPE: 141 # 128 + 13
+  SIGALRM: 142 # 128 + 14
+  SIGUSR1: 138 # 128 + 10
+  SIGUSR2: 140 # 128 + 12
+  note: Exit codes follow POSIX 128+N pattern where N is the signal number. These codes are cross-referenced in config/library/foundry/exit-codes.yaml.

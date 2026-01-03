@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/observability/metrics/v1.0.0/metrics-event.schema.json",
+  "title": "Fulmen Metrics Event",
+  "description": "Schema for basic telemetry export (counter/gauge/histogram) emitted by Fulmen helper libraries.",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC3339 timestamp of metric emission."
+    },
+    "name": {
+      "$ref": "../../../../config/taxonomy/metrics.yaml#/$defs/metricName",
+      "description": "Metric identifier drawn from the metrics taxonomy."
+    },
+    "value": {
+      "description": "Measurement payload (scalar counter/gauge or histogram summary).",
+      "oneOf": [
+        {
+          "type": "number",
+          "description": "Scalar measurement (e.g., counter increment, instantaneous gauge)."
+        },
+        {
+          "type": "object",
+          "description": "Histogram summary payload.",
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "sum": {
+              "type": "number"
+            },
+            "buckets": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "le": {
+                    "type": "number",
+                    "description": "Upper bound (less-than-or-equal) for the bucket."
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Cumulative count up to and including this bucket."
+                  }
+                },
+                "required": [
+                  "le",
+                  "count"
+                ],
+                "additionalProperties": false
+              },
+              "description": "Ordered buckets with cumulative counts (OTLP-compatible)."
+            }
+          },
+          "required": [
+            "count",
+            "sum",
+            "buckets"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "tags": {
+      "type": "object",
+      "description": "Key/value dimensions applied to the metric event.",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "unit": {
+      "$ref": "../../../../config/taxonomy/metrics.yaml#/$defs/metricUnit",
+      "description": "Metric unit (defaults to taxonomy default when omitted)."
+    }
+  },
+  "required": [
+    "timestamp",
+    "name",
+    "value"
+  ],
+  "additionalProperties": false
+}

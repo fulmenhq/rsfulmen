@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/protocol/http/v1.0.0/health-response.schema.json",
+  "title": "HealthResponse",
+  "description": "Response envelope for health endpoints (/health/live, /health/ready, /health/startup)",
+  "type": "object",
+  "properties": {
+    "service": {
+      "type": "string",
+      "description": "Service identifier"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "warn",
+        "fail"
+      ],
+      "description": "Overall health status"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC timestamp when health status was evaluated"
+    },
+    "uptimeSeconds": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Service uptime in seconds"
+    },
+    "checks": {
+      "type": "array",
+      "description": "Component-level health checks",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pass",
+              "warn",
+              "fail"
+            ]
+          },
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "details": {
+            "type": "object",
+            "description": "Optional structured details"
+          }
+        },
+        "required": [
+          "name",
+          "status"
+        ],
+        "additionalProperties": true
+      }
+    }
+  },
+  "required": [
+    "status"
+  ],
+  "additionalProperties": true
+}

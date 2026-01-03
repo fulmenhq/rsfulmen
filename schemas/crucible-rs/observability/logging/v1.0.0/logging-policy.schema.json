@@ -1,0 +1,225 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/observability/logging/logging-policy-v1.0.0.json",
+  "title": "LoggingPolicy",
+  "description": "Organizational logging policy for profile validation and governance",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Policy version identifier for compatibility tracking.",
+      "default": "1.0.0"
+    },
+    "allowedProfiles": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "SIMPLE",
+          "STRUCTURED",
+          "ENTERPRISE",
+          "CUSTOM"
+        ]
+      },
+      "uniqueItems": true,
+      "description": "Logging profiles permitted within the organization."
+    },
+    "requiredProfiles": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-zA-Z][a-zA-Z0-9_-]*$": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "SIMPLE",
+              "STRUCTURED",
+              "ENTERPRISE",
+              "CUSTOM"
+            ]
+          },
+          "uniqueItems": true
+        }
+      },
+      "description": "Required profiles by application type (e.g., workhorse, service, cli). Keys follow lower-case kebab or snake case."
+    },
+    "environmentRules": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-zA-Z][a-zA-Z0-9_-]*$": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "SIMPLE",
+              "STRUCTURED",
+              "ENTERPRISE",
+              "CUSTOM"
+            ]
+          },
+          "uniqueItems": true
+        }
+      },
+      "description": "Allowed profiles by deployment environment."
+    },
+    "profileRequirements": {
+      "type": "object",
+      "patternProperties": {
+        "^(SIMPLE|STRUCTURED|ENTERPRISE|CUSTOM)$": {
+          "type": "object",
+          "properties": {
+            "minEnvironment": {
+              "type": "string",
+              "enum": [
+                "development",
+                "staging",
+                "production"
+              ],
+              "description": "Minimum environment required to enable the profile."
+            },
+            "maxEnvironment": {
+              "type": "string",
+              "enum": [
+                "development",
+                "staging",
+                "production"
+              ],
+              "description": "Maximum environment where the profile is allowed."
+            },
+            "requiredFeatures": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true,
+              "description": "Features that MUST be enabled for the profile."
+            },
+            "forbiddenFeatures": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true,
+              "description": "Features that MUST NOT be enabled for the profile."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "description": "Additional per-profile requirements and restrictions."
+    },
+    "customRequirements": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Organization-specific requirements to apply when profile=CUSTOM."
+    },
+    "auditSettings": {
+      "type": "object",
+      "properties": {
+        "logPolicyViolations": {
+          "type": "boolean",
+          "default": true,
+          "description": "Emit log entries when configurations violate policy."
+        },
+        "enforceStrictMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, applications MUST fail fast when policy violations occur."
+        },
+        "requirePolicyFile": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, all applications MUST provide a policy file."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "allowedProfiles"
+  ],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "version": "1.0.0",
+      "allowedProfiles": [
+        "SIMPLE",
+        "STRUCTURED",
+        "ENTERPRISE"
+      ],
+      "requiredProfiles": {
+        "workhorse": [
+          "ENTERPRISE"
+        ],
+        "service": [
+          "STRUCTURED",
+          "ENTERPRISE"
+        ],
+        "cli": [
+          "SIMPLE",
+          "STRUCTURED"
+        ]
+      },
+      "environmentRules": {
+        "production": [
+          "STRUCTURED",
+          "ENTERPRISE"
+        ],
+        "staging": [
+          "SIMPLE",
+          "STRUCTURED",
+          "ENTERPRISE"
+        ],
+        "development": [
+          "SIMPLE",
+          "STRUCTURED",
+          "ENTERPRISE"
+        ]
+      },
+      "profileRequirements": {
+        "ENTERPRISE": {
+          "requiredFeatures": [
+            "correlation",
+            "middleware",
+            "throttling"
+          ],
+          "minEnvironment": "staging"
+        },
+        "SIMPLE": {
+          "forbiddenFeatures": [
+            "correlation",
+            "middleware",
+            "throttling"
+          ],
+          "maxEnvironment": "development"
+        }
+      },
+      "auditSettings": {
+        "logPolicyViolations": true,
+        "enforceStrictMode": false,
+        "requirePolicyFile": false
+      }
+    },
+    {
+      "version": "1.0.0",
+      "allowedProfiles": [
+        "ENTERPRISE"
+      ],
+      "requiredProfiles": {
+        "*": [
+          "ENTERPRISE"
+        ]
+      },
+      "environmentRules": {
+        "*": [
+          "ENTERPRISE"
+        ]
+      },
+      "auditSettings": {
+        "logPolicyViolations": true,
+        "enforceStrictMode": true,
+        "requirePolicyFile": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+$schema: https://schemas.fulmenhq.dev/library/foundry/v1.0.0/signals.schema.json
+description: Minimal signal handling configuration with required signals only
+version: v1.0.0
+signals:
+  - id: term
+    name: SIGTERM
+    unix_number: 15
+    windows_event: CTRL_CLOSE_EVENT
+    description: Graceful termination signal
+    default_behavior: graceful_shutdown
+    exit_code: 143
+  - id: int
+    name: SIGINT
+    unix_number: 2
+    windows_event: CTRL_C_EVENT
+    description: User interrupt (Ctrl+C)
+    default_behavior: graceful_shutdown
+    exit_code: 130
+  - id: hup
+    name: SIGHUP
+    unix_number: 1
+    windows_event: null
+    description: Hangup signal
+    default_behavior: reload_via_restart
+    exit_code: 129
+behaviors:
+  - id: graceful_shutdown
+    name: Graceful Shutdown
+    description: Clean shutdown with timeout
+    phases:
+      - name: exit
+        description: Exit with appropriate code
+  - id: reload_via_restart
+    name: Configuration Reload via Restart
+    description: Reload configuration by restarting
+    phases:
+      - name: exit
+        description: Exit for restart
+os_mappings:
+  unix:
+    SIGTERM: 15
+    SIGINT: 2
+    SIGHUP: 1
+  windows:
+    CTRL_C_EVENT: 0
+    CTRL_CLOSE_EVENT: 2
+  signal_to_event:
+    SIGTERM: CTRL_CLOSE_EVENT
+    SIGINT: CTRL_C_EVENT
+    SIGHUP: null
+exit_codes:
+  SIGTERM: 143
+  SIGINT: 130
+  SIGHUP: 129
+  note: Exit codes follow POSIX 128+N pattern

@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/pathfinder/finder-config-v1.0.0.json",
+  "title": "FinderConfig",
+  "description": "Configuration for pathfinder Finder instances",
+  "type": "object",
+  "properties": {
+    "maxWorkers": {
+      "type": "integer",
+      "description": "Maximum number of worker goroutines",
+      "minimum": 1,
+      "default": 4
+    },
+    "cacheEnabled": {
+      "type": "boolean",
+      "description": "Whether caching is enabled",
+      "default": false
+    },
+    "cacheTTL": {
+      "type": "integer",
+      "description": "Cache TTL in seconds",
+      "minimum": 0,
+      "default": 300
+    },
+    "constraint": {
+      "$ref": "#/$defs/pathConstraint",
+      "description": "Path constraint configuration"
+    },
+    "loaderType": {
+      "type": "string",
+      "description": "Default loader type",
+      "enum": [
+        "local",
+        "remote",
+        "cloud"
+      ],
+      "default": "local"
+    },
+    "calculateChecksums": {
+      "type": "boolean",
+      "description": "Enable checksum calculation for discovered files using FulHash",
+      "default": false
+    },
+    "checksumAlgorithm": {
+      "type": "string",
+      "description": "Hash algorithm to use when calculateChecksums is enabled",
+      "enum": [
+        "xxh3-128",
+        "sha256"
+      ],
+      "default": "xxh3-128"
+    },
+    "checksumEncoding": {
+      "type": "string",
+      "description": "Encoding format for checksum output",
+      "enum": [
+        "hex"
+      ],
+      "default": "hex"
+    }
+  },
+  "$defs": {
+    "pathConstraint": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "repository",
+            "workspace",
+            "cloud"
+          ],
+          "description": "Type of path constraint"
+        },
+        "enforcementLevel": {
+          "type": "string",
+          "enum": [
+            "strict",
+            "warn",
+            "permissive"
+          ],
+          "description": "How strictly constraints are enforced"
+        },
+        "root": {
+          "type": "string",
+          "description": "Root path for constraint"
+        }
+      }
+    }
+  }
+}

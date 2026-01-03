@@ -1,0 +1,117 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.fulmenhq.dev/crucible/taxonomy/devsecops/modules/v1.0.0/devsecops-module-entry.schema.json",
+  "title": "DevSecOps Module Registry Entry",
+  "description": "Schema for DevSecOps module entries in the taxonomy registry. Tracks schemas, configs, and potential L'Orage-branded library implementations.",
+  "type": "object",
+  "required": [
+    "module_name",
+    "description",
+    "evidence",
+    "consumers",
+    "status",
+    "added_version"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "module_name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Kebab-case module identifier (e.g., lorage-central, secrets)"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 10,
+      "description": "Brief description of the DevSecOps module's purpose"
+    },
+    "rationale": {
+      "type": "string",
+      "description": "Why this module exists and its role in the DevSecOps ecosystem"
+    },
+    "evidence": {
+      "type": "object",
+      "required": [
+        "has_schema"
+      ],
+      "properties": {
+        "has_schema": {
+          "type": "boolean",
+          "description": "Whether this module has JSON schemas"
+        },
+        "schema_path": {
+          "type": "string",
+          "description": "Path to schemas directory (e.g., schemas/devsecops/secrets/v1.0.0/)"
+        },
+        "has_config": {
+          "type": "boolean",
+          "description": "Whether this module has config defaults"
+        },
+        "config_path": {
+          "type": "string",
+          "description": "Path to config directory (e.g., config/devsecops/secrets/v1.0.0/)"
+        },
+        "has_docs": {
+          "type": "boolean",
+          "description": "Whether this module has documentation"
+        },
+        "docs_path": {
+          "type": "string",
+          "description": "Path to documentation (e.g., docs/standards/devsecops/project-secrets.md)"
+        }
+      },
+      "if": {
+        "properties": {
+          "has_schema": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "schema_path"
+        ]
+      }
+    },
+    "potential_libraries": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]*$"
+      },
+      "description": "L'Orage-branded or DevSecOps helper libraries that might implement this module (e.g., goloragecentral, pyloragecentral)",
+      "uniqueItems": true
+    },
+    "consumers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Applications, tools, or services that consume this module's schemas (e.g., fulmen-secrets, lorage-daemon)",
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "deprecated",
+        "experimental"
+      ],
+      "description": "Current lifecycle status of the module"
+    },
+    "added_version": {
+      "type": "string",
+      "description": "Crucible version when module was added",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "deprecated_version": {
+      "type": "string",
+      "description": "Crucible version when module was deprecated (if applicable)",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes about the module, its usage, or architectural decisions"
+    }
+  }
+}

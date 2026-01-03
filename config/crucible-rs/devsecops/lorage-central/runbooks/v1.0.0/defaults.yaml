@@ -1,0 +1,50 @@
+# config/devsecops/lorage-central/runbooks/v1.0.0/defaults.yaml
+# L'Orage Central Runbook Defaults
+# Description: Default runbook config (e.g., global-network prototype); loaded via three-layer.
+# Rationale: Serializes Markdown prototypes (e.g., from .plans/research/); executable in REPL.
+# Version: v1.0.0 (Ties to schema; refs phases/recipe for steps).
+id: global-network # Slug-safe
+title: Global Enterprise Network Setup
+tenantScope: [all] # Or specific publicIds
+description: >-
+  Beginnings of the Runbook: Global Enterprise Picture with Tenants. Our runbook will live in the IDE... (from prototypes).
+phases:
+  - id: bootstrap # From infra-phases
+    title: Initial Setup
+    description: "Core Components: Provision monitoring first."
+    steps:
+      - id: vaultwarden-init
+        type: script
+        content: "docker run -d --name vaultwarden vaultwarden/server:latest" # Bootstrap secrets
+        dependsOn: []
+        parallel: false
+      - id: prometheus-setup
+        type: action
+        ref: prometheus-stack # Ref recipe
+        dependsOn: [vaultwarden-init]
+  - id: network # Order 2
+    title: Networking Backbone
+    description: "Zero-trust backbone (Cloudflare Gateway); VPC peering for hybrids."
+    steps:
+      - id: tenant-table
+        type: table
+        content: |
+          | Tenant | Type | Focus | Clouds (Priority) | Secrets Scope | Initial Infra Needs |
+          |--------|------|-------|-------------------|---------------|---------------------|
+          | fulmenhq | Ecosystem | Tonnerre templates | AWS/GCP (core), Cloudflare (edge), Hetzner/DO (cost-opt) | IaC vars, SDK keys | OpenTofu state backend (S3), CI/CD pipelines |
+          | 3 Leaps Sponsored | Internal | Sponsored OSS | Cloudflare (Workers/DNS), Azure (AI), Hetzner (compute) | API tokens, DB creds | Worker deployments, basic storage |
+          | 3 Leaps Commercial | External | Client-specific | Client-dictated (AWS/Azure/GCP) | Isolated vaults | Hybrid connectivity, compliance-heavy |
+        dependsOn: []
+        parallel: true # Table review parallel with setup
+      - id: vpc-peering-setup
+        type: script
+        content: "doctl compute vpc create --name global-vpc" # Create VPC for hybrid peering
+        dependsOn: [tenant-table]
+        validate:
+          type: custom
+          script: "check-vpc-connectivity.sh"
+audit:
+  backend: postgres
+  retention: 30
+# Usage: REPL: lorage runbook global-network --phase network (executes steps, audits).
+# Example: From prototypes—serialize Markdown tables/scripts; future: Conditional for tenant.geo.

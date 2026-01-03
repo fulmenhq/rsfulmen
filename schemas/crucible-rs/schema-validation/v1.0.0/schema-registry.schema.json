@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/schema-validation/schema-registry-v1.0.0.json",
+  "title": "SchemaRegistry",
+  "description": "Configuration for schema registry management in Fulmen libraries",
+  "type": "object",
+  "properties": {
+    "baseDir": {
+      "type": "string",
+      "description": "Base directory for schema storage"
+    },
+    "cache": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Cached schema content (schema name/version -> content)"
+    },
+    "defaultRegistry": {
+      "type": "boolean",
+      "description": "Whether this is the default registry"
+    },
+    "autoReload": {
+      "type": "boolean",
+      "description": "Whether to automatically reload changed schemas"
+    }
+  },
+  "required": [
+    "baseDir"
+  ]
+}

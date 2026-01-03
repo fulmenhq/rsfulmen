@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/library/fulhash/v1.0.0/checksum-string.schema.json",
+  "title": "FulHash Checksum String",
+  "description": "Canonical checksum string '<algorithm>:<hex>'",
+  "type": "string",
+  "pattern": "^(xxh3-128:[0-9a-f]{32}|crc32:[0-9a-f]{8}|crc32c:[0-9a-f]{8}|sha256:[0-9a-f]{64})$"
+}

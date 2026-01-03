@@ -1,0 +1,96 @@
+[package]
+name = "rsfulmen"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.70"
+authors = ["FulmenHQ <team@fulmenhq.dev>"]
+description = "Rust helper library for the Fulmen ecosystem - foundry catalogs, config utilities, and cross-platform helpers"
+documentation = "https://docs.rs/rsfulmen"
+homepage = "https://github.com/fulmenhq/rsfulmen"
+repository = "https://github.com/fulmenhq/rsfulmen"
+readme = "README.md"
+license = "MIT"
+keywords = ["fulmen", "config", "utilities", "foundry", "catalogs"]
+categories = ["development-tools", "config", "data-structures"]
+
+[lib]
+name = "rsfulmen"
+path = "src/lib.rs"
+
+[features]
+# Keep default behavior for existing users.
+default = ["foundry", "config", "crucible", "docscribe", "three-layer-config", "schema-id", "schema-validation", "similarity", "error-handling", "telemetry-metrics"]
+
+# Foundry feature groups (aligned to Crucible foundry-catalogs v1.1.0).
+foundry-core = []
+foundry-mime-types = ["foundry-core", "dep:serde_json"]
+foundry-patterns = ["foundry-core", "dep:regex", "dep:glob"]
+
+# Convenience: enable all foundry catalogs supported by this crate.
+foundry = ["foundry-core", "foundry-mime-types", "foundry-patterns"]
+
+# Platform modules.
+config = ["dep:dirs"]
+crucible = []
+docscribe = ["crucible"]
+three-layer-config = ["config", "crucible"]
+
+# Lightweight helpers for schema_id tagging + resolution.
+schema-id = ["crucible"]
+
+# Standalone algorithm module (promoted from foundry in Crucible v0.4.0).
+similarity = ["dep:strsim", "dep:unicode-normalization", "dep:unicode-segmentation"]
+
+# Heavy: JSON Schema validation utilities.
+schema-validation = ["crucible", "dep:anyhow", "dep:url", "dep:jsonschema", "dep:serde_json"]
+
+# Canonical error envelope + propagation helpers.
+error-handling = ["dep:serde_json"]
+
+# Telemetry + metrics export (taxonomy-backed).
+telemetry-metrics = ["dep:serde_json"]
+
+# Everything.
+full = ["foundry", "config", "crucible", "docscribe", "schema-validation", "similarity", "error-handling", "telemetry-metrics"]
+
+[dependencies]
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", optional = true }
+serde_yaml = "0.9"
+anyhow = { version = "1.0", optional = true }
+url = { version = "2", optional = true }
+jsonschema = { version = "0.17", default-features = false, features = ["draft202012"], optional = true }
+
+# Lazy initialization
+once_cell = "1.19"
+
+
+# Error handling
+thiserror = "1.0"
+
+# Pattern matching (for foundry patterns)
+regex = { version = "1.10", optional = true }
+glob = { version = "0.3", optional = true }
+
+# Similarity (for foundry similarity)
+strsim = { version = "0.11", optional = true }
+unicode-normalization = { version = "0.1", optional = true }
+unicode-segmentation = { version = "1.10", optional = true }
+
+# Platform-specific paths (for config module)
+dirs = { version = "5.0", optional = true }
+
+[dev-dependencies]
+# Testing utilities
+rstest = "0.18"
+pretty_assertions = "1.4"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

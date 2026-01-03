@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/pathfinder/error-response-v1.0.0.json",
+  "title": "ErrorResponse",
+  "description": "Standardized error response structure for pathfinder operations",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string",
+      "description": "Error code identifier"
+    },
+    "message": {
+      "type": "string",
+      "description": "Human-readable error message"
+    },
+    "details": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Additional error details"
+    },
+    "path": {
+      "type": "string",
+      "description": "Path that caused the error (if applicable)"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the error occurred"
+    }
+  },
+  "required": [
+    "code",
+    "message"
+  ]
+}

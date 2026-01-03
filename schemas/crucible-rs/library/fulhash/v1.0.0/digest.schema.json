@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/library/fulhash/v1.0.0/digest.schema.json",
+  "title": "FulHash Digest",
+  "description": "Standard digest payload returned by FulHash helpers",
+  "type": "object",
+  "properties": {
+    "algorithm": {
+      "type": "string",
+      "enum": [
+        "xxh3-128",
+        "crc32",
+        "crc32c",
+        "sha256"
+      ],
+      "description": "Hash algorithm identifier"
+    },
+    "hex": {
+      "type": "string",
+      "description": "Lowercase hexadecimal representation of the digest"
+    },
+    "formatted": {
+      "type": "string",
+      "description": "Canonical string representation '<algorithm>:<hex>'"
+    },
+    "bytes": {
+      "type": "array",
+      "description": "Raw digest bytes (optional)",
+      "items": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 255
+      }
+    }
+  },
+  "required": [
+    "algorithm",
+    "hex",
+    "formatted"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "algorithm": {
+            "const": "xxh3-128"
+          }
+        },
+        "required": [
+          "algorithm"
+        ]
+      },
+      "then": {
+        "properties": {
+          "hex": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "formatted": {
+            "type": "string",
+            "pattern": "^xxh3-128:[0-9a-f]{32}$"
+          },
+          "bytes": {
+            "type": "array",
+            "minItems": 16,
+            "maxItems": 16
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "algorithm": {
+            "const": "sha256"
+          }
+        },
+        "required": [
+          "algorithm"
+        ]
+      },
+      "then": {
+        "properties": {
+          "hex": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "formatted": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "bytes": {
+            "type": "array",
+            "minItems": 32,
+            "maxItems": 32
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "algorithm": {
+            "const": "crc32"
+          }
+        },
+        "required": [
+          "algorithm"
+        ]
+      },
+      "then": {
+        "properties": {
+          "hex": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}$"
+          },
+          "formatted": {
+            "type": "string",
+            "pattern": "^crc32:[0-9a-f]{8}$"
+          },
+          "bytes": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 4
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "algorithm": {
+            "const": "crc32c"
+          }
+        },
+        "required": [
+          "algorithm"
+        ]
+      },
+      "then": {
+        "properties": {
+          "hex": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}$"
+          },
+          "formatted": {
+            "type": "string",
+            "pattern": "^crc32c:[0-9a-f]{8}$"
+          },
+          "bytes": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 4
+          }
+        }
+      }
+    }
+  ]
+}

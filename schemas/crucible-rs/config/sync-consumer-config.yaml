@@ -1,0 +1,51 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: https://schemas.fulmenhq.dev/config/sync-consumer-config-v1.0.0.json
+title: Fulmen Sync Consumer Config
+description: Manifest describing assets to pull from SSOT sources using FulDX.
+type: object
+required:
+  - sources
+properties:
+  version:
+    type: string
+    description: Manifest version (optional).
+  sources:
+    type: array
+    minItems: 1
+    items:
+      $ref: '#/$defs/source'
+additionalProperties: false
+$defs:
+  source:
+    type: object
+    required:
+      - id
+    properties:
+      id:
+        type: string
+        description: Key identifying the SSOT asset group (e.g., crucible.docs).
+      version:
+        type: string
+        description: SSOT version (CalVer/SemVer). "latest" allowed.
+      include:
+        type: array
+        items:
+          type: string
+        description: Glob patterns to include (supports doublestar).
+      exclude:
+        type: array
+        items:
+          type: string
+        description: Glob patterns to exclude.
+      output:
+        type: string
+        description: Relative output directory (defaults to .crucible/ or repo convention).
+      postSync:
+        type: array
+        items:
+          type: string
+        description: Commands to run after sync (optional).
+      options:
+        type: object
+        description: Additional options (reserved for future use).
+    additionalProperties: false

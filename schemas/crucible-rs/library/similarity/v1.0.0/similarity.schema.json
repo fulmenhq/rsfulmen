@@ -1,0 +1,260 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/library/similarity/v1.0.0/similarity.schema.json",
+  "title": "Similarity Fixtures",
+  "description": "Test fixtures for text similarity and normalization utilities (v2.0)",
+  "type": "object",
+  "required": [
+    "version",
+    "test_cases"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version (CalVer)",
+      "pattern": "^\\d{4}\\.\\d{1,2}\\.\\d{1,2}$",
+      "examples": [
+        "2025.10.3"
+      ]
+    },
+    "test_cases": {
+      "type": "array",
+      "description": "Organized test cases by category",
+      "items": {
+        "$ref": "#/definitions/TestCaseGroup"
+      },
+      "minItems": 1
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional notes about fixture generation methodology"
+    }
+  },
+  "definitions": {
+    "TestCaseGroup": {
+      "type": "object",
+      "required": [
+        "category",
+        "cases"
+      ],
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": [
+            "levenshtein",
+            "damerau",
+            "jaro_winkler",
+            "substring",
+            "normalization",
+            "suggestions"
+          ],
+          "description": "Test case category (v2.0: split distance into specific metrics)"
+        },
+        "cases": {
+          "type": "array",
+          "description": "Test cases in this category",
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "#/definitions/LevenshteinTestCase"
+              },
+              {
+                "$ref": "#/definitions/DamerauTestCase"
+              },
+              {
+                "$ref": "#/definitions/JaroWinklerTestCase"
+              },
+              {
+                "$ref": "#/definitions/SubstringTestCase"
+              },
+              {
+                "$ref": "#/definitions/NormalizationTestCase"
+              },
+              {
+                "$ref": "#/definitions/SuggestionTestCase"
+              }
+            ]
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "DistanceTestCase": {
+      "type": "object",
+      "required": [
+        "input_a",
+        "input_b",
+        "expected_distance",
+        "expected_score"
+      ],
+      "properties": {
+        "input_a": {
+          "type": "string",
+          "description": "First input string"
+        },
+        "input_b": {
+          "type": "string",
+          "description": "Second input string"
+        },
+        "expected_distance": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Expected Levenshtein distance"
+        },
+        "expected_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Expected similarity score (0.0-1.0)"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable test case description"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional tags for categorization"
+        }
+      }
+    },
+    "NormalizationTestCase": {
+      "type": "object",
+      "required": [
+        "input",
+        "expected"
+      ],
+      "properties": {
+        "input": {
+          "type": "string",
+          "description": "Input string to normalize"
+        },
+        "options": {
+          "$ref": "#/definitions/NormalizeOptions",
+          "description": "Normalization options"
+        },
+        "expected": {
+          "type": "string",
+          "description": "Expected normalized output"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable test case description"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional tags for categorization"
+        }
+      }
+    },
+    "SuggestionTestCase": {
+      "type": "object",
+      "required": [
+        "input",
+        "candidates",
+        "expected"
+      ],
+      "properties": {
+        "input": {
+          "type": "string",
+          "description": "Input string to find suggestions for"
+        },
+        "candidates": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Candidate strings to match against",
+          "minItems": 1
+        },
+        "options": {
+          "$ref": "#/definitions/SuggestOptions",
+          "description": "Suggestion options"
+        },
+        "expected": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Suggestion"
+          },
+          "description": "Expected suggestions in order"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable test case description"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional tags for categorization"
+        }
+      }
+    },
+    "NormalizeOptions": {
+      "type": "object",
+      "properties": {
+        "strip_accents": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to strip diacritics"
+        },
+        "locale": {
+          "type": "string",
+          "default": "",
+          "description": "Locale for case folding (empty = simple casefold)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SuggestOptions": {
+      "type": "object",
+      "properties": {
+        "min_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.6,
+          "description": "Minimum similarity score threshold"
+        },
+        "max_suggestions": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 3,
+          "description": "Maximum number of suggestions to return"
+        },
+        "normalize": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to normalize input and candidates"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Suggestion": {
+      "type": "object",
+      "required": [
+        "value",
+        "score"
+      ],
+      "properties": {
+        "value": {
+          "type": "string",
+          "description": "Suggested candidate value"
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Similarity score (0.0-1.0)"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

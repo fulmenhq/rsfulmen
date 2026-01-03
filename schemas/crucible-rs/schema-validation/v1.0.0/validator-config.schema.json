@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/schema-validation/validator-config-v1.0.0.json",
+  "title": "ValidatorConfig",
+  "description": "Configuration for JSON Schema validation across Fulmen libraries",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "description": "Schema content as JSON string"
+    },
+    "schemaFile": {
+      "type": "string",
+      "description": "Path to schema file"
+    },
+    "baseURI": {
+      "type": "string",
+      "format": "uri",
+      "description": "Base URI for schema resolution"
+    },
+    "formatValidators": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Custom format validators"
+    },
+    "metaSchemas": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Additional meta-schemas to load"
+    }
+  }
+}

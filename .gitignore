@@ -1,0 +1,79 @@
+# Rust build artifacts
+/target/
+**/*.rs.bk
+Cargo.lock
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Goneat local overrides (development only)
+.goneat/*.local.yaml
+.goneat/*.local.json
+
+# Local goneat binary (installed via bootstrap)
+/bin/
+/goneat
+
+# Crucible synced assets (regenerated from SSOT)
+# Note: These are committed but regenerated via `make sync-ssot`
+# Uncomment if you want to gitignore them:
+# /.crucible/
+# /schemas/crucible-*/
+# /docs/crucible-*/
+# /config/crucible-*/
+
+# Test artifacts
+*.profraw
+*.profdata
+coverage/
+htmlcov/
+lcov.info
+tarpaulin-report.html
+
+# Documentation build
+/doc/
+
+# Package artifacts
+*.crate
+*.tar.gz
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Plans directory (local development notes)
+# Note: .plans/ is gitignored by convention in FulmenHQ
+/.plans/
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+.temp/
+
+# Node.js / TypeScript (for auxiliary scripts)
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+*.tsbuildinfo
+dist/
+.cache/
+
+# Log files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python (if auxiliary scripts)
+__pycache__/
+*.py[cod]
+.venv/
+venv/

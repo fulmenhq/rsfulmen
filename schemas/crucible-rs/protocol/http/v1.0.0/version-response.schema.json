@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/protocol/http/v1.0.0/version-response.schema.json",
+  "title": "VersionResponse",
+  "description": "Response payload for service version endpoints",
+  "type": "object",
+  "properties": {
+    "success": {
+      "const": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Service semantic or calendar version"
+        },
+        "commit": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Commit SHA or VCS identifier"
+        },
+        "buildDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Build timestamp in UTC"
+        },
+        "buildHost": {
+          "type": "string",
+          "description": "Hostname or runner building the artifact"
+        },
+        "language": {
+          "type": "string",
+          "description": "Implementation language identifier"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Optional additional fields (git tag, go version, etc.)"
+        }
+      },
+      "required": [
+        "version",
+        "commit",
+        "buildDate"
+      ],
+      "additionalProperties": true
+    },
+    "requestId": {
+      "type": "string"
+    },
+    "correlationId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "success",
+    "data"
+  ],
+  "additionalProperties": true
+}

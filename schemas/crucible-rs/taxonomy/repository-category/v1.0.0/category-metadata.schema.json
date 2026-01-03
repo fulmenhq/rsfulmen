@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/taxonomy/repository-category/v1.0.0/category-metadata.schema.json",
+  "title": "Fulmen Repository Category Metadata",
+  "description": "Metadata object describing Fulmen repository category requirements",
+  "type": "object",
+  "properties": {
+    "key": {
+      "$ref": "category-key.schema.json"
+    },
+    "summary": {
+      "type": "string",
+      "description": "One-line description of the category"
+    },
+    "primaryEntryPoints": {
+      "type": "array",
+      "description": "Primary binaries, commands, or endpoints exposed by this category",
+      "items": {
+        "type": "string"
+      }
+    },
+    "typicalConsumers": {
+      "type": "array",
+      "description": "Representative users or systems consuming repositories of this category",
+      "items": {
+        "type": "string"
+      }
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional free-form notes about additional requirements"
+    }
+  },
+  "required": [
+    "key",
+    "summary"
+  ],
+  "additionalProperties": false
+}

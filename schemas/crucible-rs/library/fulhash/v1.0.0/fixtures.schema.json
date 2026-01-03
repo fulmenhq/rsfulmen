@@ -1,0 +1,227 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/library/fulhash/v1.0.0/fixtures.schema.json",
+  "title": "FulHash Fixture File",
+  "description": "Shared test fixtures for FulHash implementations",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "format": "uri"
+    },
+    "version": {
+      "type": "string",
+      "description": "Fixture specification version",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "description": {
+      "type": "string"
+    },
+    "fixtures": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/blockFixture"
+      }
+    },
+    "streaming_fixtures": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/streamingFixture"
+      }
+    },
+    "error_fixtures": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/errorFixture"
+      }
+    },
+    "format_fixtures": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/formatFixture"
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "version",
+    "fixtures"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "checksum": {
+      "$ref": "checksum-string.schema.json"
+    },
+    "blockFixture": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "input": {
+          "type": "string"
+        },
+        "encoding": {
+          "type": "string"
+        },
+        "input_bytes": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          }
+        },
+        "xxh3_128": {
+          "$ref": "#/$defs/checksum"
+        },
+        "sha256": {
+          "$ref": "#/$defs/checksum"
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "encoding",
+        "xxh3_128",
+        "sha256"
+      ],
+      "allOf": [
+        {
+          "anyOf": [
+            {
+              "required": [
+                "input"
+              ]
+            },
+            {
+              "required": [
+                "input_bytes"
+              ]
+            }
+          ]
+        }
+      ],
+      "additionalProperties": false
+    },
+    "streamingFixture": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "chunks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "encoding": {
+                "type": "string"
+              },
+              "size": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "pattern": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "expected_xxh3_128": {
+          "$ref": "#/$defs/checksum"
+        },
+        "expected_sha256": {
+          "$ref": "#/$defs/checksum"
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "chunks",
+        "expected_xxh3_128",
+        "expected_sha256"
+      ],
+      "additionalProperties": false
+    },
+    "errorFixture": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "input": {
+          "type": "string"
+        },
+        "algorithm": {
+          "type": "string"
+        },
+        "checksum": {
+          "type": "string"
+        },
+        "expected_error": {
+          "type": "string"
+        },
+        "error_message_contains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "name",
+        "expected_error"
+      ],
+      "additionalProperties": false
+    },
+    "formatFixture": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "algorithm": {
+          "type": "string"
+        },
+        "hex": {
+          "type": "string"
+        },
+        "formatted": {
+          "type": "string"
+        },
+        "expected_formatted": {
+          "type": "string"
+        },
+        "expected_algorithm": {
+          "type": "string"
+        },
+        "expected_hex": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

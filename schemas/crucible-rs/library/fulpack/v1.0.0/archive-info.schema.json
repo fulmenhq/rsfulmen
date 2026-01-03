@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.fulmenhq.dev/crucible/library/fulpack/v1.0.0/archive-info",
+  "title": "Archive Info",
+  "description": "Metadata about an archive file",
+  "type": "object",
+  "required": [
+    "format",
+    "entry_count",
+    "total_size",
+    "compressed_size"
+  ],
+  "properties": {
+    "format": {
+      "type": "string",
+      "enum": [
+        "tar",
+        "tar.gz",
+        "zip",
+        "gzip"
+      ],
+      "description": "Archive format from archive-formats taxonomy"
+    },
+    "compression": {
+      "type": "string",
+      "enum": [
+        "gzip",
+        "deflate",
+        "none"
+      ],
+      "description": "Compression algorithm used"
+    },
+    "entry_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of entries in the archive"
+    },
+    "total_size": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total uncompressed size in bytes"
+    },
+    "compressed_size": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Compressed archive file size in bytes"
+    },
+    "compression_ratio": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Compression ratio (total_size / compressed_size)"
+    },
+    "has_checksums": {
+      "type": "boolean",
+      "description": "Whether the archive contains checksums"
+    },
+    "checksum_algorithm": {
+      "type": "string",
+      "enum": [
+        "xxh3-128",
+        "sha256",
+        "sha512",
+        "sha1",
+        "md5"
+      ],
+      "description": "Checksum algorithm used from fulhash module (xxh3-128 and sha256 are standard, others may require optional extensions)"
+    },
+    "created": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Archive creation timestamp (ISO 8601 format)"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/pathfinder/path-constraint-v1.0.0.json",
+  "title": "PathConstraint",
+  "description": "Path constraint configuration for safety boundaries",
+  "type": "object",
+  "properties": {
+    "root": {
+      "type": "string",
+      "description": "Root path for the constraint boundary"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "repository",
+        "workspace",
+        "cloud"
+      ],
+      "description": "Type of constraint defining the boundary scope"
+    },
+    "enforcementLevel": {
+      "type": "string",
+      "enum": [
+        "strict",
+        "warn",
+        "permissive"
+      ],
+      "description": "How strictly the constraint is enforced"
+    },
+    "allowedPatterns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Additional allowed path patterns"
+    },
+    "blockedPatterns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Blocked path patterns"
+    }
+  },
+  "required": [
+    "root",
+    "type",
+    "enforcementLevel"
+  ]
+}

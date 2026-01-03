@@ -1,0 +1,46 @@
+# DevSecOps Modules Registry
+# Canonical SSOT for DevSecOps schemas, configs, and L'Orage-branded library modules
+# Schemas tracked here, implementations in separate DevSecOps libraries (goloragecentral, etc.)
+# Manually maintained but automatically validated
+version: "1.0.0"
+last_updated: "2025-11-16"
+modules:
+  - module_name: lorage-central
+    description: L'Orage Central DevSecOps infrastructure system for activity tracking, credentials, policy, recipes, runbooks, and tenant management
+    rationale: Centralized DevSecOps orchestration platform providing unified infrastructure automation, credential management, compliance policy enforcement, deployment recipes, operational runbooks, and multi-tenant isolation for enterprise deployments
+    evidence:
+      has_schema: true
+      schema_path: schemas/devsecops/lorage-central/
+      has_config: true
+      config_path: config/devsecops/lorage-central/
+      has_docs: false
+    potential_libraries:
+      - goloragecentral
+      - pyloragecentral
+      - tsloragecentral
+    consumers:
+      - lorage-daemon (planned)
+      - lorage-cli (planned)
+      - L'Orage Central web interface (planned)
+    status: active
+    added_version: "0.2.9"
+    notes: "L'Orage Central is a subbrand for FulmenHQ DevSecOps infrastructure. Future implementations will live in separate L'Orage-branded libraries, not in gofulmen/pyfulmen/tsfulmen platform helpers."
+  - module_name: secrets
+    description: Project secrets management with dual-mode plaintext/encrypted support for environment variables
+    rationale: Secure environment variable management for L'Orage Central infrastructure automation, particularly root credential storage for provisioning workflows; enables fulsecrets CLI tool for secrets lifecycle management
+    evidence:
+      has_schema: true
+      schema_path: schemas/devsecops/secrets/v1.0.0/
+      has_config: true
+      config_path: config/devsecops/secrets/v1.0.0/
+      has_docs: true
+      docs_path: docs/standards/devsecops/project-secrets.md
+    potential_libraries:
+      - goloragecentral (secrets submodule)
+      - pyloragecentral (secrets submodule)
+    consumers:
+      - fulmen-secrets (v0.1.0+ - active development)
+      - L'Orage Central provisioning automation (planned)
+    status: active
+    added_version: "0.2.14"
+    notes: "Designed as lightweight secrets keeper for L'Orage Central infrastructure. Currently consumed by fulmen-secrets app via gofulmen's crucible module for schema access."

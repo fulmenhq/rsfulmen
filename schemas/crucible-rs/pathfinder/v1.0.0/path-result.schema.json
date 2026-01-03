@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/pathfinder/path-result-v1.0.0.json",
+  "title": "PathResult",
+  "description": "Result of a file discovery operation in pathfinder",
+  "type": "object",
+  "properties": {
+    "relativePath": {
+      "type": "string",
+      "description": "Path relative to search root"
+    },
+    "sourcePath": {
+      "type": "string",
+      "description": "Absolute path to the file"
+    },
+    "logicalPath": {
+      "type": "string",
+      "description": "Logical path for consumer (defaults to relativePath)"
+    },
+    "loaderType": {
+      "type": "string",
+      "description": "Type of loader used",
+      "enum": [
+        "local",
+        "remote",
+        "cloud"
+      ]
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional provider-specific information",
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "relativePath",
+    "sourcePath",
+    "loaderType"
+  ]
+}

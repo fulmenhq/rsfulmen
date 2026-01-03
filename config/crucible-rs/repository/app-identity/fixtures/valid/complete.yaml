@@ -1,0 +1,20 @@
+# Complete application identity - all fields including metadata
+app:
+  binary_name: percheron
+  vendor: fulmenhq
+  env_prefix: PERCHERON_
+  config_name: percheron
+  description: Production-ready Python HTTP workhorse with observability
+metadata:
+  project_url: https://github.com/fulmenhq/forge-workhorse-percheron
+  support_email: support@fulmenhq.io
+  license: MIT
+  repository_category: workhorse
+  telemetry_namespace: percheron
+  python:
+    distribution_name: percheron
+    package_name: percheron
+    console_scripts:
+      - name: percheron
+        entry_point: percheron.cli:main
+  custom_field: allowed for extensibility

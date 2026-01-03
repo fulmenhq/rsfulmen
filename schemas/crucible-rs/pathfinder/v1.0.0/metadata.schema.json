@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/pathfinder/metadata-v1.0.0.json",
+  "title": "Metadata",
+  "description": "Flexible metadata structure for path results",
+  "type": "object",
+  "properties": {
+    "size": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "File size in bytes"
+    },
+    "modified": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last modification timestamp"
+    },
+    "permissions": {
+      "type": "string",
+      "description": "File permissions (octal or symbolic)"
+    },
+    "mimeType": {
+      "type": "string",
+      "description": "MIME type of the file"
+    },
+    "encoding": {
+      "type": "string",
+      "description": "Character encoding if applicable"
+    },
+    "checksum": {
+      "type": "string",
+      "description": "File checksum in format 'algorithm:hex' (e.g., 'xxh3-128:abc123...'). Generated using FulHash when calculateChecksums enabled.",
+      "pattern": "^(xxh3-128|sha256):[a-f0-9]+$"
+    },
+    "checksumAlgorithm": {
+      "type": "string",
+      "description": "Algorithm used for checksum calculation",
+      "enum": [
+        "xxh3-128",
+        "sha256"
+      ]
+    },
+    "checksumError": {
+      "type": "string",
+      "description": "Error message if checksum calculation failed (e.g., permission denied)"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "User-defined tags"
+    },
+    "custom": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Custom metadata fields"
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,28 @@
+# config/devsecops/lorage-central/tenant/v1.0.0/defaults.yaml
+# L'Orage Central Tenant Registry Defaults
+# Description: Default registry for new clients/tenants (loaded via three-layer; e.g., bootstrap new client).
+# Rationale: Confidential example (obscure publicIds); multi-tenant per client (prod/dev).
+# Version: v1.0.0 (Ties to schema; geo/cloud from taxonomies).
+client:
+  id: default-client-internal
+  name: Default Client # Confidential; not exposed
+  confidential: true # Obscure publicIds (UUID-based)
+tenants:
+  - publicId: tnt-uuid-123-prod-us # Globally unique/obscure
+    purpose: production-mattermost
+    geo: [na] # From geo-regions (expands to us/ca)
+    cloud: [doc, aws] # From infra-providers
+    dataSensitivity:
+      pii: false
+      phi: false
+      other: [] # e.g., [pci-dss]
+  - publicId: tnt-uuid-456-dev-eu
+    purpose: development-testing
+    geo: [eu] # Expands to de/fr/gb/ch (conventions)
+    cloud: [gcp]
+    dataSensitivity:
+      pii: true # Triggers policy guards (mfa/geo)
+      phi: false
+globalUniqueness: true # Enforced (UUID for anon)
+# Usage: REPL loads defaults + client overrides; validates publicId uniqueness.
+# Example: For confidential client, generate UUID publicIds; pii=true → policy.mfa.required=true.

@@ -1,0 +1,36 @@
+$schema: https://schemas.fulmenhq.dev/library/foundry/v1.0.0/signals.schema.json
+description: Invalid signal configuration - missing required fields
+version: v1.0.0
+signals:
+  - id: term
+    name: SIGTERM
+    unix_number: 15
+    # MISSING: description
+    default_behavior: graceful_shutdown
+    exit_code: 143
+  - id: int
+    # MISSING: name
+    unix_number: 2
+    description: User interrupt
+    default_behavior: graceful_shutdown
+    exit_code: 130
+behaviors:
+  - id: graceful_shutdown
+    name: Graceful Shutdown
+    description: Clean shutdown
+    phases:
+      - name: exit
+        description: Exit with code
+os_mappings:
+  unix:
+    SIGTERM: 15
+    SIGINT: 2
+  windows:
+    CTRL_C_EVENT: 0
+  signal_to_event:
+    SIGTERM: null
+    SIGINT: CTRL_C_EVENT
+exit_codes:
+  SIGTERM: 143
+  SIGINT: 130
+  note: Exit codes follow POSIX 128+N pattern

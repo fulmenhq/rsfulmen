@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.fulmenhq.dev/crucible/library/fulpack/v1.0.0/create-options",
+  "title": "Create Options",
+  "description": "Options for archive creation operation",
+  "type": "object",
+  "properties": {
+    "compression_level": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9,
+      "default": 6,
+      "description": "Compression level (1=fastest, 9=best compression, format-dependent)"
+    },
+    "include_patterns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Glob patterns for files to include (e.g., ['**/*.py', '**/*.md'])"
+    },
+    "exclude_patterns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Glob patterns for files to exclude (e.g., ['**/__pycache__', '**/.git'])"
+    },
+    "checksum_algorithm": {
+      "type": "string",
+      "enum": [
+        "xxh3-128",
+        "sha256",
+        "sha512",
+        "sha1",
+        "md5"
+      ],
+      "default": "sha256",
+      "description": "Checksum algorithm for entry verification (xxh3-128 and sha256 are standard via fulhash module, others may require optional extensions)"
+    },
+    "preserve_permissions": {
+      "type": "boolean",
+      "default": true,
+      "description": "Preserve Unix file permissions in archive"
+    },
+    "follow_symlinks": {
+      "type": "boolean",
+      "default": false,
+      "description": "Follow symbolic links and archive their targets"
+    }
+  },
+  "additionalProperties": false
+}

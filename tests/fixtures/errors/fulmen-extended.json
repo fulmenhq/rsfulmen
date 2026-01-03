@@ -1,0 +1,21 @@
+{
+  "code": "CONFIG_INVALID",
+  "message": "Config load failed",
+  "path": "/app.yaml",
+  "timestamp": "2026-01-07T00:00:00Z",
+  "severity": "high",
+  "severity_level": 3,
+  "correlation_id": "corr-123",
+  "trace_id": "trace-abc",
+  "exit_code": 20,
+  "context": {
+    "config_path": "/app.yaml",
+    "attempt": 1,
+    "dry_run": false,
+    "did_you_mean": ["/app.yml", "/app.json"]
+  },
+  "original": {
+    "type": "io",
+    "message": "No such file or directory"
+  }
+}

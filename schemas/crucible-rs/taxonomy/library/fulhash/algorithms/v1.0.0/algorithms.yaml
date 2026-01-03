@@ -1,0 +1,16 @@
+version: "1.0.0"
+last_updated: "2025-11-21"
+description: "Supported hashing algorithms for FulHash"
+algorithms:
+  - id: xxh3-128
+    name: XXH3 (128-bit)
+    description: "Fast non-cryptographic hash (default). Excellent collision resistance, extremely high throughput (50GB/s+)."
+  - id: sha256
+    name: SHA-256
+    description: "Cryptographic security standard. Resistant to intentional collisions. Use for security verification."
+  - id: crc32
+    name: CRC-32 (IEEE)
+    description: "32-bit Cyclic Redundancy Check. Standard for GZIP/ZIP/PNG legacy format interoperability."
+  - id: crc32c
+    name: CRC-32C (Castagnoli)
+    description: "32-bit CRC (Castagnoli). HW accelerated (SSE4.2/ARMv8). Use for cloud storage (GCS, AWS) and networking."

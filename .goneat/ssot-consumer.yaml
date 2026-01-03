@@ -1,0 +1,35 @@
+version: v1.1.0
+sources:
+  - name: crucible
+    repo: fulmenhq/crucible
+    ref: v0.4.2
+    sync_path_base: lang/rust
+    force_remote: true
+    assets:
+      - type: doc
+        source_path: docs
+        paths:
+          - "architecture/**/*.md"
+          - "standards/**/*.md"
+          - "guides/**/*.md"
+          - "sop/**/*.md"
+        subdir: docs/crucible-rs
+      - type: schema
+        source_path: schemas
+        paths:
+          - "**/*"
+        subdir: schemas/crucible-rs
+      - type: config
+        source_path: config
+        paths:
+          - "**/*"
+        subdir: config/crucible-rs
+      - type: metadata
+        source_path: config/sync
+        paths:
+          - "**/*"
+        subdir: .crucible/metadata
+strategy:
+  on_conflict: overwrite
+  prune_stale: true
+  verify_checksums: false

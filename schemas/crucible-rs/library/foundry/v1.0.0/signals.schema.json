@@ -1,0 +1,462 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/library/foundry/v1.0.0/signals.schema.json",
+  "title": "Signal Handling Catalog",
+  "description": "Standardized signal handling semantics for Fulmen ecosystem",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "description": {
+      "type": "string",
+      "description": "Catalog description"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[vV]?\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of the signal handling catalog"
+    },
+    "signals": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Standard signals with OS mappings and behaviors",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z]$",
+            "description": "Signal identifier (kebab-case)"
+          },
+          "name": {
+            "type": "string",
+            "pattern": "^SIG[A-Z0-9]+$",
+            "description": "Signal name (e.g., SIGTERM, SIGINT)"
+          },
+          "unix_number": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 64,
+            "description": "Unix signal number (Linux standard)"
+          },
+          "platform_overrides": {
+            "type": "object",
+            "description": "Platform-specific signal number overrides",
+            "properties": {
+              "darwin": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 64,
+                "description": "macOS signal number override"
+              },
+              "freebsd": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 64,
+                "description": "FreeBSD signal number override"
+              }
+            },
+            "additionalProperties": false
+          },
+          "windows_event": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Windows console event name (null if unsupported)"
+          },
+          "windows_fallback": {
+            "type": "object",
+            "description": "Fallback behavior for Windows when signal is unsupported",
+            "properties": {
+              "fallback_behavior": {
+                "type": "string",
+                "enum": [
+                  "http_admin_endpoint",
+                  "exception_handling",
+                  "timer_api"
+                ],
+                "description": "Type of fallback mechanism for this signal on Windows"
+              },
+              "log_level": {
+                "type": "string",
+                "enum": [
+                  "DEBUG",
+                  "INFO",
+                  "WARN",
+                  "ERROR"
+                ],
+                "description": "Log level for unsupported signal notification (recommended: INFO)"
+              },
+              "log_message": {
+                "type": "string",
+                "description": "Human-readable message explaining Windows fallback"
+              },
+              "log_template": {
+                "type": "string",
+                "description": "Structured log template for consistent formatting across languages"
+              },
+              "operation_hint": {
+                "type": "string",
+                "description": "Operational guidance for Windows users (e.g., 'POST /admin/signal with signal=HUP')"
+              },
+              "telemetry_event": {
+                "type": "string",
+                "description": "Telemetry event name for tracking unsupported signals (standard: fulmen.signal.unsupported)"
+              },
+              "telemetry_tags": {
+                "type": "object",
+                "description": "Structured tags for telemetry event (must include signal, platform, fallback_behavior)",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "fallback_behavior",
+              "log_level",
+              "log_message",
+              "log_template",
+              "operation_hint",
+              "telemetry_event",
+              "telemetry_tags"
+            ],
+            "additionalProperties": false
+          },
+          "description": {
+            "type": "string",
+            "description": "Signal purpose and usage"
+          },
+          "default_behavior": {
+            "type": "string",
+            "enum": [
+              "graceful_shutdown",
+              "graceful_shutdown_with_double_tap",
+              "reload_via_restart",
+              "immediate_exit",
+              "custom",
+              "observe_only"
+            ],
+            "description": "Default handling behavior for this signal"
+          },
+          "exit_code": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255,
+            "description": "Process exit code (128+N pattern for signals)"
+          },
+          "timeout_seconds": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Graceful shutdown timeout in seconds"
+          },
+          "cleanup_actions": {
+            "type": "array",
+            "description": "Ordered list of cleanup actions to perform",
+            "items": {
+              "type": "string"
+            }
+          },
+          "double_tap_window_seconds": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Time window for double-tap detection (SIGINT only)"
+          },
+          "double_tap_message": {
+            "type": "string",
+            "description": "Message shown to user on first signal (double-tap pattern)"
+          },
+          "double_tap_behavior": {
+            "type": "string",
+            "enum": [
+              "immediate_exit"
+            ],
+            "description": "Behavior when signal received twice within window"
+          },
+          "double_tap_exit_code": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255,
+            "description": "Exit code for forced double-tap exit"
+          },
+          "reload_strategy": {
+            "type": "string",
+            "enum": [
+              "restart_based"
+            ],
+            "description": "Configuration reload strategy (SIGHUP only)"
+          },
+          "validation_required": {
+            "type": "boolean",
+            "description": "Whether config validation is required before reload (SIGHUP only)"
+          },
+          "usage_notes": {
+            "type": "string",
+            "description": "Additional usage guidance and context"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "unix_number",
+          "description",
+          "default_behavior",
+          "exit_code"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "behaviors": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Signal handling behavior definitions",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_]*[a-z0-9]$|^[a-z]$",
+            "description": "Behavior identifier (snake_case)"
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable behavior name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Behavior purpose and execution pattern"
+          },
+          "phases": {
+            "type": "array",
+            "minItems": 1,
+            "description": "Ordered execution phases for this behavior",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Phase name"
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Phase actions and purpose"
+                }
+              },
+              "required": [
+                "name",
+                "description"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "phases"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "os_mappings": {
+      "type": "object",
+      "description": "Operating system signal and event mappings",
+      "properties": {
+        "unix": {
+          "type": "object",
+          "description": "Unix signal numbers (Linux standard)",
+          "additionalProperties": {
+            "type": "integer"
+          }
+        },
+        "windows": {
+          "type": "object",
+          "description": "Windows console event codes",
+          "additionalProperties": {
+            "type": "integer"
+          }
+        },
+        "platform_overrides": {
+          "type": "object",
+          "description": "Platform-specific signal number overrides",
+          "properties": {
+            "darwin": {
+              "type": "object",
+              "description": "macOS signal number overrides",
+              "additionalProperties": {
+                "type": "integer"
+              }
+            },
+            "freebsd": {
+              "type": "object",
+              "description": "FreeBSD signal number overrides",
+              "additionalProperties": {
+                "type": "integer"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "signal_to_event": {
+          "type": "object",
+          "description": "Unix signal to Windows event mapping table",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "required": [
+        "unix",
+        "windows",
+        "signal_to_event"
+      ],
+      "additionalProperties": false
+    },
+    "platform_support": {
+      "type": "array",
+      "description": "Platform support matrix for each signal",
+      "items": {
+        "type": "object",
+        "properties": {
+          "signal": {
+            "type": "string",
+            "pattern": "^SIG[A-Z0-9]+$",
+            "description": "Signal name"
+          },
+          "linux": {
+            "type": "string",
+            "enum": [
+              "native",
+              "unsupported"
+            ],
+            "description": "Linux support level"
+          },
+          "macos": {
+            "type": "string",
+            "enum": [
+              "native",
+              "unsupported"
+            ],
+            "description": "macOS support level"
+          },
+          "freebsd": {
+            "type": "string",
+            "enum": [
+              "native",
+              "unsupported"
+            ],
+            "description": "FreeBSD support level"
+          },
+          "windows": {
+            "type": "string",
+            "enum": [
+              "native",
+              "mapped",
+              "unsupported"
+            ],
+            "description": "Windows support level"
+          },
+          "fallback": {
+            "type": "string",
+            "enum": [
+              "http_admin_endpoint",
+              "exception_handling",
+              "timer_api"
+            ],
+            "description": "Fallback mechanism for unsupported platforms"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Platform support notes and guidance"
+          }
+        },
+        "required": [
+          "signal",
+          "linux",
+          "macos",
+          "freebsd",
+          "windows",
+          "notes"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "exit_codes": {
+      "type": "object",
+      "description": "Signal to exit code mapping (128+N pattern)",
+      "properties": {
+        "SIGTERM": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "SIGINT": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "SIGHUP": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "SIGQUIT": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "SIGPIPE": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "SIGALRM": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "SIGUSR1": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "SIGUSR2": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "SIGKILL": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "note": {
+          "type": "string",
+          "description": "Explanation of exit code pattern and cross-references"
+        }
+      },
+      "required": [
+        "SIGTERM",
+        "SIGINT",
+        "SIGHUP",
+        "note"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "description",
+    "version",
+    "signals",
+    "behaviors",
+    "os_mappings",
+    "exit_codes"
+  ],
+  "additionalProperties": false
+}

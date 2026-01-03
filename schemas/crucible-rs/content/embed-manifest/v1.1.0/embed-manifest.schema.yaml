@@ -1,0 +1,78 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://schemas.goneat.dev/content/embed-manifest-v1.1.0"
+title: "Goneat Content Embed Manifest"
+type: object
+additionalProperties: false
+required:
+  - version
+  - topics
+properties:
+  version:
+    type: string
+    const: "1.1.0"
+  asset_type:
+    type: string
+    description: "Name of the asset preset to apply when resolving content"
+  content_types:
+    type: array
+    description: "Glob patterns that constrain which files are eligible across topics"
+    items:
+      type: string
+      minLength: 1
+    uniqueItems: true
+  exclude_patterns:
+    type: array
+    description: "Global exclude patterns applied to every topic"
+    items:
+      type: string
+      minLength: 1
+    uniqueItems: true
+  target:
+    type: string
+    description: "Destination directory for embedded output (relative to repository root)"
+  topics:
+    type: object
+    minProperties: 1
+    additionalProperties:
+      type: object
+      additionalProperties: false
+      required:
+        - include
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        asset_type:
+          type: string
+          description: "Topic-specific asset type preset"
+        content_types:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          uniqueItems: true
+        include:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            minLength: 1
+        exclude:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          uniqueItems: true
+        tags:
+          type: array
+          items:
+            type: string
+            pattern: "^\\S+$"
+          uniqueItems: true
+        target:
+          type: string
+          description: "Override the manifest-level target for this topic"
+        override:
+          type: boolean
+          description: "Allow this topic to override files claimed by other manifests"

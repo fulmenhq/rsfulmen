@@ -1,0 +1,38 @@
+# Terminal overrides defaults (SSOT)
+version: "v1.0.0"
+last_updated: "2025-10-03"
+notes: |
+  Default emoji width overrides calibrated across common terminals.
+  Consumed by gofulmen/tsfulmen/etc. and layered with user/app overrides.
+terminals:
+  Apple_Terminal:
+    name: "macOS Terminal"
+    notes: "Generally follows Unicode width standards."
+  ghostty:
+    name: "Ghostty"
+    overrides:
+      "⏱️": 2
+      "☠️": 2
+      "☹️": 2
+      "⚠️": 2
+      "✌️": 2
+      "🎗️": 2
+      "🎟️": 2
+      "🖐️": 2
+      "🛠️": 2
+      "ℹ️": 2
+    notes: "Calibrated via interactive session (2025-09)."
+  iTerm.app:
+    name: "iTerm2"
+    overrides:
+      "⏱️": 2
+      "☠️": 2
+      "☹️": 2
+      "⚠️": 2
+      "✌️": 2
+      "🎗️": 2
+      "🎟️": 2
+      "🖐️": 2
+      "🛠️": 2
+      "ℹ️": 2
+    notes: "Uses same override set as Ghostty after calibration."

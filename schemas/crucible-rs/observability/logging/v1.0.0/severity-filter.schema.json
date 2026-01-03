@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/observability/logging/severity-filter-v1.0.0.json",
+  "title": "SeverityFilter",
+  "description": "Severity-based filtering with comparison operators for log event processing",
+  "type": "object",
+  "properties": {
+    "operator": {
+      "$ref": "definitions.schema.json#/$defs/comparisonOperator"
+    },
+    "level": {
+      "$ref": "definitions.schema.json#/$defs/severityName"
+    }
+  },
+  "required": [
+    "operator",
+    "level"
+  ],
+  "examples": [
+    {
+      "operator": "GE",
+      "level": "WARN",
+      "description": "Filter events with severity >= WARN (includes WARN, ERROR, FATAL)"
+    },
+    {
+      "operator": "LT",
+      "level": "ERROR",
+      "description": "Filter events with severity < ERROR (includes TRACE, DEBUG, INFO, WARN)"
+    },
+    {
+      "operator": "EQ",
+      "level": "ERROR",
+      "description": "Filter only ERROR events"
+    }
+  ],
+  "additionalProperties": false,
+  "$comment": "Implementation MUST convert severityName to severityLevel for numeric comparison. See definitions.schema.json#/$defs/severityMapping for canonical name→level mapping."
+}

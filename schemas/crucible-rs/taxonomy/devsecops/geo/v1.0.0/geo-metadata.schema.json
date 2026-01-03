@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/taxonomy/devsecops/geo/v1.0.0/geo-metadata.schema.json",
+  "title": "Fulmen Geo Metadata",
+  "description": "Metadata structure for geographic taxonomy including countries, grouped regions, and cloud-specific regions",
+  "type": "object",
+  "properties": {
+    "countries": {
+      "type": "array",
+      "description": "ISO 3166-1 alpha-2 countries",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Lowercase 2-letter country code",
+            "pattern": "^[a-z]{2}$"
+          },
+          "name": {
+            "type": "string",
+            "description": "Country name"
+          },
+          "isoAlpha2": {
+            "type": "string",
+            "description": "Official ISO 3166-1 alpha-2 code (uppercase)",
+            "pattern": "^[A-Z]{2}$"
+          },
+          "compliance": {
+            "type": "array",
+            "description": "Applicable regulatory frameworks",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "isoAlpha2"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "regions": {
+      "type": "array",
+      "description": "Grouped super-regions (e.g., EU with practical conventions)",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Lowercase region identifier",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "name": {
+            "type": "string",
+            "description": "Region name"
+          },
+          "countries": {
+            "type": "array",
+            "description": "Included country keys",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z]{2}$"
+            },
+            "uniqueItems": true,
+            "minItems": 1
+          },
+          "description": {
+            "type": "string",
+            "description": "Region description and conventions",
+            "minLength": 10,
+            "maxLength": 200
+          },
+          "compliance": {
+            "type": "array",
+            "description": "Applicable regulatory frameworks for region",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "countries",
+          "description"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "countries",
+    "regions"
+  ],
+  "additionalProperties": false
+}

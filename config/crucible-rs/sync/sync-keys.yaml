@@ -1,0 +1,74 @@
+version: "2025.10.0"
+keys:
+  - id: crucible.docs
+    description: "General documentation"
+    basePath: docs/
+    recommendedOutput: docs/crucible
+    tags: [docs]
+  - id: crucible.schemas.terminal
+    description: "Terminal schemas"
+    basePath: schemas/terminal/
+    recommendedOutput: schemas/terminal
+    tags: [schemas]
+  - id: crucible.schemas.observability.logging
+    description: "Logging schemas"
+    basePath: schemas/observability/logging/
+    recommendedOutput: schemas/observability/logging
+    tags: [schemas, logging]
+  - id: crucible.config.terminal
+    description: "Terminal config defaults"
+    basePath: config/terminal/
+    recommendedOutput: config/terminal
+    tags: [config]
+  - id: crucible.lang.go
+    description: "Go language wrapper assets"
+    basePath: lang/go/
+    recommendedOutput: lang/go
+    tags: [language, 'lang:go']
+    metadata:
+      sourceRepo: https://github.com/fulmenhq/crucible.git
+      sourcePathBase: lang/go
+  - id: crucible.lang.go.dev
+    description: "Go language wrapper assets (development convenience)"
+    basePath: lang/go
+    recommendedOutput: lang/go
+    tags: [language, 'lang:go', dev]
+    metadata:
+      sourceRepo: local
+      notes: "Use local replace directive during development; ensure CI fails if manifest references local paths."
+  - id: crucible.lang.ts
+    description: "TypeScript language wrapper assets"
+    basePath: lang/typescript/
+    recommendedOutput: lang/typescript
+    tags: [language, 'lang:ts']
+    metadata:
+      sourceRepo: https://github.com/fulmenhq/crucible.git
+      sourcePathBase: lang/typescript
+  - id: crucible.lang.ts.dev
+    description: "TypeScript language wrapper assets (development convenience)"
+    basePath: lang/typescript
+    recommendedOutput: lang/typescript
+    tags: [language, 'lang:ts', dev]
+    metadata:
+      sourceRepo: local
+      notes: "Use local path overrides during development; unit tests should prevent dev-only manifests from committing."
+  - id: crucible.content.binary-embed-manifest
+    description: "Binary embed manifest schemas"
+    basePath: schemas/content/binary-embed-manifest/
+    recommendedOutput: schemas/content/binary-embed-manifest
+    tags: [schemas, content]
+  - id: crucible.content.embed-manifest
+    description: "Advanced embed manifest schemas"
+    basePath: schemas/content/embed-manifest/
+    recommendedOutput: schemas/content/embed-manifest
+    tags: [schemas, content, advanced]
+  - id: crucible.schemas.config.repository.app-identity
+    description: "Application identity schema"
+    basePath: schemas/config/repository/app-identity/
+    recommendedOutput: schemas/config/repository/app-identity
+    tags: [schemas, config, app-identity]
+  - id: crucible.config.repository.app-identity
+    description: "Application identity config examples and fixtures"
+    basePath: config/repository/app-identity/
+    recommendedOutput: config/repository/app-identity
+    tags: [config, app-identity, fixtures]

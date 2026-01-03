@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/observability/logging/middleware-config-v1.0.0.json",
+  "title": "MiddlewareConfig",
+  "description": "Configuration for log event middleware (redaction, filtering, augmentation)",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "redaction",
+        "filter",
+        "augmentation",
+        "sampling",
+        "custom"
+      ],
+      "description": "Middleware type"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this middleware is active"
+    },
+    "priority": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Execution priority (lower runs first)"
+    },
+    "redaction": {
+      "$ref": "#/$defs/redactionConfig"
+    },
+    "filter": {
+      "$ref": "#/$defs/filterConfig"
+    },
+    "augmentation": {
+      "$ref": "#/$defs/augmentationConfig"
+    },
+    "sampling": {
+      "$ref": "#/$defs/samplingConfig"
+    }
+  },
+  "required": [
+    "type"
+  ],
+  "$defs": {
+    "redactionConfig": {
+      "type": "object",
+      "properties": {
+        "patterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Regex patterns to redact (e.g., credit cards, emails)"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Field names to redact completely"
+        },
+        "replacement": {
+          "type": "string",
+          "default": "[REDACTED]",
+          "description": "Replacement text for redacted content"
+        }
+      }
+    },
+    "filterConfig": {
+      "type": "object",
+      "properties": {
+        "minLevel": {
+          "type": "string",
+          "enum": [
+            "TRACE",
+            "DEBUG",
+            "INFO",
+            "WARN",
+            "ERROR",
+            "FATAL"
+          ],
+          "description": "Filter out events below this level (deprecated: use severityFilter for operator-based filtering)"
+        },
+        "severityFilter": {
+          "$ref": "severity-filter.schema.json",
+          "description": "Advanced severity filtering with comparison operators"
+        },
+        "exclude": {
+          "type": "object",
+          "properties": {
+            "loggers": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Logger names to exclude"
+            },
+            "components": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Components to exclude"
+            }
+          },
+          "description": "Exclusion rules"
+        }
+      }
+    },
+    "augmentationConfig": {
+      "type": "object",
+      "properties": {
+        "fields": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Fields to add to all events"
+        },
+        "dynamic": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Names of dynamic field providers (implementation-specific)"
+        }
+      }
+    },
+    "samplingConfig": {
+      "type": "object",
+      "properties": {
+        "rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Sampling rate (0.0 to 1.0)"
+        },
+        "byLevel": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "description": "Per-level sampling rates"
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "type": "redaction",
+      "enabled": true,
+      "priority": 10,
+      "redaction": {
+        "patterns": [
+          "\\d{16}",
+          "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"
+        ],
+        "fields": [
+          "password",
+          "token",
+          "apiKey"
+        ],
+        "replacement": "[REDACTED]"
+      }
+    },
+    {
+      "type": "sampling",
+      "enabled": true,
+      "priority": 5,
+      "sampling": {
+        "rate": 0.1,
+        "byLevel": {
+          "ERROR": 1.0,
+          "FATAL": 1.0,
+          "DEBUG": 0.01
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+$schema: https://schemas.fulmenhq.dev/library/foundry/v1.0.0/country-codes.schema.json
+description: Sample ISO 3166 country codes for helper-library lookups.
+version: v0.1.0
+countries:
+  - alpha2: US
+    alpha3: USA
+    numeric: '840'
+    name: United States of America
+    officialName: United States of America
+  - alpha2: CA
+    alpha3: CAN
+    numeric: '124'
+    name: Canada
+    officialName: Canada
+  - alpha2: JP
+    alpha3: JPN
+    numeric: '392'
+    name: Japan
+    officialName: Japan
+  - alpha2: DE
+    alpha3: DEU
+    numeric: '276'
+    name: Germany
+    officialName: Federal Republic of Germany
+  - alpha2: BR
+    alpha3: BRA
+    numeric: '076'
+    name: Brazil
+    officialName: Federative Republic of Brazil

@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.fulmenhq.dev/crucible/library/fulpack/v1.0.0/archive-entry",
+  "title": "Archive Entry",
+  "description": "Metadata for a single archive entry (returned by scan operation)",
+  "type": "object",
+  "required": [
+    "path",
+    "type",
+    "size"
+  ],
+  "properties": {
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Normalized entry path within archive"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "file",
+        "directory",
+        "symlink"
+      ],
+      "description": "Entry type from entry-types taxonomy"
+    },
+    "size": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Uncompressed size in bytes"
+    },
+    "compressed_size": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Compressed size in bytes (if available)"
+    },
+    "modified": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Modification timestamp (ISO 8601 format)"
+    },
+    "checksum": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 checksum (64 hex characters)"
+    },
+    "mode": {
+      "type": "string",
+      "pattern": "^0[0-7]{3,4}$",
+      "description": "Unix file permissions (octal string, e.g., '0644')"
+    },
+    "symlink_target": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Target path if type is symlink, null otherwise"
+    }
+  },
+  "additionalProperties": false
+}

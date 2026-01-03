@@ -1,0 +1,6 @@
+# Invalid: Missing required field (binary_name)
+app:
+  vendor: acmecorp
+  env_prefix: MYAPP_
+  config_name: myapp
+  description: Missing binary_name field

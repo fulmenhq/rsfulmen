@@ -1,0 +1,436 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/taxonomy/library/modules/v1.1.0/module-entry.schema.json",
+  "title": "Fulmen Helper Library Module Entry",
+  "description": "Schema for individual module entries in the helper library module registry. v1.1.0 adds weight classification, default_inclusion, rust language support, and per-language notes.",
+  "type": "object",
+  "required": [
+    "module_name",
+    "tier",
+    "description",
+    "rationale",
+    "evidence",
+    "languages",
+    "dependencies",
+    "status",
+    "added_version"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "module_name": {
+      "type": "string",
+      "description": "Unique identifier for the module (lowercase, no spaces)",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "examples": [
+        "config",
+        "pathfinder",
+        "similarity"
+      ]
+    },
+    "tier": {
+      "type": "string",
+      "enum": [
+        "core",
+        "common",
+        "specialized"
+      ],
+      "description": "Default tier assignment for the module across all languages"
+    },
+    "weight": {
+      "type": "string",
+      "enum": [
+        "light",
+        "heavy"
+      ],
+      "default": "light",
+      "description": "Dependency footprint classification. light = stdlib or serde-class deps only; heavy = significant dependency tree"
+    },
+    "default_inclusion": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether module is included in default/standard builds. false = opt-in only"
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief description of module functionality",
+      "minLength": 10
+    },
+    "rationale": {
+      "type": "string",
+      "description": "Rationale for tier assignment",
+      "minLength": 10
+    },
+    "evidence": {
+      "type": "object",
+      "description": "Pointers to module artifacts for validation",
+      "required": [
+        "has_schema",
+        "has_config"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "has_schema": {
+          "type": "boolean",
+          "description": "Whether module has associated JSON schemas"
+        },
+        "schema_path": {
+          "type": "string",
+          "description": "Path to schema directory (required if has_schema is true)",
+          "pattern": "^schemas/"
+        },
+        "has_config": {
+          "type": "boolean",
+          "description": "Whether module has associated config files"
+        },
+        "config_path": {
+          "type": "string",
+          "description": "Path to config directory (required if has_config is true)",
+          "pattern": "^config/"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "has_schema": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "schema_path"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "has_config": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "config_path"
+            ]
+          }
+        }
+      ]
+    },
+    "languages": {
+      "type": "object",
+      "description": "Language-specific implementation status. go/python/typescript required; rust optional in v1.1.0",
+      "required": [
+        "go",
+        "python",
+        "typescript"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "go": {
+          "$ref": "#/$defs/languageImplementation"
+        },
+        "python": {
+          "$ref": "#/$defs/languageImplementation"
+        },
+        "typescript": {
+          "$ref": "#/$defs/languageImplementation"
+        },
+        "rust": {
+          "$ref": "#/$defs/languageImplementation"
+        }
+      }
+    },
+    "dependencies": {
+      "type": "object",
+      "description": "Module dependencies",
+      "required": [
+        "required_modules",
+        "external_deps"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "required_modules": {
+          "type": "array",
+          "description": "Other Fulmen modules this module depends on",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "uniqueItems": true
+        },
+        "external_deps": {
+          "type": "object",
+          "description": "External dependencies per language",
+          "required": [
+            "go",
+            "python",
+            "typescript"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "go": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            },
+            "python": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            },
+            "typescript": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            },
+            "rust": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            }
+          }
+        }
+      }
+    },
+    "graduation_metrics": {
+      "type": "object",
+      "description": "Metrics for graduation tracking (required for specialized modules)",
+      "additionalProperties": false,
+      "properties": {
+        "size_loc": {
+          "type": "integer",
+          "description": "Lines of code",
+          "minimum": 0
+        },
+        "release_velocity": {
+          "type": "integer",
+          "description": "Number of releases between helper releases",
+          "minimum": 0
+        },
+        "adoption_rate_pct": {
+          "type": "number",
+          "description": "Percentage of helper users who install this extension",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "internal_coupling_pct": {
+          "type": "number",
+          "description": "Percentage of code that uses helper internals",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "experimental",
+        "deprecated",
+        "graduated"
+      ],
+      "description": "Current lifecycle status of the module"
+    },
+    "added_version": {
+      "type": "string",
+      "description": "Version when module was added",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "sunset_date": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO 8601 date when module must graduate or be removed (specialized only)"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "tier": {
+            "const": "core"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "languages": {
+            "properties": {
+              "go": {
+                "properties": {
+                  "status": {
+                    "not": {
+                      "const": "na"
+                    }
+                  },
+                  "tier_override": {
+                    "not": {}
+                  }
+                }
+              },
+              "python": {
+                "properties": {
+                  "status": {
+                    "not": {
+                      "const": "na"
+                    }
+                  },
+                  "tier_override": {
+                    "not": {}
+                  }
+                }
+              },
+              "typescript": {
+                "properties": {
+                  "status": {
+                    "not": {
+                      "const": "na"
+                    }
+                  },
+                  "tier_override": {
+                    "not": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "tier": {
+            "const": "specialized"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "graduation_metrics",
+          "sunset_date"
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "languageImplementation": {
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "available",
+            "planned",
+            "na"
+          ],
+          "description": "Implementation status for this language"
+        },
+        "tier_override": {
+          "type": "string",
+          "enum": [
+            "core",
+            "common",
+            "specialized"
+          ],
+          "description": "Override default tier for this language (not allowed for core modules)"
+        },
+        "package": {
+          "type": "string",
+          "description": "Package path/name (required if status is available)"
+        },
+        "version": {
+          "type": "string",
+          "description": "Version when module became available in this language",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "implementation": {
+          "type": "string",
+          "description": "How this module is implemented (e.g., 'Wraps stdlib X', 'Custom implementation using Y', 'Wraps third-party Z')",
+          "minLength": 10
+        },
+        "notes": {
+          "type": "string",
+          "description": "Language-specific build guidance (e.g., 'pulls jsonschema tree; must be feature-gated')"
+        },
+        "extras": {
+          "type": "array",
+          "description": "Python extras that include this module",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "optional_deps": {
+          "type": "array",
+          "description": "TypeScript optional dependencies needed for this module",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "rationale": {
+          "type": "string",
+          "description": "Rationale for tier_override or na status",
+          "minLength": 10
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "available"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "package",
+              "version"
+            ]
+          }
+        },
+        {
+          "if": {
+            "anyOf": [
+              {
+                "properties": {
+                  "tier_override": {
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "status": {
+                    "const": "na"
+                  }
+                }
+              }
+            ]
+          },
+          "then": {
+            "required": [
+              "rationale"
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

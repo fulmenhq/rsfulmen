@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/observability/logging/log-event-v1.0.0.json",
+  "title": "LogEvent",
+  "description": "Structured log event envelope for consistent telemetry across Fulmen libraries",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "$ref": "definitions.schema.json#/$defs/rfc3339Nano"
+    },
+    "severity": {
+      "$ref": "definitions.schema.json#/$defs/severityName"
+    },
+    "severityLevel": {
+      "$ref": "definitions.schema.json#/$defs/severityLevel",
+      "description": "Numeric severity for sorting/filtering (optional but recommended for runtime events)"
+    },
+    "message": {
+      "$ref": "definitions.schema.json#/$defs/logMessage"
+    },
+    "service": {
+      "$ref": "definitions.schema.json#/$defs/serviceName"
+    },
+    "component": {
+      "$ref": "definitions.schema.json#/$defs/componentName"
+    },
+    "logger": {
+      "$ref": "definitions.schema.json#/$defs/loggerName"
+    },
+    "environment": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Deployment environment (e.g., 'dev', 'staging', 'production')"
+    },
+    "context": {
+      "$ref": "definitions.schema.json#/$defs/context"
+    },
+    "contextId": {
+      "$ref": "definitions.schema.json#/$defs/contextId",
+      "description": "Identifier for the broader execution context (workflow, job, batch, etc.)"
+    },
+    "requestId": {
+      "$ref": "definitions.schema.json#/$defs/requestId",
+      "description": "Request identifier (HTTP X-Request-ID or CLI operation UUID)"
+    },
+    "correlationId": {
+      "$ref": "definitions.schema.json#/$defs/uuidV7",
+      "description": "Cross-service correlation identifier (UUIDv7 propagated across boundaries)"
+    },
+    "error": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8192,
+          "description": "Error message"
+        },
+        "type": {
+          "type": "string",
+          "maxLength": 256,
+          "description": "Error type or class"
+        },
+        "stack": {
+          "type": "string",
+          "maxLength": 65536,
+          "description": "Stack trace (max 64KB)"
+        }
+      },
+      "required": [
+        "message"
+      ],
+      "description": "Error information (required for ERROR/FATAL severity)"
+    },
+    "traceId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Distributed trace ID (REQUIRED when tracing is enabled)"
+    },
+    "spanId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Span ID within trace (REQUIRED when tracing is enabled)"
+    },
+    "parentSpanId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Parent span identifier for nested operations"
+    },
+    "tags": {
+      "$ref": "definitions.schema.json#/$defs/tags"
+    },
+    "eventId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Unique event identifier (optional)"
+    },
+    "operation": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Logical operation or handler name (CLI command, HTTP route, job step)"
+    },
+    "durationMs": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Operation duration in milliseconds"
+    },
+    "userId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Authenticated user identifier when applicable"
+    }
+  },
+  "required": [
+    "timestamp",
+    "severity",
+    "severityLevel",
+    "message",
+    "service"
+  ],
+  "examples": [
+    {
+      "timestamp": "2025-10-02T12:34:56.789012Z",
+      "severity": "INFO",
+      "severityLevel": 20,
+      "message": "Pathfinder scan completed",
+      "logger": "gofulmen.pathfinder",
+      "service": "gofulmen",
+      "component": "pathfinder",
+      "environment": "production",
+      "contextId": "pipeline-20251008",
+      "requestId": "req-01hcn7h3a6zyv4k73k4f4z6w7j",
+      "correlationId": "018db318-8c7f-7bc1-b3ff-b2e0e689a001",
+      "traceId": "0af7651916cd43dd8448eb211c80319c",
+      "spanId": "b7ad6b7169203331",
+      "operation": "pathfinder.scan",
+      "durationMs": 2450,
+      "context": {
+        "filesScanned": 1234,
+        "duration": "2.5s"
+      },
+      "tags": [
+        "scan",
+        "success"
+      ]
+    },
+    {
+      "timestamp": "2025-10-02T12:35:01.123456Z",
+      "severity": "ERROR",
+      "severityLevel": 40,
+      "message": "Failed to read file",
+      "logger": "gofulmen.pathfinder",
+      "service": "gofulmen",
+      "component": "pathfinder",
+      "environment": "production",
+      "requestId": "req-01hcn7h5a9ab1k0tpnttw40p2n",
+      "correlationId": "018db318-8d51-7f96-9f82-0d246bc4d4cb",
+      "error": {
+        "message": "permission denied",
+        "type": "PathAccessError",
+        "stack": "..."
+      },
+      "context": {
+        "path": "/restricted/file.txt"
+      },
+      "tags": [
+        "error",
+        "filesystem"
+      ]
+    }
+  ]
+}

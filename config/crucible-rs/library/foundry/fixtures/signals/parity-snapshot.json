@@ -1,0 +1,162 @@
+{
+  "$schema": "https://schemas.fulmenhq.dev/library/foundry/v1.0.0/signals.schema.json",
+  "description": "Parity snapshot for cross-language signal handling testing",
+  "version": "v1.0.0",
+  "fixtures": {
+    "minimal": {
+      "description": "Minimal signal configuration with required signals only",
+      "signals_count": 3,
+      "required_signals": [
+        "SIGTERM",
+        "SIGINT",
+        "SIGHUP"
+      ],
+      "behaviors_count": 2,
+      "has_platform_overrides": false,
+      "has_custom_handlers": false
+    },
+    "complete": {
+      "description": "Complete signal configuration with all 8 standard signals",
+      "signals_count": 8,
+      "all_signals": [
+        "SIGTERM",
+        "SIGINT",
+        "SIGHUP",
+        "SIGQUIT",
+        "SIGPIPE",
+        "SIGALRM",
+        "SIGUSR1",
+        "SIGUSR2"
+      ],
+      "behaviors_count": 6,
+      "has_platform_overrides": true,
+      "has_custom_handlers": true,
+      "has_double_tap": true,
+      "has_reload_strategy": true
+    },
+    "custom_behavior": {
+      "description": "Configuration demonstrating custom signal handlers",
+      "signals_count": 5,
+      "signals": [
+        "SIGTERM",
+        "SIGINT",
+        "SIGHUP",
+        "SIGUSR1",
+        "SIGUSR2"
+      ],
+      "custom_signals": [
+        "SIGUSR1",
+        "SIGUSR2"
+      ],
+      "behaviors_count": 3,
+      "has_platform_overrides": true,
+      "platform_override_signals": [
+        "SIGUSR1",
+        "SIGUSR2"
+      ]
+    }
+  },
+  "test_expectations": {
+    "signal_validation": {
+      "required_fields": [
+        "id",
+        "name",
+        "unix_number",
+        "description",
+        "default_behavior",
+        "exit_code"
+      ],
+      "optional_fields": [
+        "windows_event",
+        "platform_overrides",
+        "timeout_seconds",
+        "cleanup_actions",
+        "double_tap_window_seconds",
+        "double_tap_message",
+        "double_tap_behavior",
+        "double_tap_exit_code",
+        "reload_strategy",
+        "validation_required",
+        "usage_notes",
+        "windows_fallback"
+      ],
+      "valid_behaviors": [
+        "graceful_shutdown",
+        "graceful_shutdown_with_double_tap",
+        "reload_via_restart",
+        "immediate_exit",
+        "custom",
+        "observe_only"
+      ],
+      "exit_code_range": {
+        "min": 0,
+        "max": 255
+      },
+      "signal_number_range": {
+        "min": 1,
+        "max": 64
+      }
+    },
+    "behavior_validation": {
+      "required_fields": [
+        "id",
+        "name",
+        "description",
+        "phases"
+      ],
+      "phase_required_fields": [
+        "name",
+        "description"
+      ]
+    },
+    "os_mappings_validation": {
+      "required_sections": [
+        "unix",
+        "windows",
+        "signal_to_event"
+      ],
+      "optional_sections": [
+        "platform_overrides"
+      ]
+    },
+    "exit_code_mapping": {
+      "SIGTERM": 143,
+      "SIGINT": 130,
+      "SIGHUP": 129,
+      "SIGQUIT": 131,
+      "SIGPIPE": 141,
+      "SIGALRM": 142,
+      "SIGUSR1": 138,
+      "SIGUSR2": 140
+    },
+    "platform_override_signals": {
+      "SIGUSR1": {
+        "linux": 10,
+        "darwin": 30,
+        "freebsd": 30
+      },
+      "SIGUSR2": {
+        "linux": 12,
+        "darwin": 31,
+        "freebsd": 31
+      }
+    }
+  },
+  "cross_language_usage": {
+    "description": "This parity snapshot enables helper libraries to verify signal handling implementation consistency across Go, Python, TypeScript, Rust, and C#",
+    "usage": [
+      "Load this JSON file in your language's test suite",
+      "Verify your signal catalog matches the expected structure",
+      "Validate signal-to-exit-code mappings",
+      "Test platform-specific signal number handling",
+      "Ensure behavior definitions are consistent"
+    ],
+    "example_tests": [
+      "test_signal_catalog_has_required_signals()",
+      "test_exit_codes_match_posix_pattern()",
+      "test_platform_overrides_handled_correctly()",
+      "test_behavior_phases_match_specification()",
+      "test_windows_event_mappings_correct()"
+    ]
+  }
+}

@@ -1,0 +1,104 @@
+$schema: https://schemas.fulmenhq.dev/web/styling/v1.0.0/site-styling.schema.json
+description: Default site styling configuration for Fulmen web templates
+version: v1.0.0
+# Example styling configuration with OSS fonts and accessible color palettes
+# CRDL instances should customize these values for their branding
+themes:
+  light:
+    background: "#ffffff"
+    foreground: "#111827"
+    accent: "#3b82f6"
+    success: "#10b981"
+    failure: "#ef4444"
+    warning: "#f59e0b"
+    critical: "#8b5cf6"
+    # Optional semantic colors for callouts
+    info: "#0ea5e9"
+    note: "#14b8a6"
+    caution: "#fb923c"
+    # Optional categorical palette for charts/data viz (accessible sequence)
+    categorical:
+      - "#3b82f6" # Blue
+      - "#10b981" # Green
+      - "#f59e0b" # Orange
+      - "#8b5cf6" # Purple
+      - "#ef4444" # Red
+      - "#14b8a6" # Teal
+      - "#f97316" # Deep Orange
+      - "#6366f1" # Indigo
+  dark:
+    background: "#111827"
+    foreground: "#f9fafb"
+    accent: "#60a5fa"
+    success: "#34d399"
+    failure: "#f87171"
+    warning: "#fbbf24"
+    critical: "#a78bfa"
+    # Optional semantic colors for callouts
+    info: "#38bdf8"
+    note: "#2dd4bf"
+    caution: "#fdba74"
+    # Optional categorical palette for charts/data viz (accessible sequence)
+    categorical:
+      - "#60a5fa" # Blue
+      - "#34d399" # Green
+      - "#fbbf24" # Orange
+      - "#a78bfa" # Purple
+      - "#f87171" # Red
+      - "#2dd4bf" # Teal
+      - "#fb923c" # Deep Orange
+      - "#818cf8" # Indigo
+typography:
+  fonts:
+    body:
+      family: "Inter, sans-serif"
+      src: /fonts/inter.woff2
+      weights: [400, 700]
+      size:
+        base: 16px
+    code:
+      family: "JetBrains Mono, monospace"
+      src: /fonts/jetbrains-mono.woff2
+      weights: [400, 500]
+      size:
+        base: 14px
+    heading:
+      family: "Inter, sans-serif"
+      src: /fonts/inter.woff2
+      weights: [600, 700, 800]
+      size:
+        base: 24px
+  # Embed fonts at build time (true) or use CDN (false)
+  embed: true
+  # Base line height for readability
+  lineHeight: 1.6
+icons:
+  # Icon registry: mdi (Material Design Icons), heroicons, lucide, tabler
+  registry: mdi
+  # CSS class prefix for icons
+  prefix: "icon-"
+  # Default icon size in pixels
+  size: 24
+  # Custom icons (SVGs in public/icons/)
+  custom:
+    - name: schema
+      src: /icons/schema.svg
+      size: 20
+    - name: codex
+      src: /icons/codex.svg
+      size: 24
+  # Icon fill colors for light/dark themes
+  palette:
+    light: "#111827"
+    dark: "#f9fafb"
+# Accessibility constraints (WCAG 2.1 AA baseline)
+a11y:
+  minContrast:
+    # Minimum contrast ratio for normal text (AA: 4.5:1)
+    normal: 4.5
+    # Minimum contrast ratio for large text (AA: 3:1)
+    large: 3.0
+    # Minimum contrast ratio for UI components/graphics
+    graphics: 3.0
+  # WCAG conformance level (AA or AAA)
+  level: AA

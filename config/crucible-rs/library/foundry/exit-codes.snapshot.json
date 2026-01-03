@@ -1,0 +1,375 @@
+{
+  "version": "v1.0.0",
+  "codes": {
+    "0": {
+      "name": "EXIT_SUCCESS",
+      "category": "standard",
+      "description": "Successful execution",
+      "context": "Command completed without errors"
+    },
+    "1": {
+      "name": "EXIT_FAILURE",
+      "category": "standard",
+      "description": "Generic failure (unspecified error)",
+      "context": "Use when no more specific exit code applies"
+    },
+    "10": {
+      "name": "EXIT_PORT_IN_USE",
+      "category": "networking",
+      "description": "Specified port is already in use",
+      "context": "Server startup when port unavailable and fail_if_unavailable strategy"
+    },
+    "11": {
+      "name": "EXIT_PORT_RANGE_EXHAUSTED",
+      "category": "networking",
+      "description": "No available ports in configured range",
+      "context": "Server startup when all ports in environment range occupied"
+    },
+    "12": {
+      "name": "EXIT_INSTANCE_ALREADY_RUNNING",
+      "category": "networking",
+      "description": "Another instance already running on target port",
+      "context": "Server startup when PID registry shows active process on port"
+    },
+    "13": {
+      "name": "EXIT_NETWORK_UNREACHABLE",
+      "category": "networking",
+      "description": "Network destination unreachable",
+      "context": "Client connections, health checks, external service validation"
+    },
+    "14": {
+      "name": "EXIT_CONNECTION_REFUSED",
+      "category": "networking",
+      "description": "Connection refused by remote host",
+      "context": "Database connections, API endpoints, upstream services"
+    },
+    "15": {
+      "name": "EXIT_CONNECTION_TIMEOUT",
+      "category": "networking",
+      "description": "Connection attempt timed out",
+      "context": "Slow networks, unresponsive services, firewall blocks"
+    },
+    "20": {
+      "name": "EXIT_CONFIG_INVALID",
+      "category": "configuration",
+      "description": "Configuration file failed validation",
+      "context": "Startup validation, schema mismatches, invalid YAML/JSON",
+      "retry_hint": "no_retry"
+    },
+    "21": {
+      "name": "EXIT_MISSING_DEPENDENCY",
+      "category": "configuration",
+      "description": "Required dependency not found",
+      "context": "Missing binaries, libraries, or runtime requirements",
+      "retry_hint": "investigate"
+    },
+    "22": {
+      "name": "EXIT_SSOT_VERSION_MISMATCH",
+      "category": "configuration",
+      "description": "SSOT (Crucible) version incompatible",
+      "context": "Helper library detects unsupported Crucible version",
+      "retry_hint": "no_retry"
+    },
+    "23": {
+      "name": "EXIT_CONFIG_FILE_NOT_FOUND",
+      "category": "configuration",
+      "description": "Required configuration file not found",
+      "context": "Explicitly specified config path doesn't exist"
+    },
+    "24": {
+      "name": "EXIT_ENVIRONMENT_INVALID",
+      "category": "configuration",
+      "description": "Invalid or unsupported environment specification",
+      "context": "Unknown environment name, missing environment config"
+    },
+    "30": {
+      "name": "EXIT_HEALTH_CHECK_FAILED",
+      "category": "runtime",
+      "description": "Health check endpoint returned non-healthy status",
+      "context": "Startup health validation, readiness probes",
+      "retry_hint": "retry"
+    },
+    "31": {
+      "name": "EXIT_DATABASE_UNAVAILABLE",
+      "category": "runtime",
+      "description": "Database connection failed or unavailable",
+      "context": "Startup connection checks, critical query failures",
+      "retry_hint": "retry"
+    },
+    "32": {
+      "name": "EXIT_EXTERNAL_SERVICE_UNAVAILABLE",
+      "category": "runtime",
+      "description": "Required external service unavailable",
+      "context": "API dependencies, message queues, cache servers"
+    },
+    "33": {
+      "name": "EXIT_RESOURCE_EXHAUSTED",
+      "category": "runtime",
+      "description": "System resources exhausted (memory, disk, file descriptors)",
+      "context": "Out-of-memory, disk full, too many open files",
+      "retry_hint": "investigate"
+    },
+    "34": {
+      "name": "EXIT_OPERATION_TIMEOUT",
+      "category": "runtime",
+      "description": "Operation exceeded timeout threshold",
+      "context": "Long-running tasks, async operations, batch processing",
+      "retry_hint": "retry"
+    },
+    "40": {
+      "name": "EXIT_INVALID_ARGUMENT",
+      "category": "usage",
+      "description": "Invalid command-line argument or flag value",
+      "context": "Type errors, out-of-range values, malformed input"
+    },
+    "41": {
+      "name": "EXIT_MISSING_REQUIRED_ARGUMENT",
+      "category": "usage",
+      "description": "Required command-line argument not provided",
+      "context": "Missing --config, --port, or other required flags"
+    },
+    "50": {
+      "name": "EXIT_PERMISSION_DENIED",
+      "category": "permissions",
+      "description": "Insufficient permissions for operation",
+      "context": "File access, port binding (<1024), privileged operations"
+    },
+    "51": {
+      "name": "EXIT_FILE_NOT_FOUND",
+      "category": "permissions",
+      "description": "Required file not found",
+      "context": "Assets, templates, data files (not config - use 23)"
+    },
+    "52": {
+      "name": "EXIT_DIRECTORY_NOT_FOUND",
+      "category": "permissions",
+      "description": "Required directory not found",
+      "context": "State directories, log paths, data directories"
+    },
+    "53": {
+      "name": "EXIT_FILE_READ_ERROR",
+      "category": "permissions",
+      "description": "Error reading file",
+      "context": "Corrupt files, I/O errors, encoding issues"
+    },
+    "54": {
+      "name": "EXIT_FILE_WRITE_ERROR",
+      "category": "permissions",
+      "description": "Error writing file",
+      "context": "Disk full, read-only filesystem, permission errors"
+    },
+    "60": {
+      "name": "EXIT_DATA_INVALID",
+      "category": "data",
+      "description": "Input data failed validation",
+      "context": "Schema validation, business rule violations"
+    },
+    "61": {
+      "name": "EXIT_PARSE_ERROR",
+      "category": "data",
+      "description": "Error parsing input data",
+      "context": "Malformed JSON/YAML/XML, syntax errors"
+    },
+    "62": {
+      "name": "EXIT_TRANSFORMATION_FAILED",
+      "category": "data",
+      "description": "Data transformation or conversion failed",
+      "context": "Type conversions, format transformations, encoding changes"
+    },
+    "63": {
+      "name": "EXIT_DATA_CORRUPT",
+      "category": "data",
+      "description": "Data corruption detected",
+      "context": "Checksum failures, integrity violations"
+    },
+    "64": {
+      "name": "EXIT_USAGE",
+      "category": "usage",
+      "description": "Command-line usage error",
+      "context": "BSD sysexits.h EX_USAGE - wrong number of arguments, bad syntax",
+      "bsd_equivalent": "EX_USAGE"
+    },
+    "70": {
+      "name": "EXIT_AUTHENTICATION_FAILED",
+      "category": "security",
+      "description": "Authentication failed",
+      "context": "Invalid credentials, expired tokens, auth service unavailable"
+    },
+    "71": {
+      "name": "EXIT_AUTHORIZATION_FAILED",
+      "category": "security",
+      "description": "Authorization failed (authenticated but insufficient permissions)",
+      "context": "RBAC failures, scope violations, resource access denied"
+    },
+    "72": {
+      "name": "EXIT_SECURITY_VIOLATION",
+      "category": "security",
+      "description": "Security policy violation detected",
+      "context": "Suspicious activity, rate limit exceeded, IP blocklist"
+    },
+    "73": {
+      "name": "EXIT_CERTIFICATE_INVALID",
+      "category": "security",
+      "description": "TLS/SSL certificate validation failed",
+      "context": "Expired certs, untrusted CAs, hostname mismatches",
+      "bsd_equivalent": "EX_PROTOCOL"
+    },
+    "80": {
+      "name": "EXIT_METRICS_UNAVAILABLE",
+      "category": "observability",
+      "description": "Metrics endpoint or collection system unavailable",
+      "context": "Use for observability-focused tools (Prometheus exporters, StatsD agents).\nWorkhorses SHOULD log warning and continue unless configured to fail-fast.\n"
+    },
+    "81": {
+      "name": "EXIT_TRACING_FAILED",
+      "category": "observability",
+      "description": "Distributed tracing system unavailable",
+      "context": "OTLP exporter failed, Jaeger collector unreachable"
+    },
+    "82": {
+      "name": "EXIT_LOGGING_FAILED",
+      "category": "observability",
+      "description": "Logging system unavailable or misconfigured",
+      "context": "Log aggregator unreachable, log file unwritable"
+    },
+    "83": {
+      "name": "EXIT_ALERT_SYSTEM_FAILED",
+      "category": "observability",
+      "description": "Alerting system unavailable",
+      "context": "PagerDuty API failed, Slack webhook unreachable"
+    },
+    "84": {
+      "name": "EXIT_STRUCTURED_LOGGING_FAILED",
+      "category": "observability",
+      "description": "Structured logging system unavailable",
+      "context": "JSON log aggregator unreachable, log schema validation failed"
+    },
+    "91": {
+      "name": "EXIT_TEST_FAILURE",
+      "category": "testing",
+      "description": "One or more tests failed",
+      "context": "Test assertions failed, expected behavior not met.\nMaps to pytest exit code 1, Go test failure, Jest failure.\n"
+    },
+    "92": {
+      "name": "EXIT_TEST_ERROR",
+      "category": "testing",
+      "description": "Test execution error (not test failure)",
+      "context": "Test setup failed, fixture unavailable, test harness error.\nMaps to pytest exit code 3 (internal error).\n"
+    },
+    "93": {
+      "name": "EXIT_TEST_INTERRUPTED",
+      "category": "testing",
+      "description": "Test run interrupted by user or system",
+      "context": "Ctrl+C during tests, system signal, user cancellation.\nMaps to pytest exit code 2.\n"
+    },
+    "94": {
+      "name": "EXIT_TEST_USAGE_ERROR",
+      "category": "testing",
+      "description": "Test command usage error",
+      "context": "Invalid test arguments, bad configuration.\nMaps to pytest exit code 4.\n"
+    },
+    "95": {
+      "name": "EXIT_TEST_NO_TESTS_COLLECTED",
+      "category": "testing",
+      "description": "No tests found or all tests skipped",
+      "context": "Empty test suite, all tests deselected or skipped.\nMaps to pytest exit code 5.\n"
+    },
+    "96": {
+      "name": "EXIT_COVERAGE_THRESHOLD_NOT_MET",
+      "category": "testing",
+      "description": "Test coverage below required threshold",
+      "context": "Code coverage validation, quality gate failure"
+    },
+    "124": {
+      "name": "EXIT_TIMEOUT",
+      "category": "shell",
+      "description": "Command timed out before completion",
+      "context": "GNU timeout or similar utility terminated command after deadline"
+    },
+    "125": {
+      "name": "EXIT_TIMEOUT_INTERNAL",
+      "category": "shell",
+      "description": "Timeout utility itself failed",
+      "context": "Error in timeout tool before or during command execution (not command failure)"
+    },
+    "126": {
+      "name": "EXIT_CANNOT_EXECUTE",
+      "category": "shell",
+      "description": "Command found but could not be executed",
+      "context": "Permission denied, not executable, exec format error",
+      "bsd_equivalent": "EX_NOPERM (partial)"
+    },
+    "127": {
+      "name": "EXIT_NOT_FOUND",
+      "category": "shell",
+      "description": "Command not found",
+      "context": "Executable not found in PATH or specified path does not exist",
+      "bsd_equivalent": "EX_UNAVAILABLE (partial)"
+    },
+    "129": {
+      "name": "EXIT_SIGNAL_HUP",
+      "category": "signals",
+      "description": "Hangup signal (SIGHUP) - config reload via restart",
+      "context": "Config reload via restart-based pattern (mandatory schema validation).\nProcess exits with 129, supervisor restarts with new config.\nSee signals.yaml for reload behavior definition.",
+      "bsd_equivalent": "128 + 1"
+    },
+    "130": {
+      "name": "EXIT_SIGNAL_INT",
+      "category": "signals",
+      "description": "Interrupt signal (SIGINT) - user interrupt with Ctrl+C double-tap",
+      "context": "Ctrl+C pressed. First tap initiates graceful shutdown, second within 2s forces immediate exit.\nSame exit code (130) for both graceful and force modes.\nSee signals.yaml for double-tap behavior definition.",
+      "bsd_equivalent": "128 + 2"
+    },
+    "131": {
+      "name": "EXIT_SIGNAL_QUIT",
+      "category": "signals",
+      "description": "Quit signal (SIGQUIT) - immediate exit",
+      "context": "Ctrl+\\ on Unix, Ctrl+Break on Windows. Immediate termination without cleanup.\nUse for emergency shutdown or debugging (core dumps).",
+      "bsd_equivalent": "128 + 3"
+    },
+    "137": {
+      "name": "EXIT_SIGNAL_KILL",
+      "category": "signals",
+      "description": "Kill signal (SIGKILL)",
+      "context": "Forceful termination, non-graceful shutdown (not catchable)",
+      "bsd_equivalent": "128 + 9",
+      "python_note": "Cannot be caught in Python (OS-level)"
+    },
+    "138": {
+      "name": "EXIT_SIGNAL_USR1",
+      "category": "signals",
+      "description": "User-defined signal 1 (SIGUSR1) - custom handler",
+      "context": "Application-specific signal (e.g., reopen logs, dump stats, trigger profiling).\nApplications register custom handlers. Exit code 138 on Linux (128+10).\nPlatform differences: macOS/FreeBSD use signal 30 (exit 158), not 10."
+    },
+    "140": {
+      "name": "EXIT_SIGNAL_USR2",
+      "category": "signals",
+      "description": "User-defined signal 2 (SIGUSR2) - custom handler",
+      "context": "Application-specific signal (e.g., toggle debug mode, rotate credentials).\nApplications register custom handlers. Exit code 140 on Linux (128+12).\nPlatform differences: macOS/FreeBSD use signal 31 (exit 159), not 12."
+    },
+    "141": {
+      "name": "EXIT_SIGNAL_PIPE",
+      "category": "signals",
+      "description": "Broken pipe (SIGPIPE) - observe only",
+      "context": "Writing to closed pipe/socket. Fulmen default is observe_only (log + graceful exit).\nApplications may override to ignore for network services.\nSee signals.yaml for SIGPIPE handling guidance.",
+      "bsd_equivalent": "128 + 13",
+      "python_note": "Raised as BrokenPipeError exception"
+    },
+    "142": {
+      "name": "EXIT_SIGNAL_ALRM",
+      "category": "signals",
+      "description": "Alarm signal (SIGALRM) - watchdog timeout",
+      "context": "Watchdog timer expired. Treat as timeout-induced exit.\nWatchdog pattern out of scope for v1.0.0 module implementations.",
+      "bsd_equivalent": "128 + 14",
+      "python_note": "Supported by signal module, rarely used in practice"
+    },
+    "143": {
+      "name": "EXIT_SIGNAL_TERM",
+      "category": "signals",
+      "description": "Termination signal (SIGTERM) - graceful shutdown",
+      "context": "Graceful shutdown requested by container orchestrator or process supervisor.\nStandard 30-second timeout for cleanup. Applications run cleanup handlers before exit.\nSee signals.yaml for graceful shutdown behavior definition.",
+      "bsd_equivalent": "128 + 15",
+      "python_note": "Default signal for graceful shutdown"
+    }
+  }
+}

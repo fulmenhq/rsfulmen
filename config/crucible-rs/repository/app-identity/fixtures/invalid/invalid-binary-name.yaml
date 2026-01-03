@@ -1,0 +1,7 @@
+# Invalid: binary_name contains uppercase (must be lowercase)
+app:
+  binary_name: MyApp
+  vendor: acmecorp
+  env_prefix: MYAPP_
+  config_name: myapp
+  description: Binary name has invalid uppercase characters

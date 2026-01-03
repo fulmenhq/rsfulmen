@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/taxonomy/devsecops/infra-phases/v1.0.0/infra-phases-key.schema.json",
+  "title": "Fulmen Infra Phases Key",
+  "description": "Enum of canonical infrastructure deployment phase identifiers for DevSecOps schemas",
+  "type": "string",
+  "enum": [
+    "bootstrap",
+    "secrets",
+    "network",
+    "storage",
+    "compute"
+  ],
+  "examples": [
+    "bootstrap"
+  ]
+}

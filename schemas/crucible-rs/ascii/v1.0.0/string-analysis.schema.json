@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/ascii/string-analysis-v1.0.0.json",
+  "title": "StringAnalysis",
+  "description": "Analysis results for string properties including Unicode-aware width calculation",
+  "type": "object",
+  "properties": {
+    "length": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total character length of the string"
+    },
+    "width": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Display width accounting for Unicode characters"
+    },
+    "hasUnicode": {
+      "type": "boolean",
+      "description": "Whether the string contains Unicode characters"
+    },
+    "lineCount": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of lines in the string"
+    },
+    "wordCount": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of words in the string"
+    },
+    "isMultiline": {
+      "type": "boolean",
+      "description": "Whether the string contains multiple lines"
+    }
+  },
+  "required": [
+    "length",
+    "width",
+    "hasUnicode",
+    "lineCount",
+    "wordCount",
+    "isMultiline"
+  ]
+}

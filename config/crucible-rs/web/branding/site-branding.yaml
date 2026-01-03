@@ -1,0 +1,21 @@
+$schema: https://schemas.fulmenhq.dev/web/branding/v1.0.0/site-branding.schema.json
+description: Default site branding configuration for Fulmen web templates
+version: v1.0.0
+# Example branding configuration
+# CRDL instances should customize these values for their specific site
+name: Fulmen Web Template
+tagline: Production-grade web template with standardized branding
+logo:
+  src: /logo.svg
+  alt: Fulmen Web Template Logo
+  width: 120
+  height: 40
+favicon: /favicon.svg
+appIcon: /app-icon.png
+# Layout variants:
+# - logo_only: Logo includes text (no separate name/tagline)
+# - logo_left_text_right: Horizontal alignment with logo on left
+# - logo_top_text_bottom: Vertical stack with logo on top
+# - text_only: No logo, just name/tagline
+# - gridbox_logo_text: Flex/grid centered layout
+logoPresentation: logo_left_text_right

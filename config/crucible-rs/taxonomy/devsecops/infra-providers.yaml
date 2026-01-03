@@ -1,0 +1,97 @@
+# Fulmen infrastructure providers taxonomy (machine-readable source)
+# Status: EXPERIMENTAL - Per ADR-0011, breaking changes allowed until L'Orage Central v0.2.0
+version: "0.2.9"
+providers:
+  - key: doc
+    name: DigitalOcean
+    description: Cloud platform for droplets, Kubernetes, and Spaces storage.
+    tofuSupport: official
+    regions:
+      - key: nyc3
+        geo: us
+        description: New York, US; North America east coast availability.
+      - key: sfo3
+        geo: us
+        description: San Francisco, US; North America west coast availability.
+      - key: ams3
+        geo: eu
+        description: Amsterdam, Netherlands; GDPR compliant European region.
+    sdkLangs:
+      - go
+  - key: aws
+    name: Amazon Web Services
+    description: Comprehensive cloud platform with compute, storage, and managed services.
+    tofuSupport: official
+    regions:
+      - key: us-east-1
+        geo: us
+        description: Northern Virginia, US; HIPAA eligible, primary AWS region.
+      - key: us-west-2
+        geo: us
+        description: Oregon, US; west coast availability with renewable energy.
+      - key: eu-west-1
+        geo: eu
+        description: Ireland, EU; GDPR compliant European region.
+      - key: eu-central-1
+        geo: de
+        description: Frankfurt, Germany; GDPR compliant, EU core region.
+    sdkLangs:
+      - go
+      - python
+  - key: gcp
+    name: Google Cloud Platform
+    description: Google's cloud infrastructure with compute, data, and AI services.
+    tofuSupport: official
+    regions:
+      - key: us-central1
+        geo: us
+        description: Iowa, US; central US availability with carbon-neutral operation.
+      - key: us-west1
+        geo: us
+        description: Oregon, US; west coast availability with renewable energy.
+      - key: europe-west1
+        geo: eu
+        description: Belgium, EU; GDPR compliant European region.
+    sdkLangs:
+      - go
+      - python
+  - key: azure
+    name: Microsoft Azure
+    description: Microsoft's enterprise cloud platform with compute, data, and identity services.
+    tofuSupport: official
+    regions:
+      - key: eastus
+        geo: us
+        description: Virginia, US; primary Azure region for North America.
+      - key: westus2
+        geo: us
+        description: Washington, US; west coast availability with low latency.
+      - key: westeurope
+        geo: eu
+        description: Netherlands, EU; GDPR compliant European region.
+    sdkLangs:
+      - go
+      - python
+  - key: cloudflare
+    name: Cloudflare
+    description: Edge network with CDN, DDoS protection, and zero-trust security.
+    tofuSupport: community
+    regions:
+      - key: global
+        geo: na
+        description: Global edge network with anycast routing (primary ops in North America).
+    sdkLangs:
+      - go
+  - key: hetzner
+    name: Hetzner Cloud
+    description: European cloud hosting with cost-effective compute and storage.
+    tofuSupport: community
+    regions:
+      - key: fsn1
+        geo: de
+        description: Falkenstein, Germany; European data center with GDPR compliance.
+      - key: nbg1
+        geo: de
+        description: Nuremberg, Germany; European data center with GDPR compliance.
+    sdkLangs:
+      - go

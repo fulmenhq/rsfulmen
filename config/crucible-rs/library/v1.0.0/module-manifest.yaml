@@ -1,0 +1,178 @@
+# Fulmen helper module manifest (v2025.10.3)
+version: "2025.10.3"
+lastUpdated: "2025-10-23"
+modules:
+  - id: config-path-api
+    tier: core
+    requirement: mandatory
+    description: Platform-aware helpers for Fulmen config/data/cache directories.
+    coverage:
+      - language: go
+        target: 95
+      - language: python
+        target: 90
+      - language: typescript
+        target: 85
+  - id: three-layer-config
+    tier: core
+    requirement: mandatory
+    description: Load configuration from defaults, user overrides, and runtime inputs.
+    coverage:
+      - language: go
+        target: 95
+      - language: python
+        target: 90
+      - language: typescript
+        target: 85
+  - id: schema-validation
+    tier: core
+    requirement: mandatory
+    description: Schema discovery, validation helpers, and goneat integrations.
+    coverage:
+      - language: go
+        target: 95
+      - language: python
+        target: 90
+      - language: typescript
+        target: 85
+  - id: crucible-shim
+    tier: core
+    requirement: mandatory
+    description: Accessors for embedded Crucible assets (schemas, docs, templates).
+    coverage:
+      - language: go
+        target: 95
+      - language: python
+        target: 90
+      - language: typescript
+        target: 85
+  - id: fuldx-bootstrap
+    tier: core
+    requirement: mandatory
+    description: FulDX installation workflow and tooling manifest helpers.
+    coverage:
+      - language: go
+        target: 90
+      - language: python
+        target: 90
+      - language: typescript
+        target: 80
+  - id: ssot-sync
+    tier: core
+    requirement: mandatory
+    description: FulDX-driven sync of Crucible assets and index regeneration.
+    coverage:
+      - language: go
+        target: 90
+      - language: python
+        target: 90
+      - language: typescript
+        target: 80
+  - id: observability-logging
+    tier: core
+    requirement: mandatory
+    description: Structured logging helpers aligned with Crucible logging standards.
+    coverage:
+      - language: go
+        target: 95
+      - language: python
+        target: 95
+      - language: typescript
+        target: 90
+  - id: foundry
+    tier: core
+    requirement: mandatory
+    description: >
+      Common reference data, patterns, and text utilities including pattern catalogs (regex/glob/literal), HTTP status groups, country codes, MIME types, text similarity (Levenshtein distance/scoring), and normalization (Unicode case folding, accent stripping).
+
+    capabilities:
+      - country_codes
+      - http_statuses
+      - mime_types
+      - patterns
+      - text_similarity
+      - text_normalization
+    coverage:
+      - language: go
+        target: 95
+      - language: python
+        target: 95
+      - language: typescript
+        target: 95
+  - id: error-handling-propagation
+    tier: core
+    requirement: mandatory
+    description: Uniform error wrapping built on the pathfinder envelope with optional telemetry fields.
+    coverage:
+      - language: go
+        target: 95
+      - language: python
+        target: 95
+      - language: typescript
+        target: 90
+  - id: docscribe
+    tier: core
+    requirement: mandatory
+    description: Standalone lightweight processing for markdown/YAML documentation from any source with frontmatter extraction and header parsing.
+    coverage:
+      - language: go
+        target: 90
+      - language: python
+        target: 95
+      - language: typescript
+        target: 90
+  - id: fulhash
+    tier: core
+    requirement: mandatory
+    description: Shared hashing API for block and streaming checksums supporting xxh3-128 (fast) and sha256 (secure) algorithms with consistent metadata formatting.
+    capabilities:
+      - block_hashing
+      - streaming_hashing
+      - metadata_formatting
+      - checksum_parsing
+    coverage:
+      - language: go
+        target: 95
+      - language: python
+        target: 95
+      - language: typescript
+        target: 95
+  - id: cloud-storage
+    tier: extension
+    requirement: optional
+    description: Unified helpers for S3, GCS, and Azure Blob operations.
+  - id: pathfinder
+    tier: extension
+    requirement: optional
+    description: Filesystem scanning utilities with include/exclude support.
+  - id: ascii-helpers
+    tier: extension
+    requirement: optional
+    description: Console formatting utilities (tables, boxes, progress displays).
+  - id: telemetry-metrics
+    tier: extension
+    requirement: recommended
+    description: Basic counter/histogram export aligned with the observability logging module.
+    coverage:
+      - language: go
+        target: 85
+      - language: python
+        target: 80
+      - language: typescript
+        target: 80
+languageOverrides:
+  - language: rust
+    planned:
+      - config-path-api
+      - schema-validation
+      - crucible-shim
+    notes: "rsfulmen foundation enabled v0.2.21; codegen artifacts active."
+  - language: csharp
+    planned:
+      - config-path-api
+      - schema-validation
+      - crucible-shim
+      - foundry
+    unsupported:
+      - ascii-helpers
+    notes: "Console helpers rely on ANSI assumptions not yet mapped for Windows terminals."

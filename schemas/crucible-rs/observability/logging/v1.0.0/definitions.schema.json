@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/observability/logging/definitions-v1.0.0.json",
+  "title": "Logging Definitions",
+  "description": "Shared type definitions for logging schemas",
+  "$comment": "Runtime Contract: Implementations MUST convert severityName to severityLevel for comparison operations. Use severityMapping for the canonical name→level mapping. Config accepts strings, events emit both string and numeric values.",
+  "$defs": {
+    "severityName": {
+      "type": "string",
+      "enum": [
+        "TRACE",
+        "DEBUG",
+        "INFO",
+        "WARN",
+        "ERROR",
+        "FATAL",
+        "NONE"
+      ],
+      "description": "Severity level name (TRACE=0, DEBUG=10, INFO=20, WARN=30, ERROR=40, FATAL=50, NONE=60). User-facing string in configs."
+    },
+    "severityLevel": {
+      "type": "integer",
+      "enum": [
+        0,
+        10,
+        20,
+        30,
+        40,
+        50,
+        60
+      ],
+      "description": "Numeric severity level for sorting and comparison"
+    },
+    "severityMapping": {
+      "description": "Standard mapping of severity names to numeric levels",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "TRACE": {
+          "const": 0
+        },
+        "DEBUG": {
+          "const": 10
+        },
+        "INFO": {
+          "const": 20
+        },
+        "WARN": {
+          "const": 30
+        },
+        "ERROR": {
+          "const": 40
+        },
+        "FATAL": {
+          "const": 50
+        },
+        "NONE": {
+          "const": 60
+        }
+      }
+    },
+    "rfc3339Nano": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,9})?Z$",
+      "description": "RFC3339 timestamp with nanosecond precision in UTC (e.g., 2025-10-02T12:34:56.789012345Z)"
+    },
+    "serviceName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+      "description": "Service name (lowercase alphanumeric with hyphens, 1-256 chars)"
+    },
+    "componentName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+      "description": "Component name (lowercase alphanumeric with hyphens, 1-256 chars)"
+    },
+    "loggerName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "description": "Logger name (typically component.subcomponent or hierarchical, 1-256 chars)"
+    },
+    "logMessage": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32768,
+      "description": "Log message text (non-empty, max 32KB)"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128
+      },
+      "maxItems": 50,
+      "uniqueItems": true,
+      "description": "Searchable tags (max 50, unique, 1-128 chars each)"
+    },
+    "context": {
+      "type": "object",
+      "maxProperties": 100,
+      "description": "Contextual key-value pairs (max 100 fields)"
+    },
+    "uuidV7": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "UUIDv7 identifier (canonical lowercase hex)"
+    },
+    "requestId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Request identifier (UUIDv7 recommended)"
+    },
+    "contextId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Operation or execution context identifier"
+    },
+    "comparisonOperator": {
+      "type": "string",
+      "enum": [
+        "GE",
+        "LE",
+        "EQ",
+        "NE",
+        "GT",
+        "LT"
+      ],
+      "description": "Comparison operator: GE(>=), LE(<=), EQ(==), NE(!=), GT(>), LT(<). For severity comparisons, implementations MUST use numeric severityLevel values, not string comparison."
+    }
+  }
+}

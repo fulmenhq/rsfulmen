@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.3leaps.dev/ailink/v0/search-response.schema.json",
+  "title": "AILink Search Response",
+  "description": "Base schema for AILink search/analysis response validation. Extensible for domain-specific responses.",
+  "type": "object",
+  "required": [
+    "summary"
+  ],
+  "properties": {
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Concise overall assessment"
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical",
+        "unknown"
+      ],
+      "description": "Overall risk assessment"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Model's confidence in the assessment (0-1)"
+    },
+    "insights": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Key findings as bullet points"
+    },
+    "mentions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/mention"
+      },
+      "description": "Relevant mentions found during search"
+    },
+    "recommendations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Actionable recommendations"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/attachment"
+      },
+      "description": "Images or other media in response"
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "mention": {
+      "type": "object",
+      "required": [
+        "source",
+        "description"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": [
+            "web",
+            "news",
+            "social",
+            "github",
+            "registry",
+            "trademark",
+            "other"
+          ],
+          "description": "Source type of the mention"
+        },
+        "description": {
+          "type": "string",
+          "description": "Brief summary of the finding"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to the source (if available)"
+        },
+        "relevance": {
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ],
+          "description": "Relevance to the query"
+        },
+        "sentiment": {
+          "type": "string",
+          "enum": [
+            "positive",
+            "neutral",
+            "negative",
+            "mixed"
+          ],
+          "description": "Sentiment of the mention"
+        },
+        "date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the mention was found or published"
+        }
+      },
+      "additionalProperties": true
+    },
+    "attachment": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "IANA media type (e.g., image/png)"
+        },
+        "data": {
+          "type": "string",
+          "contentEncoding": "base64",
+          "description": "Base64-encoded binary data"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL reference (alternative to inline data)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Filename if applicable"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description or alt text"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

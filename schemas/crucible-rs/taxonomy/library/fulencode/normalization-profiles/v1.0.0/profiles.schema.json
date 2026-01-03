@@ -1,0 +1,253 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/taxonomy/library/fulencode/normalization-profiles-v1.0.0.json",
+  "title": "Normalization Profiles Taxonomy Schema",
+  "description": "Schema for Unicode normalization profiles taxonomy",
+  "type": "object",
+  "required": [
+    "canonical_forms"
+  ],
+  "properties": {
+    "canonical_forms": {
+      "type": "object",
+      "description": "Canonical Unicode normalization forms",
+      "patternProperties": {
+        "^nf[ckd]{1,2}$": {
+          "$ref": "#/$defs/canonicalForm"
+        }
+      }
+    },
+    "custom_profiles": {
+      "type": "object",
+      "description": "Custom normalization profiles",
+      "patternProperties": {
+        "^[a-z_]+$": {
+          "$ref": "#/$defs/customProfile"
+        }
+      }
+    },
+    "semantic_change_categories": {
+      "type": "object",
+      "description": "Categories of semantic changes in NFKC/NFKD",
+      "patternProperties": {
+        "^[a-z_]+$": {
+          "$ref": "#/$defs/semanticChangeCategory"
+        }
+      }
+    },
+    "zero_width_characters": {
+      "type": "object",
+      "description": "Zero-width character definitions",
+      "patternProperties": {
+        "^u_[0-9a-f]+$": {
+          "$ref": "#/$defs/zeroWidthCharacter"
+        }
+      }
+    },
+    "combining_mark_limits": {
+      "type": "object",
+      "description": "Combining mark limits and policy",
+      "required": [
+        "default_max",
+        "rationale"
+      ],
+      "properties": {
+        "default_max": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "rationale": {
+          "type": "string"
+        },
+        "attack_example": {
+          "type": "string"
+        },
+        "legitimate_examples": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "text",
+              "marks",
+              "description"
+            ],
+            "properties": {
+              "text": {
+                "type": "string"
+              },
+              "marks": {
+                "type": "integer"
+              },
+              "description": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "enforcement": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "canonicalForm": {
+      "type": "object",
+      "required": [
+        "full_name",
+        "type",
+        "semantic_preserving",
+        "use_case"
+      ],
+      "properties": {
+        "full_name": {
+          "type": "string"
+        },
+        "unicode_version": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "canonical",
+            "compatibility"
+          ]
+        },
+        "composition": {
+          "type": "boolean"
+        },
+        "decomposition": {
+          "type": "boolean"
+        },
+        "compatibility": {
+          "type": "boolean"
+        },
+        "semantic_preserving": {
+          "type": "boolean"
+        },
+        "use_case": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "idempotent": {
+          "type": "boolean"
+        },
+        "unicode_std": {
+          "type": "string"
+        },
+        "warning": {
+          "type": "string"
+        }
+      }
+    },
+    "customProfile": {
+      "type": "object",
+      "required": [
+        "based_on",
+        "use_case"
+      ],
+      "properties": {
+        "based_on": {
+          "type": "string"
+        },
+        "restrictions": {
+          "type": "object"
+        },
+        "use_case": {
+          "type": "string"
+        },
+        "transformations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "security": {
+          "type": "string"
+        },
+        "warning": {
+          "type": "string"
+        },
+        "platform_notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "semanticChangeCategory": {
+      "type": "object",
+      "required": [
+        "examples",
+        "risk",
+        "affected_by"
+      ],
+      "properties": {
+        "examples": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "original",
+              "normalized",
+              "codepoint"
+            ],
+            "properties": {
+              "original": {
+                "type": "string"
+              },
+              "normalized": {
+                "type": "string"
+              },
+              "codepoint": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "risk": {
+          "type": "string"
+        },
+        "affected_by": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "zeroWidthCharacter": {
+      "type": "object",
+      "required": [
+        "codepoint",
+        "name",
+        "security_risk",
+        "use_case"
+      ],
+      "properties": {
+        "codepoint": {
+          "type": "string",
+          "pattern": "^U\\+[0-9A-F]{4,6}$"
+        },
+        "name": {
+          "type": "string"
+        },
+        "security_risk": {
+          "type": "string"
+        },
+        "use_case": {
+          "type": "string"
+        },
+        "rejected_by": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

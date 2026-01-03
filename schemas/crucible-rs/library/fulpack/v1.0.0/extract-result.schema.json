@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.fulmenhq.dev/crucible/library/fulpack/v1.0.0/extract-result",
+  "title": "Extract Result",
+  "description": "Result of archive extraction operation",
+  "type": "object",
+  "required": [
+    "extracted_count",
+    "skipped_count",
+    "error_count"
+  ],
+  "properties": {
+    "extracted_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of entries successfully extracted"
+    },
+    "skipped_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of entries skipped (e.g., already exists)"
+    },
+    "error_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of entries that failed to extract"
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of error messages for failed extractions"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of warning messages (e.g., skipped files)"
+    },
+    "checksums_verified": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of checksums successfully verified during extraction"
+    },
+    "total_bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total bytes extracted"
+    }
+  },
+  "additionalProperties": false
+}

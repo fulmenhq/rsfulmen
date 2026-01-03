@@ -1,0 +1,288 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/config/repository-category/codex/v1.0.0/codex-config.schema.json",
+  "title": "Codex Configuration Schema",
+  "description": "Configuration schema for Fulmen codex templates (documentation sites, schema registries, knowledge hubs)",
+  "type": "object",
+  "required": [
+    "project"
+  ],
+  "properties": {
+    "project": {
+      "type": "object",
+      "description": "Project metadata and configuration",
+      "required": [
+        "name",
+        "type"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Full formal name of the codex (e.g., 'Forge Codex Pulsar', 'Specomate Schema Registry')",
+          "minLength": 1,
+          "examples": [
+            "Forge Codex Pulsar",
+            "My Documentation Hub"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "description": "Brief description of the codex purpose",
+          "examples": [
+            "Production-grade documentation and knowledge hub",
+            "API reference documentation"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "codex",
+            "registry",
+            "docs"
+          ],
+          "description": "Type of codex site: codex (general knowledge hub), registry (schema/API catalog), docs (product documentation)",
+          "default": "codex"
+        },
+        "baseUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "Base URL for the deployed site (used for $id generation, sitemaps, canonical URLs)",
+          "examples": [
+            "https://docs.example.dev",
+            "https://schemas.fulmenhq.dev"
+          ]
+        }
+      }
+    },
+    "extensions": {
+      "type": "array",
+      "description": "List of enabled extensions (pluggable features for specialized functionality)",
+      "items": {
+        "type": "string",
+        "enum": [
+          "schema-registry"
+        ],
+        "description": "Extension name (governed by Crucible; new extensions added via standard process)"
+      },
+      "default": [],
+      "uniqueItems": true,
+      "examples": [
+        [
+          "schema-registry"
+        ],
+        []
+      ]
+    },
+    "schemaRegistry": {
+      "type": "object",
+      "description": "Schema registry extension configuration (active when 'schema-registry' in extensions array)",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable schema registry features (redundant with extensions array; deprecated in v2)",
+          "default": false,
+          "deprecated": true
+        },
+        "baseUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "Base URL for schema $id URLs (defaults to project.baseUrl if not specified)",
+          "examples": [
+            "https://schemas.example.dev"
+          ]
+        },
+        "formats": {
+          "type": "array",
+          "description": "Supported schema formats",
+          "items": {
+            "type": "string",
+            "enum": [
+              "json-schema",
+              "openapi",
+              "asyncapi"
+            ]
+          },
+          "default": [
+            "json-schema"
+          ],
+          "uniqueItems": true
+        },
+        "sourcePaths": {
+          "type": "array",
+          "description": "Paths to schema source directories (relative to project root)",
+          "items": {
+            "type": "string",
+            "pattern": "^[^/].*[^/]$"
+          },
+          "default": [
+            "schemas/"
+          ],
+          "examples": [
+            [
+              "schemas/"
+            ],
+            [
+              "src/schemas/",
+              "external/schemas/"
+            ]
+          ]
+        },
+        "catalogOutput": {
+          "type": "string",
+          "description": "Output path for catalog manifest (relative to build output)",
+          "default": "catalog/index.json",
+          "examples": [
+            "catalog/index.json",
+            "public/catalog.json"
+          ]
+        },
+        "validation": {
+          "type": "object",
+          "description": "Schema validation options",
+          "properties": {
+            "enforceIdMatch": {
+              "type": "boolean",
+              "description": "Fail build if schema $id doesn't match canonical URL pattern",
+              "default": true
+            },
+            "strictMode": {
+              "type": "boolean",
+              "description": "Enable strict validation rules (no additional properties, etc.)",
+              "default": true
+            }
+          },
+          "default": {
+            "enforceIdMatch": true,
+            "strictMode": true
+          }
+        },
+        "smokeTests": {
+          "type": "object",
+          "description": "Post-deploy smoke test configuration",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Run smoke tests after deployment (validates schemas are accessible)",
+              "default": false
+            },
+            "sampleSize": {
+              "type": "integer",
+              "description": "Number of random schemas to test",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            }
+          }
+        }
+      }
+    },
+    "features": {
+      "type": "object",
+      "description": "Core feature configuration (available to all codex templates)",
+      "properties": {
+        "search": {
+          "type": "object",
+          "description": "Search functionality configuration",
+          "properties": {
+            "provider": {
+              "type": "string",
+              "enum": [
+                "starlight-default",
+                "algolia",
+                "pagefind"
+              ],
+              "description": "Search provider to use",
+              "default": "starlight-default"
+            },
+            "algolia": {
+              "type": "object",
+              "description": "Algolia DocSearch configuration (required when provider=algolia)",
+              "properties": {
+                "appId": {
+                  "type": "string",
+                  "description": "Algolia application ID"
+                },
+                "apiKey": {
+                  "type": "string",
+                  "description": "Algolia search-only API key"
+                },
+                "indexName": {
+                  "type": "string",
+                  "description": "Algolia index name"
+                }
+              },
+              "required": [
+                "appId",
+                "apiKey",
+                "indexName"
+              ]
+            }
+          }
+        },
+        "i18n": {
+          "type": "object",
+          "description": "Internationalization configuration",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable multi-language support",
+              "default": false
+            },
+            "defaultLocale": {
+              "type": "string",
+              "description": "Default locale code (ISO 639-1 or BCP 47)",
+              "default": "en",
+              "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+              "examples": [
+                "en",
+                "es",
+                "fr",
+                "en-US"
+              ]
+            },
+            "locales": {
+              "type": "array",
+              "description": "Supported locale codes",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z]{2}(-[A-Z]{2})?$"
+              },
+              "uniqueItems": true,
+              "examples": [
+                [
+                  "en",
+                  "es",
+                  "fr"
+                ]
+              ]
+            }
+          }
+        },
+        "analytics": {
+          "type": "object",
+          "description": "Analytics integration configuration",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable analytics",
+              "default": false
+            },
+            "provider": {
+              "type": "string",
+              "enum": [
+                "plausible",
+                "umami",
+                "google-analytics"
+              ],
+              "description": "Analytics provider (privacy-respecting options preferred)"
+            },
+            "siteId": {
+              "type": "string",
+              "description": "Analytics site/property ID"
+            }
+          }
+        }
+      }
+    }
+  }
+}

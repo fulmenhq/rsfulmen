@@ -1,0 +1,18 @@
+# Fulpack Entry Types Taxonomy
+# Defines canonical archive entry type identifiers for cross-language consistency
+version: "1.0.0"
+last_updated: "2025-11-15"
+types:
+  - id: file
+    name: "Regular File"
+    description: "Normal file with data"
+    notes: "Most common entry type in archives"
+  - id: directory
+    name: "Directory"
+    description: "Directory/folder entry"
+    notes: "Container for organizing files hierarchically"
+  - id: symlink
+    name: "Symbolic Link"
+    description: "Symbolic link to another entry"
+    security_note: "Must validate target is within archive bounds to prevent path traversal"
+    notes: "Not supported by all archive formats (e.g., zip)"

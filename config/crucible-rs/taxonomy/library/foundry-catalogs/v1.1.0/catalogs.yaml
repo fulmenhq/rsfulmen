@@ -1,0 +1,77 @@
+# Fulmen Foundry Reference Data Catalogs
+# THE canonical SSOT for foundry reference data catalogs
+# These are data catalogs, NOT code modules (see platform-modules for code)
+# Manually maintained but automatically validated
+#
+# v1.1.0 CHANGES:
+# - Added weight (light/heavy) for dependency footprint classification
+# - Added default_inclusion (true/false) for feature gate defaults
+# - Added feature_group for library feature gate mapping
+# - REMOVED similarity (promoted to platform-modules as standalone module)
+version: "1.1.0"
+last_updated: "2026-01-05"
+catalogs:
+  - catalog_name: countries
+    description: ISO 3166 country codes (alpha-2, alpha-3, numeric)
+    schema_path: schemas/library/foundry/v2.0.0/country-code.schema.json
+    config_path: config/library/foundry/country-codes.yaml
+    format: yaml
+    weight: light
+    default_inclusion: true
+    feature_group: foundry-core
+    status: active
+    added_version: "0.2.0"
+  - catalog_name: http-statuses
+    description: HTTP status codes with standard descriptions
+    schema_path: schemas/library/foundry/v2.0.0/http-status.schema.json
+    config_path: config/library/foundry/http-statuses.yaml
+    format: yaml
+    weight: light
+    default_inclusion: true
+    feature_group: foundry-core
+    status: active
+    added_version: "0.2.0"
+  - catalog_name: mime-types
+    description: MIME type registry with file extensions
+    schema_path: schemas/library/foundry/v2.0.0/mime-type.schema.json
+    config_path: config/library/foundry/mime-types.yaml
+    format: yaml
+    weight: light
+    default_inclusion: true
+    feature_group: foundry-mime
+    status: active
+    added_version: "0.2.0"
+  - catalog_name: exit-codes
+    description: Standard exit codes for Fulmen applications
+    schema_path: schemas/library/foundry/v1.0.0/exit-code.schema.json
+    config_path: config/library/foundry/exit-codes.yaml
+    format: yaml
+    weight: light
+    default_inclusion: true
+    feature_group: foundry-core
+    status: active
+    added_version: "0.1.0"
+  - catalog_name: signals
+    description: POSIX signal catalog with cross-platform handling
+    schema_path: schemas/library/foundry/v1.0.0/signal.schema.json
+    config_path: config/library/foundry/signals.yaml
+    format: yaml
+    weight: light
+    default_inclusion: true
+    feature_group: foundry-core
+    status: active
+    added_version: "0.2.5"
+  - catalog_name: patterns
+    description: Validation pattern catalog (regex, glob patterns)
+    schema_path: schemas/library/foundry/v2.0.0/pattern.schema.json
+    config_path: config/library/foundry/patterns.yaml
+    format: yaml
+    weight: heavy
+    default_inclusion: false
+    feature_group: foundry-patterns
+    status: active
+    added_version: "0.2.0"
+    notes: "Requires regex engine to validate/use patterns; consumers should feature-gate"
+
+# NOTE: similarity has been promoted to a standalone platform module in v1.1.0
+# See config/taxonomy/library/platform-modules/v1.1.0/modules.yaml

@@ -1,0 +1,133 @@
+# Fulmen Fixture Catalog
+# Registry of fixture names, categories, and variants with i18n support
+#
+# All fixture repositories MUST be registered here before creation.
+# See: docs/architecture/fulmen-fixture-standard.md
+#
+# Naming pattern: fixture-<mode>-<category>-<name>-<variant>
+# Example: fixture-server-proving-gauntlet-001
+$schema: "https://schemas.fulmenhq.dev/crucible/taxonomy/fixture/v1.0.0/fixture-catalog.schema.json"
+version: "1.0.0"
+# Behavioral categories (for reference - not editable here)
+# - proving: Real execution, test-purpose data, validates caller
+# - utility: Real execution, trivial but reliable service
+# - chaos: Real execution, deliberately unreliable/hostile
+
+# Modes (for reference - not editable here)
+# - server: Backend APIs (REST, gRPC, GraphQL)
+# - client: Clients for server/API testing
+# - datastore: Databases, caches, message queues
+# - identity: IdP/authentication (OIDC, SAML) - planned v0.4.3
+fixtures:
+  # =============================================================================
+  # PROVING CATEGORY - Integration testing, AAA validation
+  # Naming theme: Challenge/trial names (gauntlet, sentinel, bastion, citadel)
+  # Repo pattern: fixture-<mode>-proving-<name>-<variant>
+  # =============================================================================
+  gauntlet:
+    # Full repo name: fixture-server-proving-gauntlet-001
+    category: proving
+    mode: server
+    default_lang: en
+    summary: "Protected backend with mixed auth requirements"
+    summary_i18n:
+      ja: "混合認証要件を持つ保護されたバックエンド"
+      de: "Geschütztes Backend mit gemischten Auth-Anforderungen"
+    aliases:
+      - "gantlet" # Common misspelling
+    variants:
+      "001":
+        name: "oauth-minimal"
+        description: "OAuth2 with basic scopes, no refresh tokens"
+      "002":
+        name: "oauth-full"
+        description: "OAuth2 with PKCE, refresh tokens, introspection endpoint"
+      "003":
+        name: "apikey"
+        description: "API key authentication with rate limiting"
+  # sentinel:
+  #   category: proving
+  #   mode: identity
+  #   default_lang: en
+  #   summary: "OIDC identity provider with test user directory"
+  #   variants:
+  #     "001":
+  #       name: "oidc-standard"
+  #       description: "Standard OIDC flows with test users"
+  #   status: planned  # identity mode in v0.4.3
+
+  # =============================================================================
+  # UTILITY CATEGORY - Convenience, bootstrapping, demos
+  # Naming theme: Functional/descriptive (echo, static, relay, cache)
+  # Repo pattern: fixture-<mode>-utility-<name>-<variant>
+  # =============================================================================
+  echo:
+    # Full repo name: fixture-server-utility-echo-001
+    category: utility
+    mode: server
+    default_lang: en
+    summary: "Simple request echo server for debugging"
+    variants:
+      "001":
+        name: "http"
+        description: "HTTP echo with headers, body, and timing"
+  # static:
+  #   # Full repo name: fixture-server-utility-static-001
+  #   category: utility
+  #   mode: server
+  #   default_lang: en
+  #   summary: "Static file server with directory browsing"
+  #   variants:
+  #     "001":
+  #       name: "browse"
+  #       description: "File browser with JSON index endpoint"
+  bucket:
+    # Full repo name: fixture-datastore-utility-bucket-001
+    category: utility
+    mode: datastore
+    default_lang: en
+    summary: "S3-compatible object storage for testing"
+    variants:
+      "001":
+        name: "minimal"
+        description: "Basic S3 operations (get, put, delete, list)"
+  # =============================================================================
+  # CHAOS CATEGORY - Resilience testing, failure handling
+  # Naming theme: Mischief names (gremlin, jinx, havoc, mayhem)
+  # Repo pattern: fixture-<mode>-chaos-<name>-<variant>
+  # =============================================================================
+  gremlin:
+    # Full repo name: fixture-server-chaos-gremlin-001
+    category: chaos
+    mode: server
+    default_lang: en
+    summary: "Failure injection server for resilience testing"
+    variants:
+      "001":
+        name: "latency"
+        description: "Random latency spikes (configurable 10ms-30s)"
+      "002":
+        name: "errors"
+        description: "Random HTTP 500/502/503/504 responses"
+      "003":
+        name: "timeout"
+        description: "Requests that hang indefinitely or timeout"
+
+# =============================================================================
+# EXAMPLE: Non-English authored fixture
+# =============================================================================
+
+# torii:  # 鳥居 - shrine gate
+#   category: proving
+#   mode: identity
+#   default_lang: ja
+#   summary: "神社の入口を模したAPIゲートウェイ"
+#   summary_i18n:
+#     en: "API gateway modeled after shrine entrance"
+#   variants:
+#     "001":
+#       name: "oidc-standard"
+#       description: "標準OIDC実装"
+#       description_i18n:
+#         en: "Standard OIDC implementation"
+#   status: planned  # identity mode in v0.4.3

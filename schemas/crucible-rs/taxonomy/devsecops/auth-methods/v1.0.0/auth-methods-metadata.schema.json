@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/taxonomy/devsecops/auth-methods/v1.0.0/auth-methods-metadata.schema.json",
+  "title": "Fulmen Auth Methods Metadata",
+  "description": "Metadata object describing authentication/MFA method support and security characteristics",
+  "type": "object",
+  "properties": {
+    "key": {
+      "$ref": "auth-methods-key.schema.json"
+    },
+    "name": {
+      "type": "string",
+      "description": "Full method name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief overview including usage and implementation notes",
+      "minLength": 10,
+      "maxLength": 200
+    },
+    "securityLevel": {
+      "type": "string",
+      "description": "NIST-aligned security classification",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "phishing-resistant"
+      ]
+    },
+    "implLangs": {
+      "type": "array",
+      "description": "Supported implementation languages",
+      "items": {
+        "$ref": "../../../../language/v1.0.0/language-key.schema.json"
+      },
+      "uniqueItems": true,
+      "minItems": 1
+    }
+  },
+  "required": [
+    "key",
+    "name",
+    "description",
+    "securityLevel",
+    "implLangs"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,19 @@
+# config/devsecops/lorage-central/activity/v1.0.0/defaults.yaml
+# L'Orage Central Activity Record Defaults
+# Description: Default audit config (e.g., event templates; emitted auto).
+# Rationale: Structured logging defaults; retain per policy.audit.
+# Version: v1.0.0 (Ties to schema; integrates gofulmen).
+# Example Event Template (auto-populated in REPL)
+eventTemplate:
+  eventType: unlock # From enum
+  outcome: success
+  metadata:
+    sessionId: "sess-default-001"
+    userId: "user-anon-123"
+    duration: "5s"
+    details: {method: totp}
+backend: # Refs policy.audit
+  level: structured
+  retain: 30d
+# Usage: REPL emits: {id: evt-default-unlock-001, timestamp: now, tenant: tnt-uuid-123-prod-us, ...}
+# Stored in audit backend (e.g., Turso table); no defaults for id/timestamp (runtime).

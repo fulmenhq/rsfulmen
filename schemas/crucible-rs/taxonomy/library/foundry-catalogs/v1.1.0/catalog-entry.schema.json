@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/taxonomy/library/foundry-catalogs/v1.1.0/catalog-entry.schema.json",
+  "title": "Fulmen Foundry Catalog Entry",
+  "description": "Schema for individual catalog entries in the foundry reference data registry. v1.1.0 adds weight classification, default_inclusion, and feature_group for library feature gates.",
+  "type": "object",
+  "required": [
+    "catalog_name",
+    "description",
+    "schema_path",
+    "config_path",
+    "format",
+    "status",
+    "added_version",
+    "weight",
+    "default_inclusion",
+    "feature_group"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "catalog_name": {
+      "type": "string",
+      "description": "Unique identifier for the catalog (lowercase, hyphenated)",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "examples": [
+        "countries",
+        "http-statuses",
+        "exit-codes",
+        "signals"
+      ]
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief description of catalog contents",
+      "minLength": 10
+    },
+    "schema_path": {
+      "type": "string",
+      "description": "Path to JSON Schema for catalog entries",
+      "pattern": "^schemas/"
+    },
+    "config_path": {
+      "type": "string",
+      "description": "Path to YAML catalog data file",
+      "pattern": "^config/"
+    },
+    "format": {
+      "type": "string",
+      "enum": [
+        "yaml",
+        "json"
+      ],
+      "description": "Data file format"
+    },
+    "weight": {
+      "type": "string",
+      "enum": [
+        "light",
+        "heavy"
+      ],
+      "default": "light",
+      "description": "Dependency footprint for consuming this catalog. light = serde-class only; heavy = requires regex, glob, or other significant deps"
+    },
+    "default_inclusion": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether catalog is included in default/standard builds. false = opt-in only"
+    },
+    "feature_group": {
+      "type": "string",
+      "description": "Feature gate group for library implementations (e.g., foundry-core, foundry-patterns)",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "examples": [
+        "foundry-core",
+        "foundry-patterns",
+        "foundry-mime"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "deprecated",
+        "experimental"
+      ],
+      "description": "Current lifecycle status of the catalog"
+    },
+    "added_version": {
+      "type": "string",
+      "description": "Crucible version when catalog was added",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional implementation notes or guidance"
+    }
+  }
+}

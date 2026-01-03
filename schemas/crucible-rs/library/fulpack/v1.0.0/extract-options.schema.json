@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.fulmenhq.dev/crucible/library/fulpack/v1.0.0/extract-options",
+  "title": "Extract Options",
+  "description": "Options for archive extraction operation",
+  "type": "object",
+  "properties": {
+    "overwrite": {
+      "type": "string",
+      "enum": [
+        "error",
+        "skip",
+        "overwrite"
+      ],
+      "default": "error",
+      "description": "How to handle existing files (error=fail, skip=keep existing, overwrite=replace)"
+    },
+    "verify_checksums": {
+      "type": "boolean",
+      "default": true,
+      "description": "Verify checksums during extraction if available"
+    },
+    "preserve_permissions": {
+      "type": "boolean",
+      "default": true,
+      "description": "Preserve Unix file permissions from archive"
+    },
+    "include_patterns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Glob patterns for entries to extract (e.g., ['**/*.csv'])"
+    },
+    "max_size": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 1073741824,
+      "description": "Maximum total decompressed size in bytes (decompression bomb protection)"
+    },
+    "max_entries": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 10000,
+      "description": "Maximum number of entries to extract (decompression bomb protection)"
+    }
+  },
+  "additionalProperties": false
+}

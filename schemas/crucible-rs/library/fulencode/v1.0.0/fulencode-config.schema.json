@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/library/fulencode/fulencode-config-v1.0.0.json",
+  "title": "Fulencode Module Configuration",
+  "description": "Configuration schema for fulencode module limits and defaults",
+  "type": "object",
+  "properties": {
+    "limits": {
+      "type": "object",
+      "properties": {
+        "max_decoded_size": {
+          "type": "integer",
+          "description": "Maximum decoded output size in bytes",
+          "default": 104857600,
+          "minimum": 1024
+        },
+        "max_encoded_size": {
+          "type": "integer",
+          "description": "Maximum encoded output size in bytes",
+          "default": 524288000,
+          "minimum": 1024
+        },
+        "max_expansion_ratio": {
+          "type": "number",
+          "description": "Maximum decode expansion ratio (encoding bomb detection)",
+          "default": 10.0,
+          "minimum": 1.0
+        },
+        "max_combining_marks": {
+          "type": "integer",
+          "description": "Maximum combining marks per base character",
+          "default": 10,
+          "minimum": 1,
+          "maximum": 100
+        }
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "properties": {
+        "on_error": {
+          "type": "string",
+          "enum": [
+            "strict",
+            "replace",
+            "ignore",
+            "fallback"
+          ],
+          "description": "Default error handling mode",
+          "default": "strict"
+        },
+        "checksum_algorithm": {
+          "type": "string",
+          "enum": [
+            "xxh3-128",
+            "sha256",
+            "sha512",
+            "sha1",
+            "md5"
+          ],
+          "description": "Default checksum algorithm for integrity checks",
+          "default": "sha256"
+        },
+        "normalization_profile": {
+          "type": "string",
+          "description": "Default normalization profile",
+          "default": "nfc"
+        }
+      }
+    },
+    "detection": {
+      "type": "object",
+      "properties": {
+        "min_confidence": {
+          "type": "number",
+          "description": "Minimum detection confidence threshold",
+          "default": 0.5,
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "max_sample_size": {
+          "type": "integer",
+          "description": "Maximum bytes to analyze for detection",
+          "default": 8192,
+          "minimum": 32
+        }
+      }
+    }
+  }
+}

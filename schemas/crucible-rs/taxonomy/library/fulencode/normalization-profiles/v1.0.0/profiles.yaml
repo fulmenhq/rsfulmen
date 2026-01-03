@@ -1,0 +1,173 @@
+# Unicode Normalization Profiles for Fulencode v1.0.0
+# Defines normalization forms and custom profiles
+canonical_forms:
+  nfc:
+    full_name: "Normalization Form Canonical Composition"
+    unicode_version: "15.1"
+    type: canonical
+    composition: true
+    decomposition: false
+    compatibility: false
+    semantic_preserving: true
+    use_case: "Default for identifiers, file names, general text storage"
+    description: "Compose combining marks with base characters (e.g., e + ´ → é)"
+    idempotent: true
+    unicode_std: "UAX #15"
+  nfd:
+    full_name: "Normalization Form Canonical Decomposition"
+    unicode_version: "15.1"
+    type: canonical
+    composition: false
+    decomposition: true
+    compatibility: false
+    semantic_preserving: true
+    use_case: "Searching, sorting, linguistic analysis"
+    description: "Decompose composed characters into base + combining marks (é → e + ´)"
+    idempotent: true
+    unicode_std: "UAX #15"
+  nfkc:
+    full_name: "Normalization Form Compatibility Composition"
+    unicode_version: "15.1"
+    type: compatibility
+    composition: true
+    decomposition: true
+    compatibility: true
+    semantic_preserving: false
+    use_case: "Search indexing, case-folding, loose matching"
+    description: "Decompose compatibility equivalents then compose (ﬁ → fi, ² → 2)"
+    idempotent: true
+    unicode_std: "UAX #15"
+    warning: "SEMANTIC-CHANGING: ligatures, superscripts, circled numbers"
+  nfkd:
+    full_name: "Normalization Form Compatibility Decomposition"
+    unicode_version: "15.1"
+    type: compatibility
+    composition: false
+    decomposition: true
+    compatibility: true
+    semantic_preserving: false
+    use_case: "Maximum compatibility, aggressive simplification"
+    description: "Full decomposition including compatibility (ﬁ → f + i, ² → 2)"
+    idempotent: true
+    unicode_std: "UAX #15"
+    warning: "SEMANTIC-CHANGING: most aggressive normalization"
+custom_profiles:
+  safe_identifiers:
+    based_on: nfc
+    restrictions:
+      - reject_zero_width: true
+      - max_combining_marks: 3
+      - allow_only_printable: true
+      - reject_confusables: false
+    use_case: "User names, API keys, identifiers requiring strict validation"
+    transformations:
+      - "Remove zero-width characters (U+200B, U+200C, U+200D, U+FEFF)"
+      - "Error if >3 combining marks per base character"
+      - "NFC composition"
+    security: "Prevents zero-width hiding attacks, excessive combining marks"
+  search_optimized:
+    based_on: nfkc
+    case_folding: true
+    accent_stripping: optional
+    use_case: "Full-text search, fuzzy matching"
+    transformations:
+      - "NFKC compatibility decomposition + composition"
+      - "Case folding (uppercase → lowercase)"
+      - "Optional: strip accents (café → cafe)"
+    warning: "Lossy: NFKC is semantic-changing, case/accent folding loses information"
+  filename_safe:
+    based_on: nfc
+    restrictions:
+      - reject_control_chars: true
+      - reject_path_separators: true
+      - normalize_spaces: true
+    use_case: "Cross-platform file names"
+    transformations:
+      - "NFC composition"
+      - "Error on control characters (0x00-0x1F)"
+      - "Error on path separators (/, \\)"
+      - "Collapse multiple spaces to single space"
+    platform_notes:
+      - "macOS uses NFD for file names"
+      - "Windows/Linux prefer NFC"
+      - "This profile standardizes to NFC"
+  legacy_compatible:
+    based_on: nfc
+    strip_nonascii: false
+    transliterate: optional
+    use_case: "Legacy system integration (limited Unicode support)"
+    transformations:
+      - "NFC composition"
+      - "Optional: transliterate non-ASCII (é → e, ñ → n)"
+    warning: "Transliteration is lossy and language-dependent"
+semantic_change_categories:
+  ligatures:
+    examples:
+      - {original: "ﬁ", normalized: "fi", codepoint: "U+FB01"}
+      - {original: "ﬂ", normalized: "fl", codepoint: "U+FB02"}
+      - {original: "ﬀ", normalized: "ff", codepoint: "U+FB00"}
+    risk: "Filename collisions, identifier confusion"
+    affected_by: ["nfkc", "nfkd"]
+  superscripts_subscripts:
+    examples:
+      - {original: "x²", normalized: "x2", codepoint: "U+00B2"}
+      - {original: "H₂O", normalized: "H2O", codepoint: "U+2082"}
+    risk: "Mathematical expressions lose meaning"
+    affected_by: ["nfkc", "nfkd"]
+  roman_numerals:
+    examples:
+      - {original: "Ⅷ", normalized: "VIII", codepoint: "U+2167"}
+      - {original: "Ⅻ", normalized: "XII", codepoint: "U+216B"}
+    risk: "Identifier length changes, semantic shift"
+    affected_by: ["nfkc", "nfkd"]
+  circled_numbers:
+    examples:
+      - {original: "①", normalized: "1", codepoint: "U+2460"}
+      - {original: "⑳", normalized: "20", codepoint: "U+2473"}
+    risk: "List markers become regular numbers"
+    affected_by: ["nfkc", "nfkd"]
+  enclosed_alphanumerics:
+    examples:
+      - {original: "Ⓐ", normalized: "A", codepoint: "U+24B6"}
+      - {original: "⒜", normalized: "(a)", codepoint: "U+249C"}
+    risk: "Visual markers stripped"
+    affected_by: ["nfkc", "nfkd"]
+  fractions:
+    examples:
+      - {original: "½", normalized: "1⁄2", codepoint: "U+00BD"}
+      - {original: "¼", normalized: "1⁄4", codepoint: "U+00BC"}
+    risk: "Single character becomes multi-character sequence"
+    affected_by: ["nfkc", "nfkd"]
+zero_width_characters:
+  u_200b:
+    codepoint: "U+200B"
+    name: "ZERO WIDTH SPACE"
+    security_risk: "Hiding attacks, homograph attacks"
+    use_case: "Line breaking hints (legitimate)"
+    rejected_by: ["safe_identifiers"]
+  u_200c:
+    codepoint: "U+200C"
+    name: "ZERO WIDTH NON-JOINER"
+    security_risk: "Visual spoofing"
+    use_case: "Script shaping (Arabic, Devanagari)"
+    rejected_by: ["safe_identifiers"]
+  u_200d:
+    codepoint: "U+200D"
+    name: "ZERO WIDTH JOINER"
+    security_risk: "Visual spoofing"
+    use_case: "Emoji composition (👨‍👩‍👧‍👦)"
+    rejected_by: ["safe_identifiers"]
+  u_feff:
+    codepoint: "U+FEFF"
+    name: "ZERO WIDTH NO-BREAK SPACE"
+    security_risk: "Hidden content, BOM in middle of text"
+    use_case: "Byte Order Mark (at start of file only)"
+    rejected_by: ["safe_identifiers"]
+combining_mark_limits:
+  default_max: 10
+  rationale: "Prevents quadratic blowup in normalization algorithms"
+  attack_example: "e + (U+0301 × 100) causes excessive processing"
+  legitimate_examples:
+    - {text: "ệ", marks: 2, description: "Vietnamese: e + circumflex + dot below"}
+    - {text: "ṓ̄", marks: 3, description: "Sanskrit: o + macron + acute + macron"}
+  enforcement: "EXCESSIVE_COMBINING_MARKS error if exceeded"

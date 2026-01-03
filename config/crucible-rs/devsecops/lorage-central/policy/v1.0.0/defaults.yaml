@@ -1,0 +1,36 @@
+# config/devsecops/lorage-central/policy/v1.0.0/defaults.yaml
+# L'Orage Central Tenant Policy Defaults
+# Description: Default policy for new tenants (loaded via three-layer config; overrides in .fulmen/lorage.yaml).
+# Rationale: Secure MVP defaults (short TTL, MFA required, Turso backend); confidential example (obscure publicId).
+# Version: v1.0.0 (Ties to schema; auto-applies dataSensitivity guards from registry).
+tenant: tnt-uuid-123-prod-us # Obscure publicId from registry (confidential=true; no client exposure)
+session:
+  ttl:
+    default: 15m # Force re-unlock per session
+    ops:
+      deploy: 1h
+      query: 5m
+      seed: 30m
+  maxConcurrent: 1 # Strict isolation
+mfa:
+  required: true # Auto-true if registry.dataSensitivity.pii=true
+  methods: [totp, webauthn] # From auth-methods taxonomy
+  fallback: cli-prompt
+isolation:
+  store:
+    type: turso # HA default
+    conn:
+      url: "turso://default-db" # Placeholder; ref root-credentials
+      auth: {ref: "gpg://keyring/default-bootstrap"}
+    enc: false # Enable for cloud-free
+  crossAccess: false
+geoRestrictions: [eu-west-1] # From registry.geo (e.g., EU for GDPR)
+cloudRestrictions: [aws, doc] # From registry.cloud
+dataSensitivityGuards:
+  pii: false # Auto-from registry; triggers mfa/geo if true
+  phi: false # Triggers enc/audit if true
+audit:
+  level: structured # gofulmen integration
+  retain: 30d
+# Usage: REPL loads defaults + overrides; validates against schema/registry.
+# Example Override: For PHI tenant, set dataSensitivityGuards.phi: true → auto-enc=true.

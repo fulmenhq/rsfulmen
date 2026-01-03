@@ -1,0 +1,79 @@
+{
+  "$id": "https://schemas.fulmenhq.dev/crucible/web/branding/v1.0.0/site-branding.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "title": "Fulmen Site Branding",
+  "description": "Standardized branding configuration for Fulmen web templates",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Site or application name (e.g., 'Pulsar Codex')",
+      "minLength": 1,
+      "maxLength": 50
+    },
+    "tagline": {
+      "type": "string",
+      "description": "Short descriptive tagline (e.g., 'Production-grade docs template')",
+      "maxLength": 120
+    },
+    "logo": {
+      "type": "object",
+      "description": "Primary logo configuration",
+      "properties": {
+        "src": {
+          "type": "string",
+          "format": "uri-reference",
+          "description": "Relative path or URL to logo image (SVG/PNG preferred, repo-local in public/)"
+        },
+        "alt": {
+          "type": "string",
+          "description": "Accessible alt text for the logo",
+          "minLength": 1
+        },
+        "width": {
+          "type": "number",
+          "minimum": 32,
+          "maximum": 256,
+          "description": "Preferred display width in pixels"
+        },
+        "height": {
+          "type": "number",
+          "minimum": 32,
+          "maximum": 256,
+          "description": "Preferred display height in pixels"
+        }
+      },
+      "required": [
+        "src",
+        "alt"
+      ],
+      "additionalProperties": false
+    },
+    "favicon": {
+      "type": "string",
+      "format": "uri-reference",
+      "description": "Path/URL to favicon (ICO/SVG, 16x16+ pixels, in public/)"
+    },
+    "appIcon": {
+      "type": "string",
+      "format": "uri-reference",
+      "description": "Path/URL to application icon for PWA/manifest (PNG/SVG, 192x192+)"
+    },
+    "logoPresentation": {
+      "type": "string",
+      "enum": [
+        "logo_only",
+        "logo_left_text_right",
+        "logo_top_text_bottom",
+        "text_only",
+        "gridbox_logo_text"
+      ],
+      "description": "Layout variant for logo and name/tagline: logo_only (logo includes text), logo_left_text_right (horizontal alignment), logo_top_text_bottom (vertical stack), text_only (no logo), gridbox_logo_text (flex/grid centered)"
+    }
+  },
+  "required": [
+    "name",
+    "logoPresentation"
+  ],
+  "additionalProperties": false
+}

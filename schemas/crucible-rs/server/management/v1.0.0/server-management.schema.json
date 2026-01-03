@@ -1,0 +1,199 @@
+{
+  "$id": "https://schemas.fulmenhq.dev/crucible/server/management/v1.0.0/server-management.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "title": "Fulmen Server Management Configuration",
+  "description": "Configuration schema for orchestrating local development, testing, and preview servers with predictable ports, health checks, and cleanup routines",
+  "properties": {
+    "envPrefix": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]*$",
+      "description": "Environment variable prefix derived from application identity (e.g., 'FULMEN_PULSAR'). Used to construct env var names like ${envPrefix}_DEV_PORT",
+      "default": "FULMEN_APP"
+    },
+    "configurations": {
+      "type": "object",
+      "description": "Named server configuration classes",
+      "properties": {
+        "dev": {
+          "$ref": "#/$defs/serverConfiguration",
+          "description": "Local development server configuration"
+        },
+        "test": {
+          "$ref": "#/$defs/serverConfiguration",
+          "description": "Test/CI server configuration"
+        },
+        "a11y": {
+          "$ref": "#/$defs/serverConfiguration",
+          "description": "Accessibility testing server configuration"
+        },
+        "preview": {
+          "$ref": "#/$defs/serverConfiguration",
+          "description": "Preview/staging server configuration"
+        },
+        "prod_like": {
+          "$ref": "#/$defs/serverConfiguration",
+          "description": "Production-like server configuration for final verification"
+        }
+      },
+      "additionalProperties": false
+    },
+    "additionalConfigurations": {
+      "type": "object",
+      "description": "User-defined server configurations (keys must start with 'x-')",
+      "patternProperties": {
+        "^x-[a-z0-9][a-z0-9_-]*$": {
+          "$ref": "#/$defs/serverConfiguration"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "configurations"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "serverConfiguration": {
+      "type": "object",
+      "description": "Configuration for a single server class",
+      "properties": {
+        "preferredPort": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 65535,
+          "description": "Preferred port number (must be within range)"
+        },
+        "range": {
+          "type": "object",
+          "description": "Allowed port range for this configuration",
+          "properties": {
+            "min": {
+              "type": "integer",
+              "minimum": 1024,
+              "maximum": 65535,
+              "description": "Minimum port in range (inclusive)"
+            },
+            "max": {
+              "type": "integer",
+              "minimum": 1024,
+              "maximum": 65535,
+              "description": "Maximum port in range (inclusive)"
+            }
+          },
+          "required": [
+            "min",
+            "max"
+          ],
+          "additionalProperties": false
+        },
+        "healthCheck": {
+          "type": "object",
+          "description": "Health check configuration for server readiness",
+          "properties": {
+            "method": {
+              "type": "string",
+              "enum": [
+                "GET",
+                "HEAD",
+                "POST"
+              ],
+              "default": "GET",
+              "description": "HTTP method for health check"
+            },
+            "path": {
+              "type": "string",
+              "pattern": "^/",
+              "description": "Health check endpoint path (must start with /)"
+            },
+            "timeout": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 30000,
+              "default": 5000,
+              "description": "Health check timeout in milliseconds"
+            },
+            "retries": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10,
+              "default": 3,
+              "description": "Number of retry attempts before declaring unhealthy"
+            },
+            "interval": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 10000,
+              "default": 1000,
+              "description": "Interval between retries in milliseconds"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "additionalProperties": false
+        },
+        "exitBehavior": {
+          "type": "object",
+          "description": "Exit code mappings for common server failure scenarios",
+          "properties": {
+            "portInUse": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255,
+              "description": "Exit code when port is already in use (maps to EXIT_PORT_IN_USE)",
+              "default": 11
+            },
+            "healthCheckFailed": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255,
+              "description": "Exit code when health check fails (maps to EXIT_HEALTH_CHECK_FAILED)",
+              "default": 50
+            },
+            "startupTimeout": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255,
+              "description": "Exit code when server startup times out (maps to EXIT_TIMEOUT)",
+              "default": 52
+            }
+          },
+          "additionalProperties": false
+        },
+        "envOverrides": {
+          "type": "array",
+          "description": "Environment variables that can override configuration settings",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]*$",
+            "description": "Environment variable name (uppercase with underscores)"
+          },
+          "uniqueItems": true,
+          "examples": [
+            [
+              "FULMEN_PULSAR_DEV_PORT",
+              "FULMEN_PULSAR_DEV_RANGE_MIN",
+              "FULMEN_PULSAR_DEV_RANGE_MAX"
+            ]
+          ]
+        },
+        "pidFile": {
+          "type": "string",
+          "description": "Path to PID file for process tracking (relative to project root)",
+          "pattern": "^[^/].*\\.pid$"
+        },
+        "logFile": {
+          "type": "string",
+          "description": "Path to log file for server output (relative to project root)"
+        }
+      },
+      "required": [
+        "preferredPort",
+        "range",
+        "healthCheck"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

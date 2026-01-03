@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/taxonomy/language/v1.0.0/language-metadata.schema.json",
+  "title": "Fulmen Language Metadata",
+  "description": "Metadata object describing Fulmen helper language support status",
+  "type": "object",
+  "properties": {
+    "key": {
+      "$ref": "language-key.schema.json"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable language name"
+    },
+    "libraryName": {
+      "type": "string",
+      "description": "Canonical helper library package name (e.g., gofulmen, pyfulmen)"
+    },
+    "status": {
+      "type": "string",
+      "description": "Lifecycle status for the helper library",
+      "enum": [
+        "active",
+        "planned",
+        "deprecated"
+      ]
+    },
+    "minimumRuntime": {
+      "type": "string",
+      "description": "Minimum supported runtime or compiler version"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional free-form notes about roadmap or support focus"
+    }
+  },
+  "required": [
+    "key",
+    "name",
+    "libraryName",
+    "status"
+  ],
+  "additionalProperties": false
+}

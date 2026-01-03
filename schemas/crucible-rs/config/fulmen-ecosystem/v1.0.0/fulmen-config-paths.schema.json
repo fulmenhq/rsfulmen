@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/config/fulmen-ecosystem/fulmen-config-paths-v1.0.0.json",
+  "title": "Fulmen Config Paths",
+  "description": "Describes shared configuration directories for Fulmen tools",
+  "type": "object",
+  "required": [
+    "platforms"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version or manifest revision"
+    },
+    "platforms": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "properties": {
+        "linux": {
+          "$ref": "#/definitions/platformPaths"
+        },
+        "macos": {
+          "$ref": "#/definitions/platformPaths"
+        },
+        "windows": {
+          "$ref": "#/definitions/platformPaths"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "platformPaths": {
+      "type": "object",
+      "required": [
+        "config",
+        "data",
+        "cache"
+      ],
+      "properties": {
+        "config": {
+          "type": "string",
+          "description": "Default configuration directory"
+        },
+        "data": {
+          "type": "string",
+          "description": "Default data directory"
+        },
+        "cache": {
+          "type": "string",
+          "description": "Default cache directory"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

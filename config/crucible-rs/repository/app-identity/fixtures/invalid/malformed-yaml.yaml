@@ -1,0 +1,8 @@
+# Invalid: Malformed YAML syntax
+app:
+  binary_name: myapp
+  vendor: acmecorp
+  env_prefix: MYAPP_
+  config_name: myapp
+  description: This line is missing closing quote and will cause parse error
+  invalid_key without colon

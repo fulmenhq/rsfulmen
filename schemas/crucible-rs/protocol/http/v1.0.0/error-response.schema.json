@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/protocol/http/v1.0.0/error-response.schema.json",
+  "title": "HttpErrorResponse",
+  "description": "Standard error envelope for Fulmen HTTP APIs",
+  "type": "object",
+  "properties": {
+    "success": {
+      "const": false
+    },
+    "error": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Machine-readable error code"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable error message"
+        },
+        "details": {
+          "type": "object",
+          "description": "Optional structured details for diagnostics"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "additionalProperties": true
+    },
+    "requestId": {
+      "type": "string",
+      "description": "Request identifier echoed back"
+    },
+    "correlationId": {
+      "type": "string",
+      "description": "Correlation identifier for cross-service tracing"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC timestamp when the error was generated"
+    }
+  },
+  "required": [
+    "success",
+    "error"
+  ],
+  "additionalProperties": true
+}

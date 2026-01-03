@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/standards/publishing/v1.0.0/spec-catalog.schema.json",
+  "title": "Spec Catalog",
+  "description": "Machine-readable catalog of published specification artifacts for spec-host repositories",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0",
+      "description": "Schema version for this catalog format"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this catalog was generated"
+    },
+    "host_domain": {
+      "type": "string",
+      "format": "hostname",
+      "description": "The HTTPS host domain under which canonical IDs resolve",
+      "examples": [
+        "schemas.fulmenhq.dev",
+        "specs.enact.fulmenhq.dev"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "description": "Provenance information about the source repository",
+      "properties": {
+        "repository": {
+          "type": "string",
+          "description": "Source repository URL or identifier",
+          "examples": [
+            "github.com/fulmenhq/crucible"
+          ]
+        },
+        "commit": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$",
+          "description": "Git commit SHA from which this catalog was generated"
+        },
+        "tag": {
+          "type": "string",
+          "description": "Git tag or version from which this catalog was generated",
+          "examples": [
+            "v0.2.26",
+            "v1.0.0"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "assets": {
+      "type": "array",
+      "description": "List of published specification assets",
+      "items": {
+        "$ref": "#/$defs/asset"
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "generated_at",
+    "host_domain",
+    "assets"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "asset": {
+      "type": "object",
+      "description": "A single published specification asset",
+      "properties": {
+        "canonical_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "The canonical URL of this asset (must be HTTPS)",
+          "pattern": "^https://"
+        },
+        "spec_type": {
+          "type": "string",
+          "enum": [
+            "jsonschema",
+            "openapi",
+            "asyncapi",
+            "other"
+          ],
+          "description": "The type of specification"
+        },
+        "title": {
+          "type": "string",
+          "description": "Human-readable title extracted from the spec"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description extracted from the spec"
+        },
+        "media_type": {
+          "type": "string",
+          "description": "MIME type of the asset",
+          "examples": [
+            "application/schema+json",
+            "application/json",
+            "application/vnd.oai.openapi+json"
+          ]
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 digest of the published file bytes"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Size of the asset in bytes"
+        },
+        "version": {
+          "type": "string",
+          "description": "Version extracted from the canonical URL path",
+          "examples": [
+            "v1.0.0",
+            "v2025.12.0"
+          ]
+        }
+      },
+      "required": [
+        "canonical_url",
+        "spec_type",
+        "sha256"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

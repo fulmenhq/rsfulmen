@@ -1,0 +1,10 @@
+# Identity for API server in monorepo
+app:
+  binary_name: myproject-api
+  vendor: acmecorp
+  env_prefix: MYPROJECT_API_
+  config_name: myproject-api
+  description: API server component of myproject monorepo
+metadata:
+  repository_category: service
+  telemetry_namespace: myproject_api

@@ -1,0 +1,51 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: https://schemas.fulmenhq.dev/config/sync-keys-v1.0.0.json
+title: Fulmen Sync Keys Metadata
+description: Canonical metadata describing available sync keys published by SSOT repositories.
+type: object
+required:
+  - version
+  - keys
+properties:
+  version:
+    type: string
+  keys:
+    type: array
+    items:
+      $ref: '#/$defs/key'
+additionalProperties: false
+$defs:
+  key:
+    type: object
+    required:
+      - id
+      - description
+      - basePath
+    properties:
+      id:
+        type: string
+      description:
+        type: string
+      basePath:
+        type: string
+      recommendedOutput:
+        type: string
+      tags:
+        type: array
+        items:
+          type: string
+      metadata:
+        type: object
+        description: Optional metadata for sync tooling
+        properties:
+          sourceRepo:
+            type: string
+            description: Source repository URL or 'local' for development references
+          sourcePathBase:
+            type: string
+            description: Base path within source repository for this sync key
+          notes:
+            type: string
+            description: Human-readable notes about usage, constraints, or caveats
+        additionalProperties: true
+    additionalProperties: false

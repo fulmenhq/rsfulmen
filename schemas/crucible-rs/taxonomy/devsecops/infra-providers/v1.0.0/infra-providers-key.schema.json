@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/taxonomy/devsecops/infra-providers/v1.0.0/infra-providers-key.schema.json",
+  "title": "Fulmen Infra Providers Key",
+  "description": "Enum of canonical infrastructure provider identifiers for DevSecOps schemas",
+  "type": "string",
+  "enum": [
+    "doc",
+    "aws",
+    "gcp",
+    "azure",
+    "cloudflare",
+    "hetzner"
+  ],
+  "examples": [
+    "doc"
+  ]
+}

@@ -1,0 +1,148 @@
+$schema: https://schemas.fulmenhq.dev/library/foundry/v1.0.0/http-status-groups.schema.json
+description: HTTP status code groups shared across helper libraries.
+version: v0.1.0
+groups:
+  - id: informational
+    name: Informational Responses
+    description: '1xx HTTP status codes indicating provisional responses.'
+    codes:
+      - value: 100
+        reason: Continue
+      - value: 101
+        reason: Switching Protocols
+      - value: 102
+        reason: Processing
+      - value: 103
+        reason: Early Hints
+  - id: success
+    name: Successful Responses
+    description: '2xx HTTP status codes indicating successful requests.'
+    codes:
+      - value: 200
+        reason: OK
+      - value: 201
+        reason: Created
+      - value: 202
+        reason: Accepted
+      - value: 203
+        reason: Non-Authoritative Information
+      - value: 204
+        reason: No Content
+      - value: 205
+        reason: Reset Content
+      - value: 206
+        reason: Partial Content
+      - value: 207
+        reason: Multi-Status
+      - value: 208
+        reason: Already Reported
+      - value: 226
+        reason: IM Used
+  - id: redirect
+    name: Redirection Responses
+    description: '3xx HTTP status codes indicating redirects.'
+    codes:
+      - value: 300
+        reason: Multiple Choices
+      - value: 301
+        reason: Moved Permanently
+      - value: 302
+        reason: Found
+      - value: 303
+        reason: See Other
+      - value: 304
+        reason: Not Modified
+      - value: 305
+        reason: Use Proxy
+      - value: 307
+        reason: Temporary Redirect
+      - value: 308
+        reason: Permanent Redirect
+  - id: client-error
+    name: Client Error Responses
+    description: '4xx HTTP status codes indicating client errors.'
+    codes:
+      - value: 400
+        reason: Bad Request
+      - value: 401
+        reason: Unauthorized
+      - value: 402
+        reason: Payment Required
+      - value: 403
+        reason: Forbidden
+      - value: 404
+        reason: Not Found
+      - value: 405
+        reason: Method Not Allowed
+      - value: 406
+        reason: Not Acceptable
+      - value: 407
+        reason: Proxy Authentication Required
+      - value: 408
+        reason: Request Timeout
+      - value: 409
+        reason: Conflict
+      - value: 410
+        reason: Gone
+      - value: 411
+        reason: Length Required
+      - value: 412
+        reason: Precondition Failed
+      - value: 413
+        reason: Content Too Large
+      - value: 414
+        reason: URI Too Long
+      - value: 415
+        reason: Unsupported Media Type
+      - value: 416
+        reason: Range Not Satisfiable
+      - value: 417
+        reason: Expectation Failed
+      - value: 418
+        reason: I'm a teapot
+      - value: 421
+        reason: Misdirected Request
+      - value: 422
+        reason: Unprocessable Content
+      - value: 423
+        reason: Locked
+      - value: 424
+        reason: Failed Dependency
+      - value: 425
+        reason: Too Early
+      - value: 426
+        reason: Upgrade Required
+      - value: 428
+        reason: Precondition Required
+      - value: 429
+        reason: Too Many Requests
+      - value: 431
+        reason: Request Header Fields Too Large
+      - value: 451
+        reason: Unavailable For Legal Reasons
+  - id: server-error
+    name: Server Error Responses
+    description: '5xx HTTP status codes indicating server errors.'
+    codes:
+      - value: 500
+        reason: Internal Server Error
+      - value: 501
+        reason: Not Implemented
+      - value: 502
+        reason: Bad Gateway
+      - value: 503
+        reason: Service Unavailable
+      - value: 504
+        reason: Gateway Timeout
+      - value: 505
+        reason: HTTP Version Not Supported
+      - value: 506
+        reason: Variant Also Negotiates
+      - value: 507
+        reason: Insufficient Storage
+      - value: 508
+        reason: Loop Detected
+      - value: 510
+        reason: Not Extended
+      - value: 511
+        reason: Network Authentication Required

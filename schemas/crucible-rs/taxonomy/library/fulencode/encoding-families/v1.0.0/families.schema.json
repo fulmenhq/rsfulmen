@@ -1,0 +1,184 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/taxonomy/library/fulencode/encoding-families-v1.0.0.json",
+  "title": "Encoding Families Taxonomy Schema",
+  "description": "Schema for encoding families taxonomy defining supported encodings",
+  "type": "object",
+  "required": [
+    "binary_to_text",
+    "character_encodings"
+  ],
+  "properties": {
+    "binary_to_text": {
+      "type": "object",
+      "description": "Binary-to-text encoding definitions",
+      "patternProperties": {
+        "^[a-z0-9_]+$": {
+          "$ref": "#/$defs/binaryToTextEncoding"
+        }
+      }
+    },
+    "character_encodings": {
+      "type": "object",
+      "description": "Character encoding definitions",
+      "patternProperties": {
+        "^[a-z0-9_-]+$": {
+          "$ref": "#/$defs/characterEncoding"
+        }
+      }
+    },
+    "deferred_to_specialized": {
+      "type": "object",
+      "description": "Specialized modules for optional encodings",
+      "patternProperties": {
+        "^[a-z0-9_]+$": {
+          "$ref": "#/$defs/specializedModule"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "binaryToTextEncoding": {
+      "type": "object",
+      "required": [
+        "type",
+        "alphabet_size",
+        "use_case"
+      ],
+      "properties": {
+        "type": {
+          "const": "binary_to_text"
+        },
+        "alphabet_size": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "padding": {
+          "type": "boolean"
+        },
+        "padding_char": {
+          "type": "string",
+          "maxLength": 1
+        },
+        "characters": {
+          "type": "string"
+        },
+        "case_variants": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "lowercase",
+              "uppercase"
+            ]
+          }
+        },
+        "use_case": {
+          "type": "string"
+        },
+        "rfc": {
+          "type": "string"
+        }
+      }
+    },
+    "characterEncoding": {
+      "type": "object",
+      "required": [
+        "type",
+        "variable_width",
+        "use_case"
+      ],
+      "properties": {
+        "type": {
+          "const": "character_encoding"
+        },
+        "variable_width": {
+          "type": "boolean"
+        },
+        "bytes_per_codepoint": {
+          "type": [
+            "integer",
+            "string"
+          ]
+        },
+        "bom_required": {
+          "type": "boolean"
+        },
+        "bom_bytes": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          }
+        },
+        "max_codepoint": {
+          "type": "integer"
+        },
+        "endianness": {
+          "type": "string",
+          "enum": [
+            "little",
+            "big"
+          ]
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "use_case": {
+          "type": "string"
+        },
+        "rfc": {
+          "type": "string"
+        },
+        "standard": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "specializedModule": {
+      "type": "object",
+      "required": [
+        "tier",
+        "category",
+        "formats",
+        "use_case",
+        "module"
+      ],
+      "properties": {
+        "tier": {
+          "const": "specialized"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "encoding_families",
+            "legacy_encodings"
+          ]
+        },
+        "formats": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "use_case": {
+          "type": "string"
+        },
+        "module": {
+          "type": "string",
+          "pattern": "^fulencode-[a-z0-9-]+$"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

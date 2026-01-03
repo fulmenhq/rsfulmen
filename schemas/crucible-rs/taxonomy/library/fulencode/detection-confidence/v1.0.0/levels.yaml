@@ -1,0 +1,167 @@
+# Detection Confidence Taxonomy for Fulencode v1.0.0
+# Defines confidence thresholds and detection sources
+confidence_levels:
+  high:
+    threshold_min: 0.9
+    threshold_max: 1.0
+    description: "Very likely correct encoding"
+    recommended_action: "Use detected encoding directly"
+    typical_sources:
+      - "BOM detected"
+      - "UTF-8 validation passed"
+      - "UTF-16 validation passed with BOM"
+      - "Statistical analysis with strong signal"
+    examples:
+      - {encoding: "utf-8", confidence: 1.0, reason: "Valid UTF-8 + BOM"}
+      - {encoding: "utf-16le", confidence: 0.95, reason: "UTF-16LE BOM + valid pairs"}
+      - {encoding: "ascii", confidence: 1.0, reason: "All bytes < 0x80"}
+  medium:
+    threshold_min: 0.5
+    threshold_max: 0.89
+    description: "Probable encoding, may need fallback"
+    recommended_action: "Use detected encoding with fallback"
+    typical_sources:
+      - "UTF-8 validation passed without BOM"
+      - "Heuristic byte frequency analysis"
+      - "Partial validation success"
+    examples:
+      - {encoding: "utf-8", confidence: 0.85, reason: "Valid UTF-8, no BOM"}
+      - {encoding: "cp1252", confidence: 0.7, reason: "Smart quotes detected (0x91-0x94)"}
+      - {encoding: "iso-8859-1", confidence: 0.6, reason: "High-bit chars, no UTF-8 patterns"}
+  low:
+    threshold_min: 0.0
+    threshold_max: 0.49
+    description: "Ambiguous or uncertain"
+    recommended_action: "Require user confirmation or use fallback chain"
+    typical_sources:
+      - "Pure ASCII (could be any superset)"
+      - "Binary data"
+      - "Ambiguous between similar encodings"
+    examples:
+      - {encoding: "ascii", confidence: 0.4, reason: "Pure ASCII, ambiguous"}
+      - {encoding: "iso-8859-1", confidence: 0.45, reason: "Ambiguous vs CP1252"}
+      - {encoding: "unknown", confidence: 0.0, reason: "Binary data or no match"}
+detection_sources:
+  bom:
+    type: definitive
+    confidence_contribution: 1.0
+    description: "Byte Order Mark detected at file start"
+    signatures:
+      utf-8: [0xEF, 0xBB, 0xBF]
+      utf-16le: [0xFF, 0xFE]
+      utf-16be: [0xFE, 0xFF]
+      utf-32le: [0xFF, 0xFE, 0x00, 0x00]
+      utf-32be: [0x00, 0x00, 0xFE, 0xFF]
+    notes: "BOM presence implies encoding, but absence doesn't rule it out"
+  validation:
+    type: structural
+    confidence_contribution: 0.85-1.0
+    description: "Encoding-specific validation rules passed"
+    methods:
+      utf-8:
+        - "No invalid continuations (0x80-0xBF without lead byte)"
+        - "No overlong encodings (security violation)"
+        - "No surrogate codepoints (U+D800-U+DFFF)"
+        - "No out-of-range codepoints (>U+10FFFF)"
+      utf-16:
+        - "All surrogate pairs properly matched"
+        - "No unpaired high surrogates"
+        - "No unpaired low surrogates"
+    confidence_factors:
+      - "Sample size (larger = higher confidence)"
+      - "Ratio of valid sequences to total bytes"
+  heuristic:
+    type: probabilistic
+    confidence_contribution: 0.5-0.9
+    description: "Byte frequency and pattern analysis"
+    techniques:
+      byte_frequency:
+        description: "Analyze byte value distribution"
+        indicators:
+          utf-8: "High frequency of 0x00-0x7F, multi-byte sequences follow rules"
+          cp1252: "Presence of smart quotes (0x91-0x94, curly quotes)"
+          iso-8859-1: "High-bit chars (0x80-0xFF) without UTF-8 patterns"
+      null_bytes:
+        description: "Null byte detection"
+        indicators:
+          utf-16: "Regular null bytes (every other byte for ASCII content)"
+          binary: "Scattered null bytes with no pattern"
+      ascii_ratio:
+        description: "Percentage of 7-bit ASCII characters"
+        thresholds:
+          ">95%": "Likely ASCII or UTF-8"
+          "50-95%": "Likely extended encoding (CP1252, ISO-8859-1, UTF-8 with non-ASCII)"
+          "<50%": "Likely binary or non-Latin encoding"
+  statistical:
+    type: advanced
+    confidence_contribution: 0.6-0.95
+    description: "ML-based or statistical models"
+    algorithms:
+      chardet: "Character detection library (ML-based)"
+      icu: "International Components for Unicode"
+      charset_normalizer: "Advanced charset detection"
+    availability: "Specialized tier (fulencode-detect-ml)"
+    notes: "Higher accuracy but external dependencies"
+  multibase:
+    type: prefix
+    confidence_contribution: 1.0
+    description: "Multibase self-describing prefix"
+    prefixes:
+      f: "base16 (hex)"
+      b: "base32"
+      z: "base58btc (Bitcoin)"
+      m: "base64"
+      u: "base64url"
+    notes: "IPFS-specific, unambiguous when prefix present"
+ambiguous_cases:
+  ascii_superset:
+    description: "Pure ASCII content"
+    ambiguous_between:
+      - utf-8
+      - iso-8859-1
+      - cp1252
+      - ascii
+    resolution_strategy:
+      - "Assume UTF-8 by default (most universal)"
+      - "Use fallback chain if UTF-8 fails later"
+    confidence: 0.4
+  cp1252_vs_iso_8859_1:
+    description: "Western European text"
+    distinguishing_bytes:
+      cp1252_only: [0x80-0x9F] # Smart quotes, em dash, etc.
+      iso_8859_1: "No printable chars in 0x80-0x9F range"
+    resolution_strategy:
+      - "Check for CP1252-specific bytes (0x91-0x94 for quotes)"
+      - "If present → CP1252 (confidence 0.7)"
+      - "If absent → ISO-8859-1 (confidence 0.6)"
+  binary_data:
+    description: "Non-text binary data"
+    indicators:
+      - "High frequency of null bytes (non-UTF-16 pattern)"
+      - "No valid UTF-8 sequences"
+      - "Random byte distribution"
+    recommended_encoding: null
+    confidence: 0.0
+    handling: "Return error or 'binary' encoding type"
+confidence_calculation:
+  formula: "weighted_average(sources)"
+  weights:
+    bom: 1.0
+    validation: 0.9
+    heuristic: 0.6
+    statistical: 0.8
+    multibase: 1.0
+  example:
+    input: "UTF-8 with BOM"
+    sources:
+      - {source: "bom", detected: "utf-8", weight: 1.0}
+      - {source: "validation", detected: "utf-8", weight: 0.9}
+    calculation: "(1.0 * 1.0 + 0.9 * 1.0) / 2 = 0.95"
+    final_confidence: 0.95
+    level: "high"
+telemetry_buckets:
+  high: "≥90%"
+  medium: "50-89%"
+  low: "<50%"
+  label_name: "confidence_bucket"
+  metric: "fulencode.detect.result_total"

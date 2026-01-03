@@ -1,0 +1,83 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: https://schemas.fulmenhq.dev/tooling/external-tools/manifest-v1.0.0.json
+title: Fulmen External Tools Manifest
+description: Defines external tooling prerequisites for repositories.
+type: object
+required:
+  - version
+  - tools
+properties:
+  version:
+    type: string
+    description: Manifest version identifier.
+  binDir:
+    type: string
+    description: Default directory for installed binaries (relative path allowed).
+  tools:
+    type: array
+    description: Tool requirements.
+    items:
+      $ref: '#/$defs/tool'
+additionalProperties: false
+$defs:
+  tool:
+    type: object
+    required:
+      - id
+      - install
+    properties:
+      id:
+        type: string
+        pattern: '^[a-z0-9\-]+$'
+        description: Unique identifier for the tool.
+      description:
+        type: string
+      required:
+        type: boolean
+        default: true
+      install:
+        $ref: '#/$defs/install'
+    additionalProperties: false
+  install:
+    type: object
+    required:
+      - type
+    properties:
+      type:
+        type: string
+        enum: [go, verify, download, link]
+      module:
+        type: string
+        description: Go module path (for type=go).
+      version:
+        type: string
+        description: Version tag for go install (SemVer or CalVer).
+      binName:
+        type: string
+        description: Binary name (defaults to tool id).
+      destination:
+        type: string
+        description: Directory for installed binary.
+      command:
+        type: string
+        description: Command to verify on PATH (for type=verify).
+      url:
+        type: string
+        format: uri
+        description: Remote artifact URL (for type=download).
+      source:
+        type: string
+        description: Local file path to copy from (for type=link).
+      checksum:
+        oneOf:
+          - type: string
+            pattern: '^[a-f0-9]{64}$'
+            description: Single checksum for all platforms
+          - type: object
+            patternProperties:
+              '^(darwin|linux|windows)-(amd64|arm64)$':
+                type: string
+                pattern: '^[a-f0-9]{64}$'
+            description: Platform-specific checksums keyed by os-arch
+        description: SHA-256 checksum(s) (hex) for downloaded artifacts. Highly recommended for security. Use object form for platform-specific binaries.
+    additionalProperties: false

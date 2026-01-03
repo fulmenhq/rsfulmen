@@ -1,0 +1,36 @@
+# Fulpack Operations Taxonomy
+# Defines canonical archive operation identifiers for cross-language consistency
+version: "1.0.0"
+last_updated: "2025-11-15"
+operations:
+  - id: create
+    name: "Create Archive"
+    description: "Create new archive from source files/directories"
+    required_params: [source, output, format]
+    optional_params: [options]
+    notes: "Source can be single path or array of paths to archive"
+  - id: extract
+    name: "Extract Archive"
+    description: "Extract archive contents to destination"
+    required_params: [archive, destination]
+    optional_params: [options]
+    notes: "Destination must be explicit directory path, no CWD extraction"
+  - id: scan
+    name: "Scan Archive"
+    description: "List archive entries (for Pathfinder integration)"
+    required_params: [archive]
+    optional_params: [options]
+    purpose: "Pathfinder integration - enables glob searches within archives"
+    notes: "Returns entry list without extraction; fast TOC read"
+  - id: verify
+    name: "Verify Archive"
+    description: "Validate archive integrity and checksums"
+    required_params: [archive]
+    optional_params: [options]
+    notes: "Checks structure, checksums, detects corruption and decompression bombs"
+  - id: info
+    name: "Archive Info"
+    description: "Get archive metadata without extraction"
+    required_params: [archive]
+    optional_params: []
+    notes: "Quick inspection for format detection, size estimation, compression ratio"

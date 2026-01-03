@@ -1,0 +1,34 @@
+# Fulmen authentication methods taxonomy (machine-readable source)
+# Status: EXPERIMENTAL - Per ADR-0011, breaking changes allowed until L'Orage Central v0.2.0
+version: "0.2.9"
+methods:
+  - key: totp
+    name: Time-based One-Time Password
+    description: >-
+      App-generated codes (e.g., Authy/Google Authenticator); Go: github.com/pquerna/otp.
+    securityLevel: medium
+    implLangs:
+      - go
+      - python
+      - typescript
+  - key: webauthn
+    name: WebAuthn/FIDO2
+    description: >-
+      Passwordless auth with hardware/biometrics; Go: github.com/go-webauthn/webauthn.
+    securityLevel: phishing-resistant
+    implLangs:
+      - go
+      - typescript
+  - key: yubikey
+    name: YubiKey (OTP/U2F)
+    description: Hardware token for OTP/U2F; integrates with WebAuthn.
+    securityLevel: high
+    implLangs:
+      - go
+  - key: sms
+    name: SMS/OTP
+    description: Phone-based fallback (deprecated for prod; use only if no alternatives).
+    securityLevel: low
+    implLangs:
+      - go
+      - python

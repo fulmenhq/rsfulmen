@@ -1,0 +1,204 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.3leaps.dev/ailink/v0/prompt.schema.json",
+  "title": "AILink Prompt Configuration",
+  "description": "Schema for AILink prompt configuration files. Prompts define how AI backends process requests, including input variables, tools, and response validation.",
+  "type": "object",
+  "required": [
+    "slug",
+    "name",
+    "description",
+    "version"
+  ],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Unique identifier for the prompt (lowercase alphanumeric with hyphens)"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Human-readable display name"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "description": "Brief description of what this prompt does"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Semantic version for prompt content evolution"
+    },
+    "author": {
+      "type": "string",
+      "maxLength": 64,
+      "description": "Prompt author or maintainer"
+    },
+    "updated": {
+      "type": "string",
+      "format": "date",
+      "description": "Last update date (YYYY-MM-DD)"
+    },
+    "input": {
+      "type": "object",
+      "description": "Input specification for prompt variables",
+      "properties": {
+        "required_variables": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "description": "Variables that must be provided"
+        },
+        "optional_variables": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "description": "Optional variables with defaults"
+        },
+        "accepts_images": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this prompt accepts image input"
+        },
+        "image_types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "image/png",
+              "image/jpeg",
+              "image/webp",
+              "image/gif"
+            ]
+          },
+          "description": "Accepted image MIME types (if accepts_images is true)"
+        },
+        "max_images": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "default": 1,
+          "description": "Maximum number of images allowed"
+        }
+      },
+      "additionalProperties": false
+    },
+    "system_template": {
+      "type": "string",
+      "minLength": 1,
+      "description": "System prompt template with {{variable}} placeholders"
+    },
+    "user_template": {
+      "type": "string",
+      "default": "{{input}}",
+      "description": "User prompt template (optional)"
+    },
+    "depth_variants": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Keyed user prompt variants (e.g., quick, deep, thorough)"
+    },
+    "tools": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/tool"
+      },
+      "description": "Server-side tools the prompt may use"
+    },
+    "response_schema": {
+      "anyOf": [
+        {
+          "type": "object",
+          "description": "Inline JSONSchema for response validation"
+        },
+        {
+          "type": "object",
+          "required": [
+            "$ref"
+          ],
+          "properties": {
+            "$ref": {
+              "type": "string",
+              "description": "Reference to external schema"
+            }
+          },
+          "additionalProperties": false
+        }
+      ],
+      "description": "JSONSchema for expected response structure"
+    },
+    "response_options": {
+      "type": "object",
+      "properties": {
+        "may_include_images": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether response may contain images"
+        },
+        "image_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Expected image MIME types in response"
+        }
+      },
+      "additionalProperties": false
+    },
+    "provider_hints": {
+      "type": "object",
+      "properties": {
+        "preferred_models": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Models known to work well with this prompt"
+        },
+        "min_context_window": {
+          "type": "integer",
+          "minimum": 1000,
+          "description": "Minimum context window size needed"
+        },
+        "supports_tools": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether this prompt benefits from tool use"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "tool": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Tool type identifier (e.g., web_search, x_search, code_execution)"
+        },
+        "config": {
+          "type": "object",
+          "description": "Tool-specific configuration"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/ascii/box-chars-v1.0.0.json",
+  "title": "BoxChars",
+  "description": "Characters used for drawing ASCII boxes and borders",
+  "type": "object",
+  "properties": {
+    "topLeft": {
+      "type": "string",
+      "description": "Top-left corner character",
+      "minLength": 1,
+      "maxLength": 1
+    },
+    "topRight": {
+      "type": "string",
+      "description": "Top-right corner character",
+      "minLength": 1,
+      "maxLength": 1
+    },
+    "bottomLeft": {
+      "type": "string",
+      "description": "Bottom-left corner character",
+      "minLength": 1,
+      "maxLength": 1
+    },
+    "bottomRight": {
+      "type": "string",
+      "description": "Bottom-right corner character",
+      "minLength": 1,
+      "maxLength": 1
+    },
+    "horizontal": {
+      "type": "string",
+      "description": "Horizontal line character",
+      "minLength": 1,
+      "maxLength": 1
+    },
+    "vertical": {
+      "type": "string",
+      "description": "Vertical line character",
+      "minLength": 1,
+      "maxLength": 1
+    },
+    "cross": {
+      "type": "string",
+      "description": "Cross/intersection character",
+      "minLength": 1,
+      "maxLength": 1
+    }
+  },
+  "required": [
+    "topLeft",
+    "topRight",
+    "bottomLeft",
+    "bottomRight",
+    "horizontal",
+    "vertical",
+    "cross"
+  ]
+}

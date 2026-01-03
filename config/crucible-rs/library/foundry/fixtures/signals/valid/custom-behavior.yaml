@@ -1,0 +1,96 @@
+$schema: https://schemas.fulmenhq.dev/library/foundry/v1.0.0/signals.schema.json
+description: Signal configuration demonstrating custom signal handlers (USR1/USR2)
+version: v1.0.0
+signals:
+  - id: term
+    name: SIGTERM
+    unix_number: 15
+    windows_event: CTRL_CLOSE_EVENT
+    description: Graceful termination signal
+    default_behavior: graceful_shutdown
+    exit_code: 143
+  - id: int
+    name: SIGINT
+    unix_number: 2
+    windows_event: CTRL_C_EVENT
+    description: User interrupt (Ctrl+C)
+    default_behavior: graceful_shutdown
+    exit_code: 130
+  - id: hup
+    name: SIGHUP
+    unix_number: 1
+    windows_event: null
+    description: Hangup signal
+    default_behavior: reload_via_restart
+    exit_code: 129
+  - id: usr1
+    name: SIGUSR1
+    unix_number: 10
+    platform_overrides:
+      darwin: 30
+      freebsd: 30
+    windows_event: null
+    description: User-defined signal 1
+    default_behavior: custom
+    exit_code: 138
+    usage_notes: Application-specific signal for custom operations (e.g., reopen log files, dump statistics)
+  - id: usr2
+    name: SIGUSR2
+    unix_number: 12
+    platform_overrides:
+      darwin: 31
+      freebsd: 31
+    windows_event: null
+    description: User-defined signal 2
+    default_behavior: custom
+    exit_code: 140
+    usage_notes: Application-specific signal for custom operations (e.g., toggle debug mode, trigger profiling)
+behaviors:
+  - id: graceful_shutdown
+    name: Graceful Shutdown
+    description: Clean shutdown with timeout
+    phases:
+      - name: exit
+        description: Exit with appropriate code
+  - id: reload_via_restart
+    name: Configuration Reload via Restart
+    description: Reload configuration by restarting
+    phases:
+      - name: exit
+        description: Exit for restart
+  - id: custom
+    name: Custom Handler
+    description: Application-specific behavior defined by handler registration
+    phases:
+      - name: delegate
+        description: Call application-provided handler function
+os_mappings:
+  unix:
+    SIGTERM: 15
+    SIGINT: 2
+    SIGHUP: 1
+    SIGUSR1: 10
+    SIGUSR2: 12
+  windows:
+    CTRL_C_EVENT: 0
+    CTRL_CLOSE_EVENT: 2
+  platform_overrides:
+    darwin:
+      SIGUSR1: 30
+      SIGUSR2: 31
+    freebsd:
+      SIGUSR1: 30
+      SIGUSR2: 31
+  signal_to_event:
+    SIGTERM: CTRL_CLOSE_EVENT
+    SIGINT: CTRL_C_EVENT
+    SIGHUP: null
+    SIGUSR1: null
+    SIGUSR2: null
+exit_codes:
+  SIGTERM: 143
+  SIGINT: 130
+  SIGHUP: 129
+  SIGUSR1: 138
+  SIGUSR2: 140
+  note: Exit codes follow POSIX 128+N pattern

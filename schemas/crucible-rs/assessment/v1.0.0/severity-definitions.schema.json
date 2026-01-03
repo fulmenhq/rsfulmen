@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/assessment/severity-definitions-v1.0.0.json",
+  "title": "Assessment Severity Definitions",
+  "description": "Shared severity definitions for assessment and analysis tooling.",
+  "$comment": "Implementations MUST compare severities using severityLevel, not lexical ordering of severityName.",
+  "$defs": {
+    "severityName": {
+      "type": "string",
+      "enum": [
+        "info",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "description": "Assessment severity name from lowest (info) to highest (critical)."
+    },
+    "severityLevel": {
+      "type": "integer",
+      "enum": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "description": "Numeric severity level for sorting and comparison (info=0, critical=4)."
+    },
+    "severityMapping": {
+      "type": "object",
+      "description": "Canonical mapping of severity names to numeric levels.",
+      "additionalProperties": false,
+      "properties": {
+        "info": {
+          "const": 0
+        },
+        "low": {
+          "const": 1
+        },
+        "medium": {
+          "const": 2
+        },
+        "high": {
+          "const": 3
+        },
+        "critical": {
+          "const": 4
+        }
+      },
+      "required": [
+        "info",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ]
+    }
+  }
+}

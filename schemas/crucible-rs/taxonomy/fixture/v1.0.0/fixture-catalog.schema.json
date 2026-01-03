@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/taxonomy/fixture/v1.0.0/fixture-catalog.schema.json",
+  "title": "Fixture Catalog Schema",
+  "description": "Schema for the Fulmen fixture catalog registry. Defines fixture names, categories, variants, and i18n metadata.",
+  "type": "object",
+  "required": [
+    "version",
+    "fixtures"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Catalog schema version (semver)"
+    },
+    "fixtures": {
+      "type": "object",
+      "description": "Map of fixture names to their definitions",
+      "additionalProperties": {
+        "$ref": "#/$defs/fixture"
+      },
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9]{1,20}$",
+        "description": "Fixture name: ASCII lowercase, starts with letter, 2-21 chars"
+      }
+    }
+  },
+  "$defs": {
+    "fixture": {
+      "type": "object",
+      "required": [
+        "category",
+        "mode",
+        "default_lang",
+        "summary",
+        "variants"
+      ],
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": [
+            "proving",
+            "utility",
+            "chaos"
+          ],
+          "description": "Behavioral category of the fixture"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "server",
+            "client",
+            "datastore",
+            "identity"
+          ],
+          "description": "Fixture mode (identity planned for v0.4.3)"
+        },
+        "default_lang": {
+          "type": "string",
+          "pattern": "^[a-z]{2}$",
+          "description": "ISO 639-1 language code for primary language of summary/descriptions"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 200,
+          "description": "Brief description in default_lang"
+        },
+        "summary_i18n": {
+          "type": "object",
+          "description": "Translations of summary (keyed by ISO 639-1 code, excludes default_lang)",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 200
+          },
+          "propertyNames": {
+            "pattern": "^[a-z]{2}$"
+          }
+        },
+        "aliases": {
+          "type": "array",
+          "description": "Alternative names (UTF-8), typo corrections, i18n nicknames",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "uniqueItems": true
+        },
+        "variants": {
+          "type": "object",
+          "description": "Map of variant codes to their definitions",
+          "additionalProperties": {
+            "$ref": "#/$defs/variant"
+          },
+          "propertyNames": {
+            "pattern": "^[0-9]{3}$",
+            "description": "Variant code: 3-digit zero-padded (001-999, 000 reserved)"
+          },
+          "minProperties": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "planned",
+            "deprecated"
+          ],
+          "default": "active",
+          "description": "Lifecycle status of the fixture"
+        }
+      },
+      "additionalProperties": false
+    },
+    "variant": {
+      "type": "object",
+      "required": [
+        "name",
+        "description"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,30}$",
+          "description": "Short variant identifier (ASCII, kebab-case)"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 500,
+          "description": "Description in fixture's default_lang"
+        },
+        "description_i18n": {
+          "type": "object",
+          "description": "Translations of description (keyed by ISO 639-1 code)",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 500
+          },
+          "propertyNames": {
+            "pattern": "^[a-z]{2}$"
+          }
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "planned",
+            "deprecated"
+          ],
+          "default": "active",
+          "description": "Lifecycle status of the variant"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

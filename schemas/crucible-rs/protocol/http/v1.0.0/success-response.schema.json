@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/protocol/http/v1.0.0/success-response.schema.json",
+  "title": "HttpSuccessResponse",
+  "description": "Standard success envelope for Fulmen HTTP APIs",
+  "type": "object",
+  "properties": {
+    "success": {
+      "const": true
+    },
+    "message": {
+      "type": "string",
+      "description": "Human-readable status text"
+    },
+    "data": {
+      "description": "Optional data payload",
+      "oneOf": [
+        {
+          "type": "object"
+        },
+        {
+          "type": "array"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "requestId": {
+      "type": "string",
+      "description": "Request identifier echoed back"
+    },
+    "correlationId": {
+      "type": "string",
+      "description": "Correlation identifier for cross-service tracing"
+    }
+  },
+  "required": [
+    "success"
+  ],
+  "additionalProperties": true
+}

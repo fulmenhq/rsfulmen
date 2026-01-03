@@ -1,0 +1,225 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/standards/adr-frontmatter-v1.0.0.json",
+  "title": "ADR Frontmatter Schema",
+  "description": "Required frontmatter structure for Architecture Decision Records (ADRs) in the Fulmen ecosystem. Ensures consistency, enables validation, and supports tooling.",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "status",
+    "date",
+    "deciders",
+    "scope"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^ADR-[0-9]{4}$",
+      "description": "Unique ADR identifier. Format: ADR-XXXX (e.g., ADR-0001, ADR-0042). Sequential numbering within scope. Must match filename pattern: ADR-XXXX-slug-compatible-title.md where slug uses lowercase alphanumerics and hyphens only, no consecutive separators.",
+      "examples": [
+        "ADR-0001",
+        "ADR-0023"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 100,
+      "description": "Brief, descriptive title of the architectural decision.",
+      "examples": [
+        "Triple-Index Catalog Strategy",
+        "Progressive Logging Profiles"
+      ]
+    },
+    "status": {
+      "$ref": "https://schemas.fulmenhq.dev/crucible/standards/adr-lifecycle-status-v1.0.0.json",
+      "description": "Current lifecycle status of this ADR. Drives adoption guidance and deprecation warnings."
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date when the decision was initially made (ISO 8601 format: YYYY-MM-DD).",
+      "examples": [
+        "2025-10-15"
+      ]
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of last significant update to this ADR (ISO 8601 format: YYYY-MM-DD). Required if status changes or content is substantially revised.",
+      "examples": [
+        "2025-10-20"
+      ]
+    },
+    "deciders": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^@[a-zA-Z0-9_-]+$"
+      },
+      "description": "GitHub handles of individuals who made or approved this decision. Format: @username",
+      "examples": [
+        [
+          "@3leapsdave",
+          "@pipeline-architect"
+        ]
+      ]
+    },
+    "scope": {
+      "type": "string",
+      "enum": [
+        "Ecosystem",
+        "gofulmen",
+        "pyfulmen",
+        "tsfulmen",
+        "rsfulmen",
+        "csfulmen"
+      ],
+      "description": "Scope of this ADR. 'Ecosystem' for cross-language decisions (Crucible). Library name for local decisions.",
+      "examples": [
+        "Ecosystem",
+        "gofulmen"
+      ]
+    },
+    "supersedes": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^(ADR-[0-9]{4}|(gofulmen|pyfulmen|tsfulmen|rsfulmen|csfulmen):[0-9]{4})$"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(ADR-[0-9]{4}|(gofulmen|pyfulmen|tsfulmen|rsfulmen|csfulmen):[0-9]{4})$"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      ],
+      "description": "ID(s) of ADR(s) that this decision replaces. Format: 'ADR-XXXX' for ecosystem ADRs (including when one ecosystem ADR supersedes another), 'scope:XXXX' for local ADRs from helper libraries (e.g., 'pyfulmen:0003'). Can be a single string or array. Use scoped references when an ecosystem ADR consolidates local ADRs from specific libraries.",
+      "examples": [
+        "ADR-0003",
+        [
+          "ADR-0003",
+          "ADR-0005"
+        ],
+        [
+          "gofulmen:0007",
+          "pyfulmen:0012",
+          "tsfulmen:0009"
+        ]
+      ]
+    },
+    "superseded_by": {
+      "type": "string",
+      "pattern": "^ADR-[0-9]{4}$",
+      "description": "ID of ADR that replaces this decision. Automatically set when status becomes 'superseded'.",
+      "examples": [
+        "ADR-0007"
+      ]
+    },
+    "deprecation_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date when this ADR will be deprecated. Used for planning migrations. Set when status is 'deprecated'.",
+      "examples": [
+        "2026-01-01"
+      ]
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 2
+      },
+      "uniqueItems": true,
+      "description": "Tags for categorization and filtering (e.g., 'catalog', 'logging', 'performance').",
+      "examples": [
+        [
+          "catalog",
+          "indexing",
+          "performance"
+        ]
+      ]
+    },
+    "related_adrs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^ADR-[0-9]{4}$"
+      },
+      "uniqueItems": true,
+      "description": "IDs of related ADRs. Use for cross-referencing dependent or complementary decisions.",
+      "examples": [
+        [
+          "ADR-0001",
+          "ADR-0003"
+        ]
+      ]
+    },
+    "adoption": {
+      "type": "object",
+      "description": "Per-library adoption status tracking. Keys are library names, values are adoption status. Used for ecosystem ADRs only.",
+      "additionalProperties": {
+        "$ref": "https://schemas.fulmenhq.dev/crucible/standards/adr-adoption-status-v1.0.0.json"
+      },
+      "examples": [
+        {
+          "gofulmen": "verified",
+          "pyfulmen": "implemented",
+          "tsfulmen": "in-progress"
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "deprecated"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "deprecation_date"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "superseded"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "superseded_by"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "scope": {
+            "const": "Ecosystem"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "adoption": {
+            "description": "Adoption tracking is recommended for Ecosystem ADRs to monitor cross-library implementation."
+          }
+        }
+      }
+    }
+  ],
+  "$comment": "This schema enables CI validation of ADR frontmatter, automated index generation, and adoption matrix visualization. Version 1.0.0 established 2025-10-15."
+}

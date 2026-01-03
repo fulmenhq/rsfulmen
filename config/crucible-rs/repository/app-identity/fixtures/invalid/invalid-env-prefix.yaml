@@ -1,0 +1,7 @@
+# Invalid: env_prefix missing trailing underscore
+app:
+  binary_name: myapp
+  vendor: acmecorp
+  env_prefix: MYAPP
+  config_name: myapp
+  description: Environment prefix missing required trailing underscore

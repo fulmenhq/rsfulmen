@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/taxonomy/devsecops/geo/v1.0.0/geo-key.schema.json",
+  "title": "Fulmen Geo Key",
+  "description": "Enum of canonical geographic identifiers (countries and region groups) for DevSecOps schemas",
+  "type": "string",
+  "oneOf": [
+    {
+      "title": "Country Keys (ISO 3166-1 alpha-2 lowercase)",
+      "enum": [
+        "us",
+        "gb",
+        "de",
+        "fr",
+        "ch",
+        "ca"
+      ]
+    },
+    {
+      "title": "Region Keys (grouped super-regions)",
+      "enum": [
+        "eu",
+        "na"
+      ]
+    }
+  ],
+  "examples": [
+    "us",
+    "eu"
+  ]
+}

@@ -1,0 +1,43 @@
+# Fulmen infrastructure phases taxonomy (machine-readable source)
+# Status: EXPERIMENTAL - Per ADR-0011, breaking changes allowed until L'Orage Central v0.2.0
+version: "0.2.9"
+phases:
+  - key: bootstrap
+    name: Bootstrap and Secrets Init
+    description: Root keys, initial auth (e.g., GPG/Vaultwarden setup); solves chicken-egg.
+    order: 0
+    parallel: true
+    deps: []
+    procedural: true
+  - key: secrets
+    name: Secrets Management
+    description: Tenant stores (Turso/LibSQL); encrypted refs.
+    order: 1
+    parallel: false
+    deps:
+      - bootstrap
+    procedural: true
+  - key: network
+    name: Networking
+    description: VPC/LB/segments; zero-trust gateways (Cloudflare).
+    order: 2
+    parallel: true
+    deps:
+      - secrets
+    procedural: true
+  - key: storage
+    name: Storage
+    description: Buckets/DBs (S3/Spaces); post-network attach.
+    order: 3
+    parallel: false
+    deps:
+      - network
+    procedural: false
+  - key: compute
+    name: Compute and Deployment
+    description: Apps/stacks (Mattermost/Open edX); final layer.
+    order: 4
+    parallel: true
+    deps:
+      - storage
+    procedural: false

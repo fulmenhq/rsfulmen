@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/content/ssot-provenance/v1.0.0/ssot-provenance.schema.json",
+  "title": "SSOT Sync Provenance Metadata",
+  "description": "Aggregate provenance metadata for SSOT sync operations capturing source information for audit trails",
+  "type": "object",
+  "required": [
+    "schema",
+    "generated_at",
+    "sources"
+  ],
+  "properties": {
+    "schema": {
+      "type": "object",
+      "required": [
+        "name",
+        "version",
+        "url"
+      ],
+      "properties": {
+        "name": {
+          "const": "goneat.ssot.provenance"
+        },
+        "version": {
+          "const": "v1"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the provenance was generated"
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/sourceMetadata"
+      }
+    }
+  },
+  "$defs": {
+    "sourceMetadata": {
+      "type": "object",
+      "required": [
+        "name",
+        "slug",
+        "method"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Human-readable source name"
+        },
+        "slug": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "URL-safe slug derived from source name"
+        },
+        "method": {
+          "enum": [
+            "local_path",
+            "git_ref",
+            "git_tag",
+            "archive"
+          ],
+          "description": "Sync method used for this source"
+        },
+        "repo_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Repository URL (e.g., https://github.com/org/repo)"
+        },
+        "local_path": {
+          "type": "string",
+          "description": "Local filesystem path used for sync"
+        },
+        "ref": {
+          "type": "string",
+          "description": "Git ref (branch/tag) requested or detected"
+        },
+        "commit": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$",
+          "description": "Full 40-character Git commit SHA"
+        },
+        "dirty": {
+          "type": "boolean",
+          "description": "Whether the source had uncommitted changes"
+        },
+        "dirty_reason": {
+          "type": "string",
+          "enum": [
+            "worktree-dirty",
+            "non-git",
+            "no-head",
+            "no-worktree",
+            "status-error"
+          ],
+          "description": "Reason for dirty status if applicable"
+        },
+        "version_file": {
+          "type": "string",
+          "description": "Version file name that was read (e.g., VERSION)"
+        },
+        "version": {
+          "type": "string",
+          "description": "Version string detected from version file"
+        },
+        "version_source": {
+          "type": "string",
+          "description": "Source of version information (file name or 'not-found')"
+        },
+        "outputs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Map of asset type to destination path"
+        }
+      }
+    }
+  }
+}

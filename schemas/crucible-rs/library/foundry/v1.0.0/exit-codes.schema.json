@@ -1,0 +1,300 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/library/foundry/v1.0.0/exit-codes.schema.json",
+  "title": "Exit Codes Catalog",
+  "description": "Standardized process exit codes for Fulmen ecosystem",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "description": {
+      "type": "string",
+      "description": "Catalog description"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[vV]?\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of the exit codes catalog"
+    },
+    "categories": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Exit code categories organized by domain",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+            "description": "Category identifier (kebab-case)"
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable category name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Category purpose and usage"
+          },
+          "range": {
+            "type": "object",
+            "description": "Reserved code range for this category",
+            "properties": {
+              "min": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255,
+                "description": "Minimum exit code value in range"
+              },
+              "max": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255,
+                "description": "Maximum exit code value in range"
+              }
+            },
+            "required": [
+              "min",
+              "max"
+            ],
+            "additionalProperties": false
+          },
+          "codes": {
+            "type": "array",
+            "minItems": 1,
+            "description": "Exit codes in this category",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 255,
+                  "description": "Exit code value (0-255)"
+                },
+                "name": {
+                  "type": "string",
+                  "pattern": "^EXIT_[A-Z0-9_]+$",
+                  "description": "Constant name (UPPER_SNAKE_CASE with EXIT_ prefix)"
+                },
+                "description": {
+                  "type": "string",
+                  "description": "What this exit code indicates"
+                },
+                "context": {
+                  "type": "string",
+                  "description": "When/where this code should be used"
+                },
+                "bsd_equivalent": {
+                  "type": "string",
+                  "description": "Corresponding BSD sysexits.h constant (if applicable)"
+                },
+                "retry_hint": {
+                  "type": "string",
+                  "enum": [
+                    "retry",
+                    "no_retry",
+                    "investigate"
+                  ],
+                  "description": "Classification for automation retry behavior"
+                },
+                "python_note": {
+                  "type": "string",
+                  "description": "Python-specific implementation notes"
+                }
+              },
+              "required": [
+                "code",
+                "name",
+                "description"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "range",
+          "codes"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "bsd_compatibility": {
+      "type": "object",
+      "description": "BSD sysexits.h compatibility mappings",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "BSD compatibility mapping explanation"
+        },
+        "mappings": {
+          "type": "array",
+          "description": "Mappings between BSD and Fulmen exit codes",
+          "items": {
+            "type": "object",
+            "properties": {
+              "bsd_code": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255,
+                "description": "BSD sysexits.h code"
+              },
+              "bsd_name": {
+                "type": "string",
+                "description": "BSD constant name (e.g., EX_USAGE)"
+              },
+              "fulmen_code": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255,
+                "description": "Fulmen exit code mapping"
+              },
+              "fulmen_name": {
+                "type": "string",
+                "description": "Fulmen constant name"
+              },
+              "category": {
+                "type": "string",
+                "description": "Fulmen category"
+              },
+              "notes": {
+                "type": "string",
+                "description": "Mapping rationale and usage notes"
+              }
+            },
+            "required": [
+              "bsd_code",
+              "bsd_name",
+              "fulmen_code",
+              "fulmen_name",
+              "category"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Reserved ranges for application-specific extensions",
+      "properties": {
+        "ranges": {
+          "type": "array",
+          "description": "Reserved code ranges",
+          "items": {
+            "type": "object",
+            "properties": {
+              "range": {
+                "type": "object",
+                "properties": {
+                  "min": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "max": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  }
+                },
+                "required": [
+                  "min",
+                  "max"
+                ],
+                "additionalProperties": false
+              },
+              "purpose": {
+                "type": "string",
+                "description": "What this range is reserved for"
+              },
+              "sizing_guidance": {
+                "type": "string",
+                "description": "Guidance on range sizing and usage"
+              }
+            },
+            "required": [
+              "range",
+              "purpose"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "simplified_modes": {
+      "type": "array",
+      "description": "Simplified exit code mappings for novice-friendly tools",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+            "description": "Simplified mode identifier (kebab-case)"
+          },
+          "name": {
+            "type": "string",
+            "description": "Mode display name"
+          },
+          "description": {
+            "type": "string",
+            "description": "When to use this simplified mode"
+          },
+          "mappings": {
+            "type": "array",
+            "description": "Map detailed codes to simplified codes",
+            "items": {
+              "type": "object",
+              "properties": {
+                "simplified_code": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 255,
+                  "description": "Simplified exit code value"
+                },
+                "simplified_name": {
+                  "type": "string",
+                  "description": "Simplified code name"
+                },
+                "maps_from": {
+                  "type": "array",
+                  "description": "List of detailed codes that map to this simplified code",
+                  "items": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "minItems": 1
+                }
+              },
+              "required": [
+                "simplified_code",
+                "simplified_name",
+                "maps_from"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "mappings"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "version",
+    "categories"
+  ],
+  "additionalProperties": false
+}

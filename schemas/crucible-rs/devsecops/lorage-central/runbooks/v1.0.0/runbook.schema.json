@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/devsecops/lorage-central/runbooks/v1.0.0/runbook.schema.json",
+  "title": "L'Orage Central Runbook",
+  "description": "Schema for operational runbooks (e.g., tenant provisioning, global-network setup). Loaded via gofulmen shim; executed in REPL (serializes Markdown prototypes). Structured steps with phases/actions; tenant-scoped. Ties to recipe/policy (e.g., refs infra-phases for ordering, credentials for bootstrap).",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "tenantScope",
+    "phases"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Slug-compatible runbook ID (unique; e.g., 'global-network').",
+      "pattern": "^[a-z0-9-]+$",
+      "minLength": 1,
+      "maxLength": 127,
+      "examples": [
+        "global-network",
+        "tenant-bootstrap"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable title (e.g., 'Global Enterprise Network Setup').",
+      "minLength": 1,
+      "maxLength": 255,
+      "examples": [
+        "Global Enterprise Picture with Tenants"
+      ]
+    },
+    "tenantScope": {
+      "type": "array",
+      "description": "Applicable tenants (from registry.publicId; multi-OK, e.g., all for global).",
+      "items": {
+        "type": "string",
+        "description": "Tenant public ID (slug-compatible)",
+        "pattern": "^[a-z0-9-]+$",
+        "minLength": 1,
+        "maxLength": 127
+      },
+      "uniqueItems": true,
+      "minItems": 1,
+      "examples": [
+        [
+          "tnt-uuid-123-prod-us",
+          "tnt-uuid-456-dev-eu"
+        ]
+      ]
+    },
+    "description": {
+      "type": "string",
+      "description": "Overview (Markdown serialized; e.g., from prototypes).",
+      "minLength": 10,
+      "maxLength": 2000,
+      "examples": [
+        "Beginnings of the Runbook: Global Enterprise Picture with Tenants..."
+      ]
+    },
+    "phases": {
+      "type": "array",
+      "description": "Ordered phases (refs infra-phases; steps within for execution).",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "steps"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Phase ID (from infra-phases taxonomy; e.g., 'network').",
+            "$ref": "../../../../taxonomy/devsecops/infra-phases/v1.0.0/infra-phases-key.schema.json"
+          },
+          "title": {
+            "type": "string",
+            "description": "Phase title (e.g., 'Core Components').",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "description": {
+            "type": "string",
+            "description": "Phase overview (Markdown; e.g., 'Networking: Zero-trust backbone...').",
+            "minLength": 10,
+            "maxLength": 1000
+          },
+          "steps": {
+            "type": "array",
+            "description": "Executable steps (declarative/procedural; ties to recipe.actions).",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "type"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Slug-compatible step ID (e.g., 'vpc-peering').",
+                  "pattern": "^[a-z0-9-]+$",
+                  "minLength": 1,
+                  "maxLength": 63
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "text",
+                    "table",
+                    "script",
+                    "action",
+                    "diagram"
+                  ],
+                  "description": "Step type (text: Markdown; table: Data like tenants; script: Bash; action: Recipe ref; diagram: ASCII/Mermaid)."
+                },
+                "content": {
+                  "type": "string",
+                  "description": "For text/script/diagram (e.g., Markdown table for tenants, bash for VPC create).",
+                  "minLength": 1,
+                  "maxLength": 5000,
+                  "examples": [
+                    "| Tenant | Type | Focus | Clouds |\n|--------|------|-------|--------|\n| fulmenhq | Ecosystem | Tonnerre | AWS/GCP |"
+                  ]
+                },
+                "ref": {
+                  "type": "string",
+                  "description": "For action type (e.g., ref recipe 'mattermost-stack' or credential 'acme-key').",
+                  "pattern": "^[a-z0-9-]+$",
+                  "minLength": 1,
+                  "maxLength": 127
+                },
+                "dependsOn": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9-]+$",
+                    "minLength": 1,
+                    "maxLength": 63
+                  },
+                  "description": "Predecessor steps (within phase or cross-phase)."
+                },
+                "parallel": {
+                  "type": "boolean",
+                  "description": "Allow concurrent with same-phase steps (if phase.parallel=true).",
+                  "default": false
+                },
+                "validate": {
+                  "type": "object",
+                  "description": "Post-step check (refs recipe.validate).",
+                  "required": [
+                    "type"
+                  ],
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "health",
+                        "connect",
+                        "custom"
+                      ]
+                    },
+                    "endpoint": {
+                      "type": "string",
+                      "description": "For health/connect (e.g., 'http://localhost:8065/health').",
+                      "pattern": "^https?://[a-z0-9./:-]+$"
+                    },
+                    "script": {
+                      "type": "string",
+                      "description": "For custom (e.g., 'check-db.sh'; slug-safe).",
+                      "pattern": "^[a-z0-9.-]+$",
+                      "minLength": 1,
+                      "maxLength": 255
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "audit": {
+      "type": "object",
+      "description": "Runbook-specific audit (refs activity schema; e.g., log step execution).",
+      "properties": {
+        "backend": {
+          "type": "string",
+          "description": "Audit backend (e.g., 'local-json', 'postgres', 'loki').",
+          "pattern": "^[a-z0-9-]+$",
+          "minLength": 1,
+          "maxLength": 63,
+          "examples": [
+            "local-json",
+            "postgres",
+            "loki"
+          ]
+        },
+        "retention": {
+          "type": "integer",
+          "description": "Retention period in days for audit logs.",
+          "minimum": 1,
+          "maximum": 3650,
+          "default": 365
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
