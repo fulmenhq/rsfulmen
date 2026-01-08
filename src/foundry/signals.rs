@@ -12,12 +12,28 @@
 //! ## Example
 //!
 //! ```rust
-//! use rsfulmen::foundry::signals::{lookup_signal, get_signal_number, SIGTERM, EXIT_SIGTERM};
+//! use rsfulmen::foundry::signals::{
+//!     lookup_signal, get_signal_number, resolve_signal,
+//!     list_signal_names, match_signal_names, SIGTERM, EXIT_SIGTERM
+//! };
 //!
-//! // Look up signal by name
+//! // Look up signal by name (strict)
 //! let term = lookup_signal("SIGTERM").unwrap();
 //! assert_eq!(term.unix_number, 15);
 //! assert_eq!(term.exit_code, 143);
+//!
+//! // Resolve signal from common variants (ergonomic)
+//! assert_eq!(resolve_signal("TERM").unwrap().name, "SIGTERM");
+//! assert_eq!(resolve_signal("term").unwrap().name, "SIGTERM");
+//! assert_eq!(resolve_signal("15").unwrap().name, "SIGTERM");
+//!
+//! // Get all signal names for CLI completion
+//! let names = list_signal_names();
+//! assert!(names.contains(&"SIGTERM"));
+//!
+//! // Match signal names with glob patterns
+//! let usr_signals = match_signal_names("*USR*");
+//! assert!(usr_signals.contains(&"SIGUSR1"));
 //!
 //! // Get platform-specific signal number
 //! let num = get_signal_number("SIGTERM").unwrap();
@@ -667,6 +683,215 @@ pub fn list_signals() -> &'static [Signal] {
 /// Get the number of signals in the catalog.
 pub fn signal_count() -> usize {
     CATALOG.signals.len()
+}
+
+// ============================================================================
+// Signal Resolution (Ergonomic Name Lookup)
+// ============================================================================
+
+/// Resolve a signal from common name variants.
+///
+/// This provides ergonomic signal lookup for CLI and API use, accepting various
+/// input formats that users commonly provide.
+///
+/// ## Resolution Order
+///
+/// 1. Trim leading/trailing whitespace
+/// 2. Return `None` if empty after trim
+/// 3. Exact catalog name match (e.g., `"SIGTERM"`)
+/// 4. Numeric signal number (e.g., `"15"` → SIGTERM)
+/// 5. Uppercase with SIG prefix normalization:
+///    - If starts with "SIG": lookup by name
+///    - Else: prepend "SIG" and lookup (e.g., `"term"` → `"SIGTERM"`)
+/// 6. Lowercase ID lookup (e.g., `"hup"` via catalog `id` field)
+/// 7. Return `None` if no match found
+///
+/// ## Examples
+///
+/// ```rust
+/// use rsfulmen::foundry::signals::resolve_signal;
+///
+/// // All of these resolve to SIGTERM
+/// assert_eq!(resolve_signal("SIGTERM").unwrap().name, "SIGTERM");
+/// assert_eq!(resolve_signal("sigterm").unwrap().name, "SIGTERM");
+/// assert_eq!(resolve_signal("TERM").unwrap().name, "SIGTERM");
+/// assert_eq!(resolve_signal("term").unwrap().name, "SIGTERM");
+/// assert_eq!(resolve_signal("15").unwrap().name, "SIGTERM");
+/// assert_eq!(resolve_signal("-15").unwrap().name, "SIGTERM");
+/// assert_eq!(resolve_signal("  SIGTERM  ").unwrap().name, "SIGTERM");
+///
+/// // Unknown signals return None
+/// assert!(resolve_signal("SIGFOO").is_none());
+/// assert!(resolve_signal("999").is_none());
+/// ```
+pub fn resolve_signal(name: &str) -> Option<&'static Signal> {
+    // Step 1: Trim whitespace
+    let trimmed = name.trim();
+
+    // Step 2: Empty check
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    // Step 3: Exact catalog name match
+    if let Some(signal) = lookup_signal(trimmed) {
+        return Some(signal);
+    }
+
+    // Step 4: Numeric match (accepts "15" and "-15" kill-style inputs)
+    if let Ok(num) = trimmed.parse::<i32>() {
+        // `checked_abs` avoids overflow for i32::MIN
+        if let Some(num_abs) = num.checked_abs() {
+            if num_abs > 0 {
+                if let Some(signal) = lookup_signal_by_number(num_abs) {
+                    return Some(signal);
+                }
+            }
+        }
+    }
+
+    // Step 5: Uppercase normalization
+    let upper = trimmed.to_ascii_uppercase();
+    if upper.starts_with("SIG") {
+        // Already has SIG prefix, try as-is
+        if let Some(signal) = lookup_signal(&upper) {
+            return Some(signal);
+        }
+    } else {
+        // Prepend SIG and try
+        let with_sig = format!("SIG{}", upper);
+        if let Some(signal) = lookup_signal(&with_sig) {
+            return Some(signal);
+        }
+    }
+
+    // Step 6: Lowercase ID lookup
+    let lower = trimmed.to_ascii_lowercase();
+    if let Some(signal) = lookup_signal_by_id(&lower) {
+        return Some(signal);
+    }
+
+    // Step 7: Not found
+    None
+}
+
+/// Return all signal names from the catalog.
+///
+/// Useful for CLI completion and validation hints.
+///
+/// ## Examples
+///
+/// ```rust
+/// use rsfulmen::foundry::signals::list_signal_names;
+///
+/// let names = list_signal_names();
+/// assert!(names.contains(&"SIGTERM"));
+/// assert!(names.contains(&"SIGINT"));
+/// assert!(names.contains(&"SIGHUP"));
+/// ```
+pub fn list_signal_names() -> Vec<&'static str> {
+    CATALOG.signals.iter().map(|s| s.name.as_str()).collect()
+}
+
+/// Return signal names matching a simple glob pattern.
+///
+/// Supports `*` (zero or more characters) and `?` (exactly one character).
+/// Matching is case-insensitive. No regex dependencies required.
+///
+/// Useful for CLI discovery (e.g., `kill --signal TERM*`).
+///
+/// ## Examples
+///
+/// ```rust
+/// use rsfulmen::foundry::signals::match_signal_names;
+///
+/// // Match all signals
+/// let all = match_signal_names("*");
+/// assert!(all.len() >= 9);
+///
+/// // Prefix match
+/// let sig = match_signal_names("SIG*");
+/// assert!(sig.contains(&"SIGTERM"));
+///
+/// // Contains match
+/// let usr = match_signal_names("*USR*");
+/// assert!(usr.contains(&"SIGUSR1"));
+/// assert!(usr.contains(&"SIGUSR2"));
+///
+/// // Single char wildcard (SIG + 3 chars)
+/// let three = match_signal_names("SIG???");
+/// assert!(three.contains(&"SIGINT"));
+/// assert!(three.contains(&"SIGHUP"));
+/// assert!(!three.contains(&"SIGTERM")); // TERM is 4 chars
+///
+/// // Case insensitive
+/// let lower = match_signal_names("sig*");
+/// assert!(lower.contains(&"SIGTERM"));
+///
+/// // No match
+/// let none = match_signal_names("XYZZY*");
+/// assert!(none.is_empty());
+/// ```
+pub fn match_signal_names(pattern: &str) -> Vec<&'static str> {
+    let trimmed = pattern.trim();
+    if trimmed.is_empty() {
+        return Vec::new();
+    }
+
+    let pattern_lower = trimmed.to_ascii_lowercase();
+    CATALOG
+        .signals
+        .iter()
+        .filter(|s| glob_match(&pattern_lower, &s.name.to_ascii_lowercase()))
+        .map(|s| s.name.as_str())
+        .collect()
+}
+
+/// Simple glob matcher supporting `*` and `?` wildcards.
+/// Case-sensitive comparison (caller should lowercase both inputs for case-insensitive).
+fn glob_match(pattern: &str, text: &str) -> bool {
+    let pattern_chars: Vec<char> = pattern.chars().collect();
+    let text_chars: Vec<char> = text.chars().collect();
+    glob_match_recursive(&pattern_chars, &text_chars, 0, 0)
+}
+
+fn glob_match_recursive(pattern: &[char], text: &[char], pi: usize, ti: usize) -> bool {
+    // If we've consumed all pattern, we must have consumed all text
+    if pi == pattern.len() {
+        return ti == text.len();
+    }
+
+    let p = pattern[pi];
+
+    if p == '*' {
+        // '*' matches zero or more characters
+        // Try matching zero characters (advance pattern only)
+        if glob_match_recursive(pattern, text, pi + 1, ti) {
+            return true;
+        }
+        // Try matching one character and keep '*' active
+        if ti < text.len() && glob_match_recursive(pattern, text, pi, ti + 1) {
+            return true;
+        }
+        return false;
+    }
+
+    // We need a character to match
+    if ti == text.len() {
+        return false;
+    }
+
+    if p == '?' {
+        // '?' matches exactly one character
+        return glob_match_recursive(pattern, text, pi + 1, ti + 1);
+    }
+
+    // Literal character match
+    if p == text[ti] {
+        return glob_match_recursive(pattern, text, pi + 1, ti + 1);
+    }
+
+    false
 }
 
 /// Look up a behavior definition by ID.
@@ -1417,5 +1642,189 @@ mod tests {
     fn test_signal_behavior_name() {
         assert_eq!(SignalBehavior::GracefulShutdown.name(), "Graceful Shutdown");
         assert_eq!(SignalBehavior::ImmediateExit.name(), "Immediate Exit");
+    }
+
+    // -------------------------------------------------------------------------
+    // Signal Resolution Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_resolve_signal_exact_match() {
+        assert_eq!(resolve_signal("SIGTERM").unwrap().name, "SIGTERM");
+        assert_eq!(resolve_signal("SIGINT").unwrap().name, "SIGINT");
+        assert_eq!(resolve_signal("SIGHUP").unwrap().name, "SIGHUP");
+    }
+
+    #[test]
+    fn test_resolve_signal_numeric() {
+        assert_eq!(resolve_signal("15").unwrap().name, "SIGTERM");
+        assert_eq!(resolve_signal("-15").unwrap().name, "SIGTERM");
+        assert_eq!(resolve_signal("2").unwrap().name, "SIGINT");
+        assert_eq!(resolve_signal("1").unwrap().name, "SIGHUP");
+        assert_eq!(resolve_signal("9").unwrap().name, "SIGKILL");
+        assert_eq!(resolve_signal("  15  ").unwrap().name, "SIGTERM");
+    }
+
+    #[test]
+    fn test_resolve_signal_lowercase_with_prefix() {
+        assert_eq!(resolve_signal("sigterm").unwrap().name, "SIGTERM");
+        assert_eq!(resolve_signal("sigint").unwrap().name, "SIGINT");
+    }
+
+    #[test]
+    fn test_resolve_signal_without_prefix_uppercase() {
+        assert_eq!(resolve_signal("TERM").unwrap().name, "SIGTERM");
+        assert_eq!(resolve_signal("INT").unwrap().name, "SIGINT");
+        assert_eq!(resolve_signal("HUP").unwrap().name, "SIGHUP");
+        assert_eq!(resolve_signal("KILL").unwrap().name, "SIGKILL");
+    }
+
+    #[test]
+    fn test_resolve_signal_without_prefix_lowercase() {
+        assert_eq!(resolve_signal("term").unwrap().name, "SIGTERM");
+        assert_eq!(resolve_signal("int").unwrap().name, "SIGINT");
+        assert_eq!(resolve_signal("kill").unwrap().name, "SIGKILL");
+    }
+
+    #[test]
+    fn test_resolve_signal_mixed_case() {
+        assert_eq!(resolve_signal("SigTerm").unwrap().name, "SIGTERM");
+        assert_eq!(resolve_signal("Term").unwrap().name, "SIGTERM");
+        assert_eq!(resolve_signal("SigInt").unwrap().name, "SIGINT");
+    }
+
+    #[test]
+    fn test_resolve_signal_whitespace_trimmed() {
+        assert_eq!(resolve_signal("  SIGTERM  ").unwrap().name, "SIGTERM");
+        assert_eq!(resolve_signal("\tterm\n").unwrap().name, "SIGTERM");
+        assert_eq!(resolve_signal("  sigint  ").unwrap().name, "SIGINT");
+    }
+
+    #[test]
+    fn test_resolve_signal_id_fallback() {
+        assert_eq!(resolve_signal("hup").unwrap().name, "SIGHUP");
+        assert_eq!(resolve_signal("usr1").unwrap().name, "SIGUSR1");
+        assert_eq!(resolve_signal("usr2").unwrap().name, "SIGUSR2");
+        assert_eq!(resolve_signal("quit").unwrap().name, "SIGQUIT");
+        assert_eq!(resolve_signal("pipe").unwrap().name, "SIGPIPE");
+        assert_eq!(resolve_signal("alrm").unwrap().name, "SIGALRM");
+    }
+
+    #[test]
+    fn test_resolve_signal_unknown_returns_none() {
+        assert!(resolve_signal("SIGFOO").is_none());
+        assert!(resolve_signal("FOO").is_none());
+        assert!(resolve_signal("999").is_none());
+    }
+
+    #[test]
+    fn test_resolve_signal_empty_returns_none() {
+        assert!(resolve_signal("").is_none());
+        assert!(resolve_signal("   ").is_none());
+    }
+
+    // -------------------------------------------------------------------------
+    // list_signal_names Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_list_signal_names() {
+        let names = list_signal_names();
+        assert!(names.contains(&"SIGTERM"));
+        assert!(names.contains(&"SIGINT"));
+        assert!(names.contains(&"SIGHUP"));
+        assert!(names.contains(&"SIGKILL"));
+        assert!(names.contains(&"SIGQUIT"));
+        assert!(names.contains(&"SIGPIPE"));
+        assert!(names.contains(&"SIGALRM"));
+        assert!(names.contains(&"SIGUSR1"));
+        assert!(names.contains(&"SIGUSR2"));
+        assert!(names.len() >= 9);
+    }
+
+    // -------------------------------------------------------------------------
+    // match_signal_names Glob Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_match_signal_names_wildcard_all() {
+        let all = match_signal_names("*");
+        assert_eq!(all.len(), list_signal_names().len());
+    }
+
+    #[test]
+    fn test_match_signal_names_prefix() {
+        let sig = match_signal_names("SIG*");
+        assert!(sig.contains(&"SIGTERM"));
+        assert!(sig.contains(&"SIGINT"));
+        assert!(sig.contains(&"SIGHUP"));
+        assert!(sig.len() >= 9);
+    }
+
+    #[test]
+    fn test_match_signal_names_suffix() {
+        let term = match_signal_names("*TERM");
+        assert!(term.contains(&"SIGTERM"));
+    }
+
+    #[test]
+    fn test_match_signal_names_contains() {
+        let usr = match_signal_names("*USR*");
+        assert!(usr.contains(&"SIGUSR1"));
+        assert!(usr.contains(&"SIGUSR2"));
+        assert_eq!(usr.len(), 2);
+    }
+
+    #[test]
+    fn test_match_signal_names_single_char_wildcard() {
+        // SIG + 3 chars
+        let three = match_signal_names("SIG???");
+        assert!(three.contains(&"SIGINT"));
+        assert!(three.contains(&"SIGHUP"));
+        assert!(!three.contains(&"SIGTERM")); // TERM is 4 chars
+        assert!(!three.contains(&"SIGKILL")); // KILL is 4 chars
+        assert!(!three.contains(&"SIGUSR1")); // USR1 is 4 chars
+
+        // SIG + 4 chars
+        let four = match_signal_names("SIG????");
+        assert!(four.contains(&"SIGTERM"));
+        assert!(four.contains(&"SIGKILL"));
+        assert!(four.contains(&"SIGQUIT"));
+        assert!(four.contains(&"SIGPIPE"));
+        assert!(four.contains(&"SIGALRM"));
+        assert!(!four.contains(&"SIGINT")); // INT is 3 chars
+        assert!(!four.contains(&"SIGHUP")); // HUP is 3 chars
+    }
+
+    #[test]
+    fn test_match_signal_names_case_insensitive() {
+        let lower = match_signal_names("sig*");
+        assert!(lower.contains(&"SIGTERM"));
+        assert!(lower.contains(&"SIGINT"));
+        assert!(lower.len() >= 9);
+
+        let mixed = match_signal_names("Sig*");
+        assert!(mixed.contains(&"SIGTERM"));
+        assert_eq!(mixed.len(), lower.len());
+
+        // Whitespace tolerance
+        let spaced = match_signal_names("  sig*  ");
+        assert_eq!(spaced.len(), lower.len());
+    }
+
+    #[test]
+    fn test_match_signal_names_no_match() {
+        let none = match_signal_names("XYZZY*");
+        assert!(none.is_empty());
+
+        let none2 = match_signal_names("FOO???");
+        assert!(none2.is_empty());
+    }
+
+    #[test]
+    fn test_match_signal_names_empty_pattern() {
+        // Empty and whitespace-only patterns return empty vec
+        assert!(match_signal_names("").is_empty());
+        assert!(match_signal_names("   ").is_empty());
     }
 }
