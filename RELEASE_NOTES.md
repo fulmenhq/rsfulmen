@@ -4,6 +4,70 @@ This document tracks release notes for rsfulmen releases.
 
 > **Convention**: Keep only the latest 3 releases here to prevent file bloat. Older releases are archived in `docs/releases/`.
 
+## [0.1.2] - 2026-01-08
+
+### Signal name resolution helpers
+
+**Release Type**: Feature Release
+
+#### Overview
+
+Adds ergonomic signal name resolution to `foundry::signals` for CLI and API use. Users can now resolve signals from common name variants without requiring exact catalog names.
+
+#### Highlights
+
+- **resolve_signal()** – Flexible lookup accepting SIGTERM, TERM, term, sigterm, 15, or -15
+- **list_signal_names()** – Returns all signal names for CLI completion
+- **match_signal_names()** – Glob pattern matching with `*` and `?` wildcards
+
+#### Resolution Algorithm
+
+1. Trim whitespace
+2. Empty check → None
+3. Exact catalog name match (SIGTERM)
+4. Numeric match with kill-style negatives (15, -15)
+5. Uppercase with SIG prefix normalization (term → SIGTERM)
+6. Lowercase ID fallback (hup → SIGHUP)
+7. Return None if no match
+
+#### New API
+
+```rust
+use rsfulmen::foundry::signals::{resolve_signal, list_signal_names, match_signal_names};
+
+// All resolve to SIGTERM
+assert_eq!(resolve_signal("SIGTERM").unwrap().name, "SIGTERM");
+assert_eq!(resolve_signal("term").unwrap().name, "SIGTERM");
+assert_eq!(resolve_signal("15").unwrap().name, "SIGTERM");
+assert_eq!(resolve_signal("-15").unwrap().name, "SIGTERM");
+
+// CLI completion
+let names = list_signal_names();
+assert!(names.contains(&"SIGTERM"));
+
+// Glob matching
+let usr_signals = match_signal_names("*USR*");
+assert!(usr_signals.contains(&"SIGUSR1"));
+```
+
+#### Changes
+
+- `src/foundry/signals.rs` – Added resolve_signal(), list_signal_names(), match_signal_names()
+- `Crucible` – Updated to v0.4.4 (signal resolution interface spec)
+- `Cargo.toml` – Updated version to 0.1.2
+
+#### Testing
+
+- `make check-all` – 175 unit tests, 41 doc tests
+- Validated against Crucible signal-resolution-fixtures.yaml (39 test vectors)
+
+#### Requirements
+
+- **Rust**: 1.83+ (MSRV)
+- **Crucible**: v0.4.4 (embedded)
+
+---
+
 ## [0.1.1] - 2026-01-08
 
 ### Documentation scaffolding and compliance

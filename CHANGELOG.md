@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-01-08
+
+### Added
+
+- **Signal Resolution Helpers** – Ergonomic signal name lookup for CLI/API use (`foundry::signals`)
+  - `resolve_signal(name)` – Resolves common name variants (SIGTERM/TERM/term/15/-15)
+  - `list_signal_names()` – Returns all signal names for CLI completion
+  - `match_signal_names(pattern)` – Glob matching with `*` and `?` wildcards
+- **Resolution Algorithm** – 7-step normalization supporting exact match, numeric, SIG-prefix, and ID fallback
+- **Kill-Style Negatives** – `resolve_signal("-15")` works like `kill -15`
+
+### Changed
+
+- **Crucible** – Updated to v0.4.4 (adds signal resolution interface spec and test fixtures)
+- **Cargo.toml** – Updated version to 0.1.2
+
+### Infrastructure
+
+- **Test Coverage** – 175 unit tests, 41 doc tests
+- **Crucible Fixtures** – Implementation validated against 39 cross-language test vectors
+
 ## [0.1.1] - 2026-01-08
 
 ### Added
