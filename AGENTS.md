@@ -18,11 +18,12 @@ See [AI Agents Standard](docs/crucible-rs/standards/ai-agents.md) for operating 
 
 ## Roles
 
-| Role      | Prompt                                                            | Use When                        |
-| --------- | ----------------------------------------------------------------- | ------------------------------- |
-| `devlead` | [devlead.yaml](config/crucible-rs/agentic/roles/devlead.yaml)     | Implementation, features, fixes |
-| `devrev`  | [devrev.yaml](config/crucible-rs/agentic/roles/devrev.yaml)       | Code review, four-eyes audit    |
-| `infoarch`| [infoarch.yaml](config/crucible-rs/agentic/roles/infoarch.yaml)   | Documentation, schemas          |
+| Role      | Prompt                                                            | Use When                          |
+| --------- | ----------------------------------------------------------------- | --------------------------------- |
+| `devlead` | [devlead.yaml](config/crucible-rs/agentic/roles/devlead.yaml)     | Implementation, features, fixes   |
+| `devrev`  | [devrev.yaml](config/crucible-rs/agentic/roles/devrev.yaml)       | Code review, four-eyes audit      |
+| `infoarch`| [infoarch.yaml](config/crucible-rs/agentic/roles/infoarch.yaml)   | Documentation, schemas            |
+| `prodmktg`| [prodmktg.yaml](config/crucible-rs/agentic/roles/prodmktg.yaml)   | Messaging, branding, personas     |
 
 See [Role Catalog](config/crucible-rs/agentic/roles/README.md) for full definitions.
 
