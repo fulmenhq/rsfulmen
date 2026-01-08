@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/library/foundry/v1.0.0/signal-resolution-fixtures.schema.json",
+  "title": "Signal Resolution Test Fixtures",
+  "description": "Cross-language test vectors for signal name resolution interfaces",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "description": {
+      "type": "string",
+      "description": "Fixture file description"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[vV]?\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of the fixture file"
+    },
+    "resolve_signal_tests": {
+      "type": "array",
+      "description": "Test cases for resolveSignal() function",
+      "items": {
+        "type": "object",
+        "properties": {
+          "input": {
+            "type": "string",
+            "description": "Input string to resolve"
+          },
+          "expect_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Expected signal name (null if no match expected)"
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of test case"
+          }
+        },
+        "required": [
+          "input",
+          "expect_name"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "list_signal_names_tests": {
+      "type": "array",
+      "description": "Test cases for listSignalNames() function",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of test case"
+          },
+          "expect_contains": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Signal names that must be present in result"
+          },
+          "expect_min_count": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Minimum number of signals expected"
+          }
+        },
+        "required": [
+          "description"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "match_signal_names_tests": {
+      "type": "array",
+      "description": "Test cases for matchSignalNames() glob function",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pattern": {
+            "type": "string",
+            "description": "Glob pattern to match (* and ? wildcards)"
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of test case"
+          },
+          "expect_contains": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Signal names that must be present in result"
+          },
+          "expect_not_contains": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Signal names that must NOT be present in result"
+          },
+          "expect_count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Exact number of matches expected"
+          },
+          "expect_min_count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Minimum number of matches expected"
+          },
+          "expect_empty": {
+            "type": "boolean",
+            "description": "If true, expect empty result array"
+          },
+          "expect_equals_list_signal_names": {
+            "type": "boolean",
+            "description": "If true, expect result to equal listSignalNames()"
+          }
+        },
+        "required": [
+          "pattern",
+          "description"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "description",
+    "version",
+    "resolve_signal_tests"
+  ],
+  "additionalProperties": false
+}

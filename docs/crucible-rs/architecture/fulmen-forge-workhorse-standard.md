@@ -508,6 +508,7 @@ make test                   # Exit 0: All tests pass
 
 - [Fulmen Helper Library Standard](fulmen-helper-library-standard.md)
 - [Repository Category Taxonomy](../../schemas/taxonomy/repository-category/v1.0.0/README.md)
+- [Ecosystem Brand Summary](../../config/branding/ecosystem.yaml) - For `version --extended` or `about` command/endpoint
 - [Technical Manifesto](fulmen-technical-manifesto.md)
 - [Binary Naming Convention](#binary-naming-convention) (this document)
 - Prototype: forge-workhorse-groningen (Go), forge-workhorse-groningen-py (Python)

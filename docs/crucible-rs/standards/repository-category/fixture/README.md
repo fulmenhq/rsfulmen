@@ -3,9 +3,9 @@ title: "Fixture Category Standards"
 description: "Standards and requirements for Fulmen fixture repositories"
 author: "Schema Cartographer"
 date: "2026-01-06"
-last_updated: "2026-01-06"
+last_updated: "2026-01-08"
 status: "active"
-tags: ["standards", "repository-category", "fixture", "testing", "v0.4.2"]
+tags: ["standards", "repository-category", "fixture", "testing", "v0.4.4"]
 ---
 
 # Fixture Category Standards
@@ -36,7 +36,7 @@ Fixtures execute real logic - they are production-grade software configured for 
 ### Pattern
 
 ```
-fixture-<mode>-<category>-<name>-<variant>
+fixture-<mode>-<category>-<name>
 ```
 
 ### Components
@@ -46,13 +46,20 @@ fixture-<mode>-<category>-<name>-<variant>
 | `mode`     | `server`, `client`, `datastore`, `identity`                       | `server`   |
 | `category` | `proving`, `utility`, `chaos`                                     | `proving`  |
 | `name`     | ASCII `[a-z][a-z0-9]{1,20}`, no separators, registered in catalog | `gauntlet` |
-| `variant`  | 3-digit zero-padded, `001` = reference                            | `001`      |
 
 ### Full Examples
 
-- `fixture-server-proving-gauntlet-001` - Protected backend, OAuth2 minimal
-- `fixture-server-chaos-gremlin-001` - Chaos server, latency injection
-- `fixture-datastore-utility-bucket-001` - S3-compatible storage
+- `fixture-server-proving-gauntlet` - Protected backend, OAuth2
+- `fixture-server-proving-rampart` - HTTP protocol testing server
+- `fixture-server-chaos-gremlin` - Chaos server, failure injection
+- `fixture-datastore-utility-bucket` - S3-compatible storage
+
+### Variant Strategy
+
+Different configurations of the same fixture are handled via:
+
+- **Scenario files** for runtime configuration (`scenarios/oauth-full.yaml`)
+- **Docker tags** for versioned variants (`fixture-server-proving-gauntlet:oauth-minimal`)
 
 ## Modes
 
@@ -162,7 +169,7 @@ If NOT using helper library:
 ## Directory Structure
 
 ```
-fixture-server-proving-gauntlet-001/
+fixture-server-proving-gauntlet/
 ├── docker-compose.yml      # Required: primary entry
 ├── Dockerfile
 ├── INTEGRATION.md          # Required: external dependencies & contracts
@@ -201,23 +208,41 @@ Each scenario should document:
 | Fixture version  | Docker tag            |
 
 ```bash
-docker pull ghcr.io/fulmenhq/fixture-server-proving-gauntlet-001:v1.2.3
+docker pull ghcr.io/fulmenhq/fixture-server-proving-gauntlet:v1.2.3
 ```
 
 Never encode version in repository name.
 
 ## Compliance Checklist
 
-- [ ] Name follows pattern: `fixture-<mode>-<category>-<name>-<variant>`
+### Naming & Registration
+
+- [ ] Name follows pattern: `fixture-<mode>-<category>-<name>`
 - [ ] Registered in `config/taxonomy/fixture-catalog.yaml`
+
+### Security
+
 - [ ] No PII in test data
 - [ ] No NPI/MNPI
+
+### Infrastructure
+
 - [ ] `docker-compose.yml` at root
 - [ ] `INTEGRATION.md` with required template sections
 - [ ] Scenario-driven configuration
 - [ ] Structured logging
 - [ ] Stateless by default
+
+### CLI Commands (Mandatory)
+
+- [ ] `version` command implemented
+- [ ] `doctor` command implemented
+- [ ] Default behavior (no args) starts server
+
+### Documentation
+
 - [ ] README with usage examples
+- [ ] Scenarios documented
 
 ## Related Documentation
 
@@ -228,5 +253,5 @@ Never encode version in repository name.
 
 ---
 
-**Status**: Active (v0.4.2+)
+**Status**: Active (v0.4.4+)
 **Maintainers**: Crucible Team

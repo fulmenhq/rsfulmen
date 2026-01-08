@@ -3,7 +3,7 @@ title: "Foundry Module Standards"
 description: "Standards for common reference data, patterns, and text utilities in Fulmen helper libraries"
 author: "Schema Cartographer"
 date: "2025-10-09"
-last_updated: "2025-10-30"
+last_updated: "2026-01-08"
 status: "stable"
 tags:
   [
@@ -13,6 +13,7 @@ tags:
     "patterns",
     "similarity",
     "exit-codes",
+    "signals",
     "2025.10.3",
   ]
 ---
@@ -32,6 +33,7 @@ The Foundry module provides common reference data, reusable patterns, and text u
 | Country Codes      | ISO 3166-1 country code lookup (alpha-2/3, numeric)                                              | This document (Country Codes)    |
 | MIME Types         | MIME type reference with extension mapping                                                       | This document (MIME Types)       |
 | Exit Codes         | Standardized process exit codes for consistent error signaling (60+ codes, 9 categories)         | This document (Exit Codes)       |
+| Signals            | Unix signal handling with behaviors, OS mappings, and ergonomic name resolution                  | This document (Signals)          |
 | Text Similarity    | Multiple distance metrics (Levenshtein, Damerau, Jaro-Winkler, Substring), suggestion API (v2.0) | [similarity.md](./similarity.md) |
 | Text Normalization | Unicode case folding, accent stripping, normalization presets (v2.0)                             | [similarity.md](./similarity.md) |
 
@@ -47,6 +49,8 @@ Shared catalog of reusable patterns (regex, glob, literal) that reduce duplicati
 - MIME types: `config/library/foundry/mime-types.yaml` (schema: `schemas/library/foundry/v1.0.0/mime-types.schema.json`)
 - **Exit codes**: `config/library/foundry/exit-codes.yaml` (schema: `schemas/library/foundry/v1.0.0/exit-codes.schema.json`)
 - **Exit codes snapshots**: `config/library/foundry/exit-codes.snapshot.json`, `config/library/foundry/simplified-modes.snapshot.json` (for cross-language parity tests)
+- **Signals**: `config/library/foundry/signals.yaml` (schema: `schemas/library/foundry/v1.0.0/signals.schema.json`)
+- **Signal resolution fixtures**: `config/library/foundry/signal-resolution-fixtures.yaml` (schema: `schemas/library/foundry/v1.0.0/signal-resolution-fixtures.schema.json`)
 - **Similarity fixtures (v2.0)**: `config/library/foundry/similarity-fixtures.yaml` (schema: `schemas/library/foundry/v2.0.0/similarity.schema.json`)
 
 Helper libraries MUST treat these catalogs as read-only SSOT data. Updates originate in Crucible.
@@ -169,9 +173,139 @@ See catalog for complete BSD mapping table.
 - Provide capability probe (e.g., `supportsSignalExitCodes()`) so workhorses can branch
 - WSL/POSIX layers honor Unix mapping but surface telemetry indicating underlying kernel
 
+## Signals
+
+Foundry provides standardized signal handling semantics for consistent behavior across the Fulmen ecosystem. The signals catalog defines behaviors, OS mappings, platform support, and exit codes for Unix signals.
+
+### Catalog Overview
+
+The signals catalog (`config/library/foundry/signals.yaml`) defines:
+
+| Signal  | ID     | Unix # | Exit Code | Default Behavior                  |
+| ------- | ------ | ------ | --------- | --------------------------------- |
+| SIGTERM | `term` | 15     | 143       | Graceful shutdown                 |
+| SIGINT  | `int`  | 2      | 130       | Graceful shutdown with double-tap |
+| SIGHUP  | `hup`  | 1      | 129       | Config reload via restart         |
+| SIGQUIT | `quit` | 3      | 131       | Immediate exit                    |
+| SIGKILL | `kill` | 9      | 137       | Immediate exit (uncatchable)      |
+| SIGPIPE | `pipe` | 13     | 141       | Observe only                      |
+| SIGALRM | `alrm` | 14     | 142       | Immediate exit                    |
+| SIGUSR1 | `usr1` | 10     | 138       | Custom handler                    |
+| SIGUSR2 | `usr2` | 12     | 140       | Custom handler                    |
+
+### Files
+
+- **Schema**: `schemas/library/foundry/v1.0.0/signals.schema.json`
+- **Catalog**: `config/library/foundry/signals.yaml`
+- **Resolution fixtures**: `config/library/foundry/signal-resolution-fixtures.yaml`
+
+### Behaviors
+
+Six standard behaviors with defined phase sequences:
+
+- **graceful_shutdown**: notify → stop_accepting → drain → cleanup → exit
+- **graceful_shutdown_with_double_tap**: First signal starts shutdown, second within window forces exit
+- **reload_via_restart**: Validate config → graceful shutdown → exit (supervisor restarts)
+- **immediate_exit**: Log and exit immediately without cleanup
+- **custom**: Delegate to application-provided handler
+- **observe_only**: Log signal and continue execution (telemetry only)
+
+### Platform Support
+
+| Signal  | Linux  | macOS  | FreeBSD | Windows           |
+| ------- | ------ | ------ | ------- | ----------------- |
+| SIGTERM | native | native | native  | CTRL_CLOSE_EVENT  |
+| SIGINT  | native | native | native  | CTRL_C_EVENT      |
+| SIGHUP  | native | native | native  | HTTP fallback     |
+| SIGQUIT | native | native | native  | CTRL_BREAK_EVENT  |
+| SIGKILL | native | native | native  | TerminateProcess  |
+| SIGPIPE | native | native | native  | Exception handler |
+| SIGALRM | native | native | native  | Timer API         |
+| SIGUSR1 | native | native | native  | HTTP fallback     |
+| SIGUSR2 | native | native | native  | HTTP fallback     |
+
+**Platform-specific signal numbers**: SIGUSR1/SIGUSR2 are 10/12 on Linux but 30/31 on Darwin/FreeBSD. The catalog includes `platform_overrides` for these variations.
+
+### Helper Library Integration
+
+**Interface Reference**: See [interfaces.md](./interfaces.md#signal-resolution) for the complete API specification.
+
+Helper libraries MUST:
+
+1. **Load catalog** from synced `config/library/foundry/signals.yaml`
+   - Build indexes for efficient lookup (by name, by ID, by number)
+   - Cache parsed results lazily
+
+2. **Expose strict lookup functions**:
+   - `lookupSignal(name)` - exact catalog name match only
+   - `getSignalNumber(name)` - return unix_number for signal
+   - `getSignalNumberForPlatform(name, platform)` - platform-aware number lookup
+
+3. **Expose resolution functions** (ergonomic CLI input):
+   - `resolveSignal(name)` - normalize and lookup (see Resolution Algorithm below)
+   - `listSignalNames()` - return all signal names for CLI completion
+   - `matchSignalNames(pattern)` - glob matching for CLI discovery
+
+4. **Build efficient indexes** during catalog load:
+   - `signalsByName` - map signal name → entry (e.g., `"SIGTERM"` → entry)
+   - `signalsByID` - map signal ID → entry (e.g., `"term"` → entry)
+   - `signalsByNumber` - map unix_number → entry (e.g., `15` → entry)
+
+   The `signalsByNumber` index is critical for efficient numeric resolution (step 4). Without it, numeric lookup requires linear scan of the catalog.
+
+5. **Add fixture parity tests**:
+   - Load `config/library/foundry/signal-resolution-fixtures.yaml`
+   - All implementations MUST pass the 40+ test cases
+   - CI/CD fails if resolution behavior drifts between languages
+
+### Resolution Algorithm
+
+`resolveSignal(name)` enables ergonomic signal input from CLI users. It MUST implement the following resolution order:
+
+1. **Trim** leading/trailing whitespace
+2. **Empty check**: Return `null` if empty after trim
+3. **Exact match**: Try exact catalog name match (e.g., `"SIGTERM"`)
+4. **Numeric match**: If input is numeric string (after trim), lookup by `unix_number`
+   - Example: `"15"` → SIGTERM, `"2"` → SIGINT
+   - Negative numbers are not supported (e.g., `"-15"` → `null`)
+5. **Uppercase normalization**:
+   - Uppercase the input
+   - If starts with `"SIG"`: lookup by name
+   - Else: prepend `"SIG"` and lookup by name (e.g., `"term"` → `"SIGTERM"`)
+6. **ID fallback**: Lowercase input and try `id` field lookup (e.g., `"hup"` → SIGHUP)
+7. **Not found**: Return `null` if all attempts fail
+
+**Note**: Numeric detection (step 4) happens AFTER whitespace trim (step 1), so `"  15  "` resolves correctly.
+
+### Glob Matching
+
+`matchSignalNames(pattern)` supports simple wildcards for CLI discovery:
+
+- `*` matches zero or more characters
+- `?` matches exactly one character
+- Matching is case-insensitive
+- No regex dependencies required
+
+Examples: `SIG*` (all signals), `*USR*` (user signals), `SIG???` (3-char suffix like INT, HUP)
+
+### Windows Fallbacks
+
+Signals unavailable on Windows define fallback strategies in the catalog:
+
+```yaml
+windows_fallback:
+  fallback_behavior: http_admin_endpoint # or timer_api, exception_handling
+  log_level: INFO
+  log_message: "SIGHUP unavailable on Windows - use HTTP endpoint"
+  operation_hint: "POST /admin/signal with signal=HUP"
+  telemetry_event: fulmen.signal.unsupported
+```
+
+Helper libraries SHOULD surface these fallback hints when signal operations fail on Windows.
+
 ## Testing Requirements
 
-- Validate catalog loading and ensure all entries are present (patterns, status groups, countries, exit codes).
+- Validate catalog loading and ensure all entries are present (patterns, status groups, countries, exit codes, signals).
 - Ensure accessors return compiled/typed representations without error.
 - Provide positive/negative unit tests for each pattern (sample matches + mismatches).
 - Verify HTTP status group helpers cover the documented codes; ensure language implementations expose convenience sets (e.g., `IsClientError(code)`).
@@ -181,6 +315,9 @@ See catalog for complete BSD mapping table.
 - **Verify exit code metadata** via `getExitCodeInfo()` returns complete metadata (retry_hint, category, etc.).
 - **Verify simplified mode mappings** correctly collapse detailed codes to basic/severity modes.
 - **Add snapshot parity tests** comparing against canonical snapshots to detect cross-language drift.
+- **Verify signal catalog loading** and all signals accessible via lookup functions.
+- **Verify signal resolution** passes all test cases in `signal-resolution-fixtures.yaml` (40+ cases covering exact match, numeric, normalization, ID fallback, glob patterns).
+- **Verify signal indexes** are built correctly (by name, by ID, by number) for efficient lookup.
 - Maintain snapshot/parity tests to detect catalog drift across languages.
 - Verify per-language flag handling (Unicode, ignore-case, etc.) in unit tests.
 
@@ -215,6 +352,10 @@ See [similarity.md](./similarity.md) for comprehensive v2.0 standard covering:
 - `config/library/foundry/exit-codes.yaml`
 - `config/library/foundry/exit-codes.snapshot.json`
 - `config/library/foundry/simplified-modes.snapshot.json`
+- `config/library/foundry/signals.yaml`
+- `config/library/foundry/signal-resolution-fixtures.yaml`
 - `config/library/foundry/similarity-fixtures.yaml` (v2.0 schema)
 - `schemas/library/foundry/v1.0.0/exit-codes.schema.json`
+- `schemas/library/foundry/v1.0.0/signals.schema.json`
+- `schemas/library/foundry/v1.0.0/signal-resolution-fixtures.schema.json`
 - `schemas/library/foundry/v2.0.0/similarity.schema.json` (v2.0 schema - first versioned schema)

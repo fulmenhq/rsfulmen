@@ -1,0 +1,26 @@
+# Fulmen Ecosystem Brand Summary
+#
+# Accessible via helper libraries: crucible.GetBrandSummary()
+#
+# Display options (tools implement one or both):
+#   - CLI: `<binary> version --extended` or `<binary> about`
+#   - Server: GET /about endpoint
+#
+# Keep summaries factual and informative, not marketing-speak.
+$schema: "https://schemas.fulmenhq.dev/crucible/branding/v1.0.0/ecosystem.schema.json"
+version: "1.0.0"
+# One-line motto for /about and version --extended
+motto: "Fulmen - Thrive on Scale"
+# Extended motto (alternative)
+motto_extended: "Fulmen - Start Fast. Thrive on Scale."
+# Attribution line
+built_by: "Built by 3 Leaps, LLC"
+# Primary URL (will add codex URL when available)
+url: "https://3leaps.net"
+# Structured metadata for programmatic access
+metadata:
+  org: "fulmenhq"
+  maintainer: "3 Leaps, LLC"
+  url: "https://3leaps.net"
+  source: "https://github.com/fulmenhq"
+  tagline: "Thrive on Scale"

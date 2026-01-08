@@ -799,6 +799,7 @@ The `forge-microtool-gimlet` (formerly grinder) repository provides a complete, 
 ## See Also
 
 - [Repository Category Taxonomy](../../config/taxonomy/repository-categories.yaml)
+- [Ecosystem Brand Summary](../../config/branding/ecosystem.yaml) - For `version --extended` or `about` command
 - [Fulmen Template CDRL Standard](fulmen-template-cdrl-standard.md)
 - [App Identity Module](../standards/library/modules/app-identity.md)
 - [Exit Code Taxonomy](../standards/exit-codes.md)

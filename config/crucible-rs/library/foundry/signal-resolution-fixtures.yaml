@@ -1,0 +1,207 @@
+$schema: https://schemas.fulmenhq.dev/library/foundry/v1.0.0/signal-resolution-fixtures.schema.json
+description: Cross-language test vectors for signal name resolution
+version: v1.0.0
+# Origin: rsfulmen memo 2026-01-08, standardized for ecosystem-wide adoption
+# See: docs/standards/library/foundry/interfaces.md#signal-resolution
+
+resolve_signal_tests:
+  # Exact match (step 3)
+  - input: "SIGTERM"
+    expect_name: "SIGTERM"
+    description: Exact catalog name match
+  - input: "SIGINT"
+    expect_name: "SIGINT"
+    description: Exact catalog name match
+  - input: "SIGHUP"
+    expect_name: "SIGHUP"
+    description: Exact catalog name match
+  # Numeric match (step 4)
+  - input: "15"
+    expect_name: "SIGTERM"
+    description: Numeric lookup by unix_number
+  - input: "2"
+    expect_name: "SIGINT"
+    description: Numeric lookup by unix_number
+  - input: "1"
+    expect_name: "SIGHUP"
+    description: Numeric lookup by unix_number
+  - input: "9"
+    expect_name: "SIGKILL"
+    description: Numeric lookup by unix_number
+  - input: "  15  "
+    expect_name: "SIGTERM"
+    description: Numeric with whitespace trimmed
+  # Lowercase with prefix (step 5)
+  - input: "sigterm"
+    expect_name: "SIGTERM"
+    description: Lowercase full name
+  - input: "sigint"
+    expect_name: "SIGINT"
+    description: Lowercase full name
+  # Without SIG prefix - uppercase (step 5)
+  - input: "TERM"
+    expect_name: "SIGTERM"
+    description: Without SIG prefix (uppercase)
+  - input: "INT"
+    expect_name: "SIGINT"
+    description: Without SIG prefix (uppercase)
+  - input: "HUP"
+    expect_name: "SIGHUP"
+    description: Without SIG prefix (uppercase)
+  - input: "KILL"
+    expect_name: "SIGKILL"
+    description: Without SIG prefix (uppercase)
+  # Without SIG prefix - lowercase (step 5)
+  - input: "term"
+    expect_name: "SIGTERM"
+    description: Without SIG prefix (lowercase)
+  - input: "int"
+    expect_name: "SIGINT"
+    description: Without SIG prefix (lowercase)
+  - input: "kill"
+    expect_name: "SIGKILL"
+    description: Without SIG prefix (lowercase)
+  # Mixed case (step 5)
+  - input: "SigTerm"
+    expect_name: "SIGTERM"
+    description: Mixed case with prefix
+  - input: "Term"
+    expect_name: "SIGTERM"
+    description: Mixed case without prefix
+  - input: "SigInt"
+    expect_name: "SIGINT"
+    description: Mixed case with prefix
+  # Whitespace trimmed (step 1)
+  - input: "  SIGTERM  "
+    expect_name: "SIGTERM"
+    description: Leading/trailing whitespace
+  - input: "\tterm\n"
+    expect_name: "SIGTERM"
+    description: Tab and newline whitespace
+  - input: "  sigint  "
+    expect_name: "SIGINT"
+    description: Whitespace with lowercase
+  # ID fallback (step 6)
+  - input: "hup"
+    expect_name: "SIGHUP"
+    description: ID lookup fallback
+  - input: "usr1"
+    expect_name: "SIGUSR1"
+    description: ID lookup fallback
+  - input: "usr2"
+    expect_name: "SIGUSR2"
+    description: ID lookup fallback
+  - input: "quit"
+    expect_name: "SIGQUIT"
+    description: ID lookup fallback
+  - input: "pipe"
+    expect_name: "SIGPIPE"
+    description: ID lookup fallback
+  - input: "alrm"
+    expect_name: "SIGALRM"
+    description: ID lookup fallback
+  # Unknown returns null (step 7)
+  - input: "SIGFOO"
+    expect_name: null
+    description: Unknown signal name
+  - input: "FOO"
+    expect_name: null
+    description: Unknown signal without prefix
+  - input: "999"
+    expect_name: null
+    description: Unknown numeric signal
+  # Negative numbers not supported (step 4)
+  - input: "-15"
+    expect_name: null
+    description: Negative numbers not supported
+  - input: "-1"
+    expect_name: null
+    description: Negative numbers not supported
+  # Empty returns null (step 2)
+  - input: ""
+    expect_name: null
+    description: Empty string
+  - input: "   "
+    expect_name: null
+    description: Whitespace-only string
+list_signal_names_tests:
+  # Note: expect_contains verifies required signals; expect_min_count is a sanity check.
+  # If catalog grows, add new signals to expect_contains rather than bumping min_count.
+  - description: Returns all catalog signal names
+    expect_contains:
+      - "SIGTERM"
+      - "SIGINT"
+      - "SIGHUP"
+      - "SIGKILL"
+      - "SIGQUIT"
+      - "SIGPIPE"
+      - "SIGALRM"
+      - "SIGUSR1"
+      - "SIGUSR2"
+    expect_min_count: 1
+match_signal_names_tests:
+  # Wildcard all
+  - pattern: "*"
+    description: Match all signals
+    expect_equals_list_signal_names: true
+  # Prefix match
+  - pattern: "SIG*"
+    description: All signals start with SIG
+    expect_contains:
+      - "SIGTERM"
+      - "SIGINT"
+      - "SIGHUP"
+    expect_min_count: 1
+  # Suffix match
+  - pattern: "*TERM"
+    description: Suffix match for TERM
+    expect_contains:
+      - "SIGTERM"
+  # Contains match
+  - pattern: "*USR*"
+    description: Contains USR
+    expect_contains:
+      - "SIGUSR1"
+      - "SIGUSR2"
+    expect_count: 2
+  # Single char wildcard
+  - pattern: "SIG???"
+    description: SIG followed by exactly 3 characters
+    expect_contains:
+      - "SIGINT"
+      - "SIGHUP"
+    expect_not_contains:
+      - "SIGTERM"
+      - "SIGKILL"
+      - "SIGUSR1"
+  - pattern: "SIG????"
+    description: SIG followed by exactly 4 characters
+    expect_contains:
+      - "SIGTERM"
+      - "SIGKILL"
+      - "SIGQUIT"
+      - "SIGPIPE"
+      - "SIGALRM"
+    expect_not_contains:
+      - "SIGINT"
+      - "SIGHUP"
+  # Case insensitive
+  - pattern: "sig*"
+    description: Case insensitive - lowercase pattern
+    expect_contains:
+      - "SIGTERM"
+      - "SIGINT"
+    expect_min_count: 1
+  - pattern: "Sig*"
+    description: Case insensitive - mixed case pattern
+    expect_contains:
+      - "SIGTERM"
+      - "SIGINT"
+    expect_min_count: 1
+  # No match
+  - pattern: "XYZZY*"
+    description: Pattern with no matches
+    expect_empty: true
+  - pattern: "FOO???"
+    description: Pattern with no matches (single char wildcards)
+    expect_empty: true
