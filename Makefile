@@ -38,7 +38,7 @@ endif
 
 .PHONY: all help bootstrap bootstrap-force bootstrap-cargo-tools tools hooks-ensure sync sync-ssot lint fmt test test-cov build build-all clean
 .PHONY: version version-set version-propagate version-bump-major version-bump-minor version-bump-patch version-bump-calver
-.PHONY: check-all quality precommit prepush lifecycle
+.PHONY: check-all quality precommit prepush lifecycle msrv-check
 .PHONY: release-check release-prepare release-build release-clean
 .PHONY: release-provenance-check release-guard-tag-version release-tag release-verify-tag
 .PHONY: doc
@@ -156,6 +156,7 @@ bootstrap-cargo-tools: ## Install Rust cargo tools
 	@cargo install cargo-tarpaulin 2>/dev/null || echo "⚠️  cargo-tarpaulin may already be installed or failed"
 	@cargo install cargo-audit 2>/dev/null || echo "⚠️  cargo-audit may already be installed or failed"
 	@cargo install cargo-deny 2>/dev/null || echo "⚠️  cargo-deny may already be installed or failed"
+	@cargo install cargo-msrv 2>/dev/null || echo "⚠️  cargo-msrv may already be installed or failed"
 	@echo "✅ Cargo tools installed"
 
 bootstrap-force: ## Force reinstall dependencies and external tools
@@ -232,6 +233,15 @@ test-cov: ## Run tests with coverage (requires cargo-tarpaulin)
 lifecycle: ## Show current lifecycle phase and requirements
 	@echo "Repository Lifecycle Phase: $(LIFECYCLE)"
 	@echo "Required test coverage: $(COVERAGE_MIN)%"
+
+msrv-check: ## Verify MSRV compatibility with dependencies (requires cargo-msrv)
+	@echo "Checking MSRV compatibility..."
+	@if command -v cargo-msrv >/dev/null 2>&1; then \
+		cargo msrv verify 2>&1 || (echo "❌ MSRV check failed - dependencies require newer Rust than declared in Cargo.toml"; exit 1); \
+		echo "✅ MSRV check passed"; \
+	else \
+		echo "⚠️  cargo-msrv not installed, skipping (run: make bootstrap-cargo-tools)"; \
+	fi
 
 check-all: fmt-check lint test ## Run all quality checks
 	@echo "✅ All checks passed"

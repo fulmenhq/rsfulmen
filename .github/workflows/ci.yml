@@ -98,14 +98,14 @@ jobs:
           fi
   # MSRV check
   msrv:
-    name: MSRV (1.81)
+    name: MSRV (1.83)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Set up Rust 1.81
-        uses: dtolnay/rust-toolchain@1.81.0
+      - name: Set up Rust 1.83
+        uses: dtolnay/rust-toolchain@1.83.0
       - name: Build
         run: cargo build --all-features

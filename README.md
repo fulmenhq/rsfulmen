@@ -1,7 +1,7 @@
 # rsfulmen
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Rust: 1.81+](https://img.shields.io/badge/rust-1.81%2B-orange.svg)](https://www.rust-lang.org/)
+[![Rust: 1.83+](https://img.shields.io/badge/rust-1.83%2B-orange.svg)](https://www.rust-lang.org/)
 [![Crucible: v0.4.2](https://img.shields.io/badge/crucible-v0.4.2-purple.svg)](https://github.com/fulmenhq/crucible)
 
 **Curated Libraries for Scale**
@@ -216,7 +216,7 @@ rsfulmen = { version = "0.1", default-features = false, features = ["schema-vali
 
 ### Prerequisites
 
-- Rust 1.81+
+- Rust 1.83+
 - [goneat](https://github.com/fulmenhq/goneat) for SSOT sync (installed via `make bootstrap`)
 
 ### Quick Start

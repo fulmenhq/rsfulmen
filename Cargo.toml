@@ -2,7 +2,7 @@
 name = "rsfulmen"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.81"
+rust-version = "1.83"
 authors = ["FulmenHQ <team@fulmenhq.dev>"]
 description = "Rust helper library for the Fulmen ecosystem - foundry catalogs, config utilities, and cross-platform helpers"
 documentation = "https://docs.rs/rsfulmen"
