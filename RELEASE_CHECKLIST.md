@@ -75,6 +75,9 @@ Note: `RSFULMEN_RELEASE_TAG` is not a secret and typically isn't stored in encry
   ```bash
   cargo publish
   ```
+  **Note:** Requires authentication. For local publishing, run `cargo login` and paste your
+  token from https://crates.io/settings/tokens. For CI/CD workflows, set the
+  `CARGO_REGISTRY_TOKEN` secret/environment variable.
 - [ ] Spot-check downstream consumption:
   ```bash
   cargo search rsfulmen
