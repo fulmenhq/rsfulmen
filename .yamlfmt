@@ -1,5 +1,5 @@
-# yamlfmt configuration for goneat
-# This file configures yamlfmt to match goneat's YAML formatting preferences
+# yamlfmt configuration for rsfulmen
+# This file configures yamlfmt to match rsfulmen's YAML formatting preferences
 
 formatter:
   type: basic
@@ -20,3 +20,4 @@ exclude:
   - .git/**
   - dist/**
   - bin/**
+  - target/**
