@@ -40,6 +40,9 @@ cobertura.xml
 # Documentation build
 /doc/
 
+# SBOM and vulnerability scan artifacts
+/sbom/
+
 # Package artifacts
 *.crate
 *.tar.gz
