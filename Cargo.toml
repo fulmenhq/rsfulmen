@@ -19,7 +19,7 @@ path = "src/lib.rs"
 
 [features]
 # Keep default behavior for existing users.
-default = ["foundry", "config", "crucible", "docscribe", "three-layer-config", "schema-id", "schema-validation", "similarity", "error-handling", "telemetry-metrics"]
+default = ["foundry", "config", "crucible", "docscribe", "three-layer-config", "schema-id", "schema-validation", "similarity", "error-handling", "telemetry-metrics", "appidentity", "logging", "fulhash", "pathfinder", "ascii"]
 
 # Foundry feature groups (aligned to Crucible foundry-catalogs v1.1.0).
 foundry-core = []
@@ -31,6 +31,17 @@ foundry = ["foundry-core", "foundry-mime-types", "foundry-patterns"]
 
 # Platform modules.
 config = ["dep:dirs"]
+appidentity = ["dep:serde_json"]
+logging = ["dep:serde_json"]
+
+# Canonical hashing (xxh3-128 default + SHA-256).
+fulhash = ["dep:xxhash-rust", "dep:sha2", "dep:hex"]
+
+# Safe filesystem discovery with glob patterns.
+pathfinder = ["dep:walkdir", "dep:sha2", "dep:hex", "dep:glob"]
+
+# Terminal utilities and Unicode-aware string handling.
+ascii = ["dep:unicode-width", "dep:unicode-segmentation"]
 crucible = []
 docscribe = ["crucible"]
 three-layer-config = ["config", "crucible"]
@@ -51,7 +62,7 @@ error-handling = ["dep:serde_json"]
 telemetry-metrics = ["dep:serde_json"]
 
 # Everything.
-full = ["foundry", "config", "crucible", "docscribe", "schema-validation", "similarity", "error-handling", "telemetry-metrics"]
+full = ["foundry", "config", "crucible", "docscribe", "schema-validation", "similarity", "error-handling", "telemetry-metrics", "appidentity", "logging", "fulhash", "pathfinder", "ascii"]
 
 [dependencies]
 # Serialization
@@ -77,6 +88,17 @@ glob = { version = "0.3", optional = true }
 strsim = { version = "0.11", optional = true }
 unicode-normalization = { version = "0.1", optional = true }
 unicode-segmentation = { version = "1.10", optional = true }
+
+# Hashing (for fulhash module)
+xxhash-rust = { version = "0.8", features = ["xxh3"], optional = true }
+sha2 = { version = "0.10", optional = true }
+hex = { version = "0.4", optional = true }
+
+# Filesystem discovery (for pathfinder module)
+walkdir = { version = "2", optional = true }
+
+# Unicode text handling (for ascii module)
+unicode-width = { version = "0.1", optional = true }
 
 # Platform-specific paths (for config module)
 dirs = { version = "5.0", optional = true }

@@ -17,7 +17,7 @@ BIN_DIR := ./bin
 
 # External tooling (bootstrap)
 BINDIR ?= $(HOME)/.local/bin
-GONEAT_VERSION ?= v0.4.1
+GONEAT_VERSION ?= v0.5.1
 SFETCH_INSTALL_URL ?= https://github.com/3leaps/sfetch/releases/latest/download/install-sfetch.sh
 
 # Coverage thresholds by lifecycle phase

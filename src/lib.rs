@@ -19,6 +19,11 @@
 //! - **schema-validation** (default) - JSON Schema validation helpers (heavy)
 //! - **error-handling** (default) - Canonical error envelope + propagation
 //! - **telemetry-metrics** (default) - Telemetry + metrics export
+//! - **appidentity** (default) - App identity discovery from `.fulmen/app.yaml`
+//! - **logging** (default) - Structured logging with SIMPLE/STRUCTURED profiles
+//! - **fulhash** (default) - Canonical hashing (xxh3-128 + SHA-256)
+//! - **pathfinder** (default) - Safe filesystem discovery with glob patterns
+//! - **ascii** (default) - Terminal utilities + Unicode-aware string handling
 //!
 //! ## Quick Start
 //!
@@ -48,6 +53,46 @@
 #[cfg(feature = "config")]
 #[cfg_attr(docsrs, doc(cfg(feature = "config")))]
 pub mod config;
+
+/// App identity discovery from `.fulmen/app.yaml`.
+///
+/// Provides upward directory search and explicit-file loading with optional
+/// `FULMEN_APP_IDENTITY_FILE` override.
+#[cfg(feature = "appidentity")]
+#[cfg_attr(docsrs, doc(cfg(feature = "appidentity")))]
+pub mod appidentity;
+
+/// Structured logging with SIMPLE and STRUCTURED profiles.
+///
+/// Provides leveled logging (Trace through Fatal) with configurable output
+/// format, component context, and structured fields.
+#[cfg(feature = "logging")]
+#[cfg_attr(docsrs, doc(cfg(feature = "logging")))]
+pub mod logging;
+
+/// Canonical hashing with xxh3-128 (default) and SHA-256.
+///
+/// Provides content-addressable digests in `algo:hex` format, streaming
+/// hash computation, and verification helpers.
+#[cfg(feature = "fulhash")]
+#[cfg_attr(docsrs, doc(cfg(feature = "fulhash")))]
+pub mod fulhash;
+
+/// Safe filesystem discovery with glob patterns.
+///
+/// Provides file search with glob matching, path traversal protection,
+/// repository root discovery, and config file scanning.
+#[cfg(feature = "pathfinder")]
+#[cfg_attr(docsrs, doc(cfg(feature = "pathfinder")))]
+pub mod pathfinder;
+
+/// Terminal utilities and Unicode-aware string handling.
+///
+/// Provides box drawing, display width calculation, string analysis,
+/// and Unicode-safe truncation/padding.
+#[cfg(feature = "ascii")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ascii")))]
+pub mod ascii;
 
 /// Foundry catalog data structures.
 ///
