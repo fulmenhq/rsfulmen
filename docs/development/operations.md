@@ -6,16 +6,16 @@ This document covers day-to-day development workflow, release processes, and too
 
 ### Primary Makefile Targets
 
-| Target | Description |
-|--------|-------------|
-| `make bootstrap` | Install dependencies and external tools |
-| `make sync` | Sync Crucible SSOT assets |
-| `make build` | Build library |
-| `make test` | Run all tests |
-| `make lint` | Run clippy linter |
-| `make fmt` | Format code with rustfmt |
+| Target           | Description                                 |
+| ---------------- | ------------------------------------------- |
+| `make bootstrap` | Install dependencies and external tools     |
+| `make sync`      | Sync Crucible SSOT assets                   |
+| `make build`     | Build library                               |
+| `make test`      | Run all tests                               |
+| `make lint`      | Run clippy linter                           |
+| `make fmt`       | Format code with rustfmt                    |
 | `make check-all` | Full quality gate (fmt-check + lint + test) |
-| `make doc` | Generate rustdoc documentation |
+| `make doc`       | Generate rustdoc documentation              |
 
 ### Daily Workflow
 
@@ -55,6 +55,7 @@ rsfulmen uses [Semantic Versioning](https://semver.org/):
 - **PATCH**: Bug fixes (backward compatible)
 
 Version is tracked in:
+
 - `VERSION` file (source of truth)
 - `Cargo.toml` (auto-propagated)
 
@@ -87,14 +88,14 @@ make version-set VERSION=1.2.3  # Explicit version
 
 Coverage thresholds are lifecycle-phase dependent:
 
-| Phase | Minimum Coverage |
-|-------|-----------------|
-| experimental | 0% |
-| alpha | 30% |
-| beta | 60% |
-| rc | 70% |
-| ga | 75% |
-| lts | 80% |
+| Phase        | Minimum Coverage |
+| ------------ | ---------------- |
+| experimental | 0%               |
+| alpha        | 30%              |
+| beta         | 60%              |
+| rc           | 70%              |
+| ga           | 75%              |
+| lts          | 80%              |
 
 rsfulmen is currently in **alpha** phase (30% minimum).
 
@@ -131,6 +132,7 @@ make tools              # Verify tool availability
 ```
 
 **Installed tools:**
+
 - `sfetch` - Secure file fetcher (trust anchor)
 - `goneat` - FulmenHQ development tooling
 - `cargo-tarpaulin` - Code coverage

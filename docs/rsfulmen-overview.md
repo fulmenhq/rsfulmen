@@ -6,21 +6,21 @@ rsfulmen is the Rust helper library for the Fulmen ecosystem. It embeds Crucible
 
 ### Use rsfulmen when you need:
 
-| Need | Feature | Why rsfulmen |
-|------|---------|--------------|
-| Consistent exit codes | `foundry-core` | Same codes as your Go/Python/TypeScript services |
-| HTTP status helpers | `foundry-core` | Grouping (2xx/4xx/5xx) matches cross-language |
-| Country code validation | `foundry-core` | ISO 3166-1 with triple-index (alpha2/alpha3/numeric) |
-| XDG config paths | `config` | Cross-platform without reimplementing |
-| Structured errors | `error-handling` | Schema-valid envelopes with correlation IDs |
-| Metrics emission | `telemetry-metrics` | Taxonomy-backed, ready for your observability stack |
+| Need                    | Feature             | Why rsfulmen                                         |
+| ----------------------- | ------------------- | ---------------------------------------------------- |
+| Consistent exit codes   | `foundry-core`      | Same codes as your Go/Python/TypeScript services     |
+| HTTP status helpers     | `foundry-core`      | Grouping (2xx/4xx/5xx) matches cross-language        |
+| Country code validation | `foundry-core`      | ISO 3166-1 with triple-index (alpha2/alpha3/numeric) |
+| XDG config paths        | `config`            | Cross-platform without reimplementing                |
+| Structured errors       | `error-handling`    | Schema-valid envelopes with correlation IDs          |
+| Metrics emission        | `telemetry-metrics` | Taxonomy-backed, ready for your observability stack  |
 
 ### Consider alternatives when:
 
-| Scenario | Alternative | Why |
-|----------|-------------|-----|
-| Single HTTP status check | Inline match | Don't add a dependency for one lookup |
-| Custom exit code scheme | Own constants | rsfulmen assumes Crucible's 54-code catalog |
+| Scenario                       | Alternative            | Why                                           |
+| ------------------------------ | ---------------------- | --------------------------------------------- |
+| Single HTTP status check       | Inline match           | Don't add a dependency for one lookup         |
+| Custom exit code scheme        | Own constants          | rsfulmen assumes Crucible's 54-code catalog   |
 | No cross-language requirements | Language-native crates | If you're Rust-only, `http` crate may suffice |
 
 ## Feature Selection Guide
@@ -123,34 +123,35 @@ This module supports offline validation using embedded meta-schemas (Draft 2020-
 
 ## Dependency Impact
 
-| Feature | Added Dependencies | Approx. Binary Impact |
-|---------|-------------------|----------------------|
-| `foundry-core` | None (beyond std) | Minimal |
-| `foundry-mime-types` | serde_json | ~200KB |
-| `foundry-patterns` | regex, glob | ~500KB |
-| `similarity` | strsim, unicode-* | ~300KB |
-| `schema-validation` | jsonschema, url | ~1MB |
-| `error-handling` | serde_json | ~200KB |
-| `telemetry-metrics` | serde_json | ~200KB |
+| Feature              | Added Dependencies | Approx. Binary Impact |
+| -------------------- | ------------------ | --------------------- |
+| `foundry-core`       | None (beyond std)  | Minimal               |
+| `foundry-mime-types` | serde_json         | ~200KB                |
+| `foundry-patterns`   | regex, glob        | ~500KB                |
+| `similarity`         | strsim, unicode-\* | ~300KB                |
+| `schema-validation`  | jsonschema, url    | ~1MB                  |
+| `error-handling`     | serde_json         | ~200KB                |
+| `telemetry-metrics`  | serde_json         | ~200KB                |
 
-*Binary sizes are approximate and depend on optimization settings.*
+_Binary sizes are approximate and depend on optimization settings._
 
 ## Crucible Module Registry
 
 Crucible v0.4.x introduces module/catalog registries describing weight (`light|heavy`) and `default_inclusion` guidance. rsfulmen maps those concepts to Cargo features but keeps Rust-specific implementation details in this repository.
 
 See:
+
 - `docs/crucible-rs/standards/fulmen/module-registry.md`
 
 ## Cross-Language Parity
 
 rsfulmen's catalogs match the other Fulmen helper libraries exactly:
 
-| Catalog | rsfulmen | gofulmen | pyfulmen | tsfulmen |
-|---------|----------|----------|----------|----------|
-| Exit codes | 54 codes | 54 codes | 54 codes | 54 codes |
-| HTTP statuses | Full registry | Full registry | Full registry | Full registry |
-| Country codes | ISO 3166-1 | ISO 3166-1 | ISO 3166-1 | ISO 3166-1 |
-| Signals | POSIX + platform | POSIX + platform | POSIX + platform | POSIX + platform |
+| Catalog       | rsfulmen         | gofulmen         | pyfulmen         | tsfulmen         |
+| ------------- | ---------------- | ---------------- | ---------------- | ---------------- |
+| Exit codes    | 54 codes         | 54 codes         | 54 codes         | 54 codes         |
+| HTTP statuses | Full registry    | Full registry    | Full registry    | Full registry    |
+| Country codes | ISO 3166-1       | ISO 3166-1       | ISO 3166-1       | ISO 3166-1       |
+| Signals       | POSIX + platform | POSIX + platform | POSIX + platform | POSIX + platform |
 
 This parity is enforced by Crucible SSOT — all libraries sync from the same source.

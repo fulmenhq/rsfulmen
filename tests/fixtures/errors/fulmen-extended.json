@@ -12,7 +12,10 @@
     "config_path": "/app.yaml",
     "attempt": 1,
     "dry_run": false,
-    "did_you_mean": ["/app.yml", "/app.json"]
+    "did_you_mean": [
+      "/app.yml",
+      "/app.json"
+    ]
   },
   "original": {
     "type": "io",

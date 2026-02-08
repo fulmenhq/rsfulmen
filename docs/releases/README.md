@@ -6,11 +6,12 @@ This directory contains archived release notes for rsfulmen.
 
 ## Archived Releases
 
-| Version | Date | Type |
-|---------|------|------|
-| [v0.1.2](v0.1.2.md) | 2026-01-08 | Feature Release |
+| Version             | Date       | Type                  |
+| ------------------- | ---------- | --------------------- |
+| [v0.1.3](v0.1.3.md) | 2026-02-08 | Feature Release       |
+| [v0.1.2](v0.1.2.md) | 2026-01-08 | Feature Release       |
 | [v0.1.1](v0.1.1.md) | 2026-01-08 | Documentation Release |
-| [v0.1.0](v0.1.0.md) | 2026-01-08 | Initial Release |
+| [v0.1.0](v0.1.0.md) | 2026-01-08 | Initial Release       |
 
 ## Release Documentation Model
 

@@ -44,18 +44,13 @@ const DEFAULT_BUFFER_SIZE: usize = 8192;
 /// The default algorithm is [`Algorithm::Xxh3_128`] — a fast,
 /// non-cryptographic hash suitable for content-addressable storage.
 /// Use [`Algorithm::Sha256`] when a cryptographic guarantee is required.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum Algorithm {
     /// xxHash3-128 — fast, non-cryptographic (default).
+    #[default]
     Xxh3_128,
     /// SHA-256 — cryptographic.
     Sha256,
-}
-
-impl Default for Algorithm {
-    fn default() -> Self {
-        Self::Xxh3_128
-    }
 }
 
 impl Algorithm {

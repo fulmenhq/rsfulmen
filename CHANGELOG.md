@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-02-08
+
+### Added
+
+- **App Identity** (`appidentity`) – Discovery from `.fulmen/app.yaml` with upward directory search
+  - `load()`, `load_from()`, `load_file()`, `validate()`
+  - `FULMEN_APP_IDENTITY_FILE` environment variable override
+- **Structured Logging** (`logging`) – Leveled logging with SIMPLE and STRUCTURED profiles
+  - `Logger` with `Severity` levels (Trace through Fatal)
+  - Component context and structured key-value fields
+  - Configurable output format via `Config` and `Profile`
+- **Canonical Hashing** (`fulhash`) – Content-addressable digests in `algo:hex` format
+  - `hash()`, `hash_string()`, `hash_reader()`, `hash_file()`
+  - `verify()`, `verify_file()`, `format_digest()`, `parse_digest()`
+  - xxHash3-128 (fast, default) and SHA-256 (cryptographic)
+  - Strict canonical validation (lowercase hex, correct byte length)
+- **Filesystem Discovery** (`pathfinder`) – Safe file search with glob patterns
+  - `find_files()` with Crucible schema-aligned query/result types
+  - `find_repository_root()`, `find_config_files()`, `validate_path()`
+  - Symlink boundary enforcement, hidden file pruning, warning collection
+  - SHA-256 checksums in `sha256:<hex>` canonical format
+- **Terminal Utilities** (`ascii`) – Unicode-aware string handling
+  - `string_width()` with grapheme-cluster-aware width calculation
+  - `analyze()`, `truncate_to_width()`, `pad_to_width()`, `draw_box()`
+
+### Changed
+
+- **MSRV** – Bumped from 1.83 to 1.88
+- **Cargo.toml** – Added feature flags and dependencies for all new modules
+- **CI** – Added new features to matrix, updated MSRV job to 1.88
+
+### Infrastructure
+
+- **Test Coverage** – 286 unit tests, 70 doc tests
+- **Feature Flags** – `appidentity`, `logging`, `fulhash`, `pathfinder`, `ascii` added to default and full sets
+
 ## [0.1.2] - 2026-01-08
 
 ### Added

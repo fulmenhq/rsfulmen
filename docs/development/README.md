@@ -4,10 +4,10 @@ This directory contains local development documentation for rsfulmen. For Crucib
 
 ## Contents
 
-| Document | Description |
-|----------|-------------|
-| [operations.md](operations.md) | Build, test, release, and operations runbook |
-| [adr/](adr/) | Architecture Decision Records (rsfulmen-specific) |
+| Document                       | Description                                       |
+| ------------------------------ | ------------------------------------------------- |
+| [operations.md](operations.md) | Build, test, release, and operations runbook      |
+| [adr/](adr/)                   | Architecture Decision Records (rsfulmen-specific) |
 
 ## Quick Start
 

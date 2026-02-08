@@ -31,8 +31,17 @@ Note: `RSFULMEN_RELEASE_TAG` is not a secret and typically isn't stored in encry
   - [ ] Run `make release-provenance-check`
 - [ ] Quality gates pass: `make check-all`
 - [ ] `CHANGELOG.md` updated (Unreleased → new section)
-- [ ] `VERSION` matches the intended tag (`v$(cat VERSION)`)
-- [ ] `Cargo.toml` version matches VERSION
+- [ ] Create/update `docs/releases/vX.Y.Z.md` release document
+- [ ] Update `RELEASE_NOTES.md` (add new release, rotate oldest per 3-release policy)
+- [ ] Set version and propagate to `Cargo.toml`:
+  ```bash
+  make version-set VERSION=X.Y.Z
+  ```
+- [ ] Verify version sync:
+  ```bash
+  make version
+  grep '^version = ' Cargo.toml | head -1
+  ```
 - [ ] Guard: ensure tag/version match:
   ```bash
   make release-guard-tag-version

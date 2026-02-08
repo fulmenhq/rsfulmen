@@ -21,6 +21,7 @@ Every team writes their own HTTP status helpers, exit code enums, and country co
 rsfulmen provides consistent, high-quality implementations of common functionality across the FulmenHQ ecosystem. Built on Crucible's schemas and standards, it ensures uniformity and reliability with idiomatic Rust APIs.
 
 > **Alpha Status**: API may evolve before 1.0. However:
+>
 > - **Catalog data is stable**: Exit codes, signals, country codes, and HTTP statuses derive from Crucible SSOT and won't change without ecosystem-wide coordination
 > - **Breaking changes documented**: All API changes noted in [CHANGELOG.md](CHANGELOG.md)
 > - **Production-viable for catalogs**: The `foundry-core` feature is suitable for production use
@@ -75,13 +76,13 @@ fn main() {
 
 **Metadata fields:**
 
-| Field | Description |
-|-------|-------------|
-| `version` | CalVer Crucible version (e.g., `0.4.2`) |
-| `commit` | Git commit SHA of the synced Crucible snapshot |
-| `dirty` | `true` if synced from uncommitted changes (development only) |
-| `synced_at` | RFC3339 timestamp when sync occurred |
-| `sync_method` | Sync method used (e.g., `git_ref`) |
+| Field         | Description                                                  |
+| ------------- | ------------------------------------------------------------ |
+| `version`     | CalVer Crucible version (e.g., `0.4.2`)                      |
+| `commit`      | Git commit SHA of the synced Crucible snapshot               |
+| `dirty`       | `true` if synced from uncommitted changes (development only) |
+| `synced_at`   | RFC3339 timestamp when sync occurred                         |
+| `sync_method` | Sync method used (e.g., `git_ref`)                           |
 
 For manual inspection, see [`.crucible/metadata/metadata.yaml`](.crucible/metadata/metadata.yaml).
 
@@ -89,7 +90,7 @@ For manual inspection, see [`.crucible/metadata/metadata.yaml`](.crucible/metada
 
 ### Config (`config`)
 
-*Use case: Locate configuration files consistently across Linux, macOS, and Windows without reimplementing XDG logic.*
+_Use case: Locate configuration files consistently across Linux, macOS, and Windows without reimplementing XDG logic._
 
 Configuration path utilities following the [Fulmen Config Path Standard](docs/crucible-rs/standards/config/fulmen-config-paths.md).
 
@@ -115,13 +116,13 @@ println!("Config home: {:?}", xdg.config_home);
 
 ### Foundry (`foundry`)
 
-*Use case: Access standardized catalogs (countries, HTTP statuses, exit codes) that match your Go/Python/TypeScript services exactly.*
+_Use case: Access standardized catalogs (countries, HTTP statuses, exit codes) that match your Go/Python/TypeScript services exactly._
 
 Enterprise-grade foundation utilities providing consistent cross-language implementations from Crucible catalogs. All data is embedded at compile time — no network dependencies required.
 
 #### Country Codes
 
-*Use case: Validate and normalize country codes in API requests without maintaining your own ISO 3166-1 dataset.*
+_Use case: Validate and normalize country codes in API requests without maintaining your own ISO 3166-1 dataset._
 
 ISO 3166-1 country code lookups with triple-index support.
 
@@ -143,7 +144,7 @@ assert_eq!(germany.name, "Germany");
 
 #### HTTP Status Codes
 
-*Use case: Categorize responses for metrics and logging with consistent groupings across all your services.*
+_Use case: Categorize responses for metrics and logging with consistent groupings across all your services._
 
 HTTP status code registry with grouping helpers.
 
@@ -163,7 +164,7 @@ assert_eq!(reason, "Not Found");
 
 #### Exit Codes
 
-*Use case: Return meaningful exit codes so monitoring systems can distinguish configuration errors from runtime failures.*
+_Use case: Return meaningful exit codes so monitoring systems can distinguish configuration errors from runtime failures._
 
 Standardized exit codes with categories and signal handling.
 
@@ -189,7 +190,7 @@ assert_eq!(signal, 2);  // SIGINT = 2
 
 ### Error Handling (`error_handling`)
 
-*Use case: Return structured errors with correlation IDs and severity levels that integrate with your observability stack.*
+_Use case: Return structured errors with correlation IDs and severity levels that integrate with your observability stack._
 
 Canonical error envelope that extends Pathfinder's schema with optional telemetry
 fields (`severity`, `correlation_id`, `exit_code`, etc.). Payloads are JSON
@@ -214,7 +215,7 @@ println!("{}", err.to_json_string_pretty().unwrap());
 
 ### Telemetry Metrics (`telemetry_metrics`)
 
-*Use case: Emit metrics that conform to your organization's taxonomy without building a custom metrics framework.*
+_Use case: Emit metrics that conform to your organization's taxonomy without building a custom metrics framework._
 
 Taxonomy-backed counters, gauges, and histograms exported as schema-valid JSON
 events.
@@ -265,17 +266,17 @@ rsfulmen = { version = "0.1", default-features = false, features = ["schema-vali
 
 #### Feature Matrix
 
-| Feature | Includes | Notes |
-|--------|----------|------|
-| `foundry-core` | signals, exit-codes, countries, http-statuses | Minimal catalog install |
-| `foundry-mime-types` | mime-types | Adds `serde_json` |
-| `foundry-patterns` | patterns | Adds `regex` + `glob` |
-| `similarity` | `rsfulmen::similarity` (+ foundry re-export) | Heavy deps (strsim/unicode) |
-| `schema-validation` | `rsfulmen::schema_validation` | Heavy deps (jsonschema/url) |
-| `error-handling` | `rsfulmen::error_handling` | Canonical error envelope (adds `serde_json`) |
-| `telemetry-metrics` | `rsfulmen::telemetry_metrics` | Metrics export (schema-valid JSON events) |
-| `crucible` | `rsfulmen::crucible` | Embedded SSOT access |
-| `docscribe` | `rsfulmen::docscribe` | Doc access + frontmatter parsing |
+| Feature              | Includes                                      | Notes                                        |
+| -------------------- | --------------------------------------------- | -------------------------------------------- |
+| `foundry-core`       | signals, exit-codes, countries, http-statuses | Minimal catalog install                      |
+| `foundry-mime-types` | mime-types                                    | Adds `serde_json`                            |
+| `foundry-patterns`   | patterns                                      | Adds `regex` + `glob`                        |
+| `similarity`         | `rsfulmen::similarity` (+ foundry re-export)  | Heavy deps (strsim/unicode)                  |
+| `schema-validation`  | `rsfulmen::schema_validation`                 | Heavy deps (jsonschema/url)                  |
+| `error-handling`     | `rsfulmen::error_handling`                    | Canonical error envelope (adds `serde_json`) |
+| `telemetry-metrics`  | `rsfulmen::telemetry_metrics`                 | Metrics export (schema-valid JSON events)    |
+| `crucible`           | `rsfulmen::crucible`                          | Embedded SSOT access                         |
+| `docscribe`          | `rsfulmen::docscribe`                         | Doc access + frontmatter parsing             |
 
 ## Development
 
@@ -302,17 +303,17 @@ make check-all
 
 ### Makefile Targets
 
-| Target | Description |
-|--------|-------------|
+| Target      | Description                             |
+| ----------- | --------------------------------------- |
 | `bootstrap` | Install dependencies and external tools |
-| `sync` | Sync assets from Crucible SSOT |
-| `build` | Build library |
-| `test` | Run all tests |
-| `lint` | Run clippy with strict warnings |
-| `fmt` | Format code with rustfmt |
-| `check-all` | fmt-check + lint + test |
-| `doc` | Generate rustdoc documentation |
-| `version` | Print current version |
+| `sync`      | Sync assets from Crucible SSOT          |
+| `build`     | Build library                           |
+| `test`      | Run all tests                           |
+| `lint`      | Run clippy with strict warnings         |
+| `fmt`       | Format code with rustfmt                |
+| `check-all` | fmt-check + lint + test                 |
+| `doc`       | Generate rustdoc documentation          |
+| `version`   | Print current version                   |
 
 ### Crucible Sync
 
@@ -327,6 +328,7 @@ cat .goneat/ssot/provenance.json
 ```
 
 Synced assets are stored in:
+
 - `config/crucible-rs/` — Configuration files and foundry catalogs
 - `schemas/crucible-rs/` — JSON schemas
 - `docs/crucible-rs/` — Documentation and standards
@@ -335,12 +337,12 @@ Synced assets are stored in:
 
 rsfulmen is part of the Fulmen helper library family. All libraries derive their catalogs from [Crucible](https://github.com/fulmenhq/crucible), ensuring cross-language consistency:
 
-| Library | Language | Status | Crucible Version |
-|---------|----------|--------|------------------|
-| [gofulmen](https://github.com/fulmenhq/gofulmen) | Go | Reference impl | v0.4.x |
-| [tsfulmen](https://github.com/fulmenhq/tsfulmen) | TypeScript | Stable | v0.4.x |
-| [pyfulmen](https://github.com/fulmenhq/pyfulmen) | Python | Stable | v0.4.x |
-| rsfulmen | Rust | Alpha | v0.4.2 |
+| Library                                          | Language   | Status         | Crucible Version |
+| ------------------------------------------------ | ---------- | -------------- | ---------------- |
+| [gofulmen](https://github.com/fulmenhq/gofulmen) | Go         | Reference impl | v0.4.x           |
+| [tsfulmen](https://github.com/fulmenhq/tsfulmen) | TypeScript | Stable         | v0.4.x           |
+| [pyfulmen](https://github.com/fulmenhq/pyfulmen) | Python     | Stable         | v0.4.x           |
+| rsfulmen                                         | Rust       | Alpha          | v0.4.2           |
 
 **Why this matters**: A Rust service using `EXIT_CONFIG_INVALID` (code 20) will match a Go service using the same exit code. Your alerting rules and runbooks work across the entire stack.
 
@@ -351,22 +353,26 @@ All libraries sync from [Crucible](https://github.com/fulmenhq/crucible) and fol
 rsfulmen is designed for environments where dependency hygiene matters.
 
 **Dependency Transparency:**
+
 - **Minimal by default**: `foundry-core` feature has zero heavy dependencies
 - **Auditable**: Run `cargo tree` to inspect the full dependency graph
 - **SBOM-ready**: Compatible with `cargo sbom` and `cargo cyclonedx`
 - **License-clean**: All dependencies use MIT, Apache-2.0, or compatible licenses
 
 **Embedded Data:**
+
 - All Crucible catalogs (country codes, exit codes, HTTP statuses) are embedded at compile time
 - No runtime network calls for reference data
 - Version and provenance tracked in `.crucible/metadata/metadata.yaml`
 
 **Security Practices:**
+
 - No `unsafe` code in core modules
 - Pattern matching uses bounded execution (no ReDoS vulnerabilities)
 - Vulnerability scanning via `cargo audit`
 
 **Audit Commands:**
+
 ```bash
 # View dependency tree
 cargo tree

@@ -38,9 +38,11 @@ What becomes easier or more difficult to do because of this change?
 Description of the alternative.
 
 **Pros:**
+
 - Pro 1
 
 **Cons:**
+
 - Con 1
 
 **Why rejected:** Reason for not choosing this option.

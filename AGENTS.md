@@ -18,12 +18,12 @@ See [AI Agents Standard](docs/crucible-rs/standards/ai-agents.md) for operating 
 
 ## Roles
 
-| Role      | Prompt                                                            | Use When                          |
-| --------- | ----------------------------------------------------------------- | --------------------------------- |
-| `devlead` | [devlead.yaml](config/crucible-rs/agentic/roles/devlead.yaml)     | Implementation, features, fixes   |
-| `devrev`  | [devrev.yaml](config/crucible-rs/agentic/roles/devrev.yaml)       | Code review, four-eyes audit      |
-| `infoarch`| [infoarch.yaml](config/crucible-rs/agentic/roles/infoarch.yaml)   | Documentation, schemas            |
-| `prodmktg`| [prodmktg.yaml](config/crucible-rs/agentic/roles/prodmktg.yaml)   | Messaging, branding, personas     |
+| Role       | Prompt                                                          | Use When                        |
+| ---------- | --------------------------------------------------------------- | ------------------------------- |
+| `devlead`  | [devlead.yaml](config/crucible-rs/agentic/roles/devlead.yaml)   | Implementation, features, fixes |
+| `devrev`   | [devrev.yaml](config/crucible-rs/agentic/roles/devrev.yaml)     | Code review, four-eyes audit    |
+| `infoarch` | [infoarch.yaml](config/crucible-rs/agentic/roles/infoarch.yaml) | Documentation, schemas          |
+| `prodmktg` | [prodmktg.yaml](config/crucible-rs/agentic/roles/prodmktg.yaml) | Messaging, branding, personas   |
 
 See [Role Catalog](config/crucible-rs/agentic/roles/README.md) for full definitions.
 
@@ -107,6 +107,7 @@ Committer-of-Record: Dave Thompson <dave.thompson@3leaps.net> [@3leapsdave]
 ```
 
 **Key requirements:**
+
 - Use `noreply@3leaps.net` for Co-Authored-By (NOT vendor email)
 - Include `Role:` trailer matching your operating role
 - Include `Committer-of-Record:` with full name, email, and handle
@@ -135,15 +136,15 @@ Committer-of-Record: Dave Thompson <dave.thompson@3leaps.net> [@3leapsdave]
 
 ## Key Files
 
-| File                            | Purpose                            |
-| ------------------------------- | ---------------------------------- |
-| `src/lib.rs`                    | Library root and version constants |
-| `src/config/mod.rs`             | XDG config path utilities          |
-| `src/foundry/mod.rs`            | Foundry catalog entry point        |
-| `config/crucible-rs/`           | Synced config from Crucible (SSOT) |
-| `schemas/crucible-rs/`          | Synced schemas from Crucible       |
-| `docs/crucible-rs/`             | Synced docs from Crucible          |
-| `.goneat/ssot-consumer.yaml`    | Crucible sync configuration        |
+| File                         | Purpose                            |
+| ---------------------------- | ---------------------------------- |
+| `src/lib.rs`                 | Library root and version constants |
+| `src/config/mod.rs`          | XDG config path utilities          |
+| `src/foundry/mod.rs`         | Foundry catalog entry point        |
+| `config/crucible-rs/`        | Synced config from Crucible (SSOT) |
+| `schemas/crucible-rs/`       | Synced schemas from Crucible       |
+| `docs/crucible-rs/`          | Synced docs from Crucible          |
+| `.goneat/ssot-consumer.yaml` | Crucible sync configuration        |
 
 ## Local-Only Directories (Gitignored)
 
