@@ -607,7 +607,12 @@ fn system_time_to_rfc3339(time: std::time::SystemTime) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::{AtomicU64, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    /// Monotonic counter to prevent collisions when parallel test threads
+    /// call `SystemTime::now()` within the same nanosecond.
+    static TEST_DIR_COUNTER: AtomicU64 = AtomicU64::new(0);
 
     /// RAII temporary directory that is cleaned up on drop.
     struct TestDir {
@@ -621,10 +626,12 @@ mod tests {
                 .duration_since(UNIX_EPOCH)
                 .expect("time should be after epoch")
                 .as_nanos();
+            let seq = TEST_DIR_COUNTER.fetch_add(1, Ordering::Relaxed);
             path.push(format!(
-                "rsfulmen-pathfinder-{}-{}",
+                "rsfulmen-pathfinder-{}-{}-{}",
                 std::process::id(),
-                nanos
+                nanos,
+                seq,
             ));
             fs::create_dir_all(&path).expect("failed to create temp dir");
             Self { path }
