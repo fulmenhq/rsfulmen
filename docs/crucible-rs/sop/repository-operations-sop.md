@@ -24,13 +24,14 @@ This SOP defines the operational guidelines, safety protocols, and guardrails fo
 
 ## High-Risk Operations
 
-| Operation                              | Risk                          | Protocol                                                                                                    |
-| -------------------------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Editing schemas/docs/templates in root | Breaking downstream consumers | Update root, run `bun run sync:to-lang`, verify tests, and ensure `make release-check` passes before merge. |
-| Version bumps                          | Package/version drift         | Use `bun run version:update` or `make version-set`. Never edit `VERSION` manually.                          |
-| Publishing Go/npm packages             | Releasing stale assets        | Confirm release checklist complete, run `make release-prepare`, obtain human approval, then tag/publish.    |
-| Deleting schemas or standards          | Downstream breakage           | Requires issue + maintainer review. Provide migration plan and version bump.                                |
-| Modifying CI workflows                 | Broken automation             | Review with @3leapsdave. Test in branch before merging.                                                     |
+| Operation                               | Risk                          | Protocol                                                                                                                                                                                                  |
+| --------------------------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Editing schemas/docs/templates in root  | Breaking downstream consumers | Update root, run `bun run sync:to-lang`, verify tests, and ensure `make release-check` passes before merge.                                                                                               |
+| Syncing from upstream (3leaps/crucible) | Schema/config drift           | Run `make upstream-sync-3leaps`, review diffs carefully, validate with `make upstream-validate`, update configs if breaking changes. See [Upstream Sync Consumer Guide](../ops/upstream-sync-consumer.md) |
+| Version bumps                           | Package/version drift         | Use `bun run version:update` or `make version-set`. Never edit `VERSION` manually.                                                                                                                        |
+| Publishing Go/npm packages              | Releasing stale assets        | Confirm release checklist complete, run `make release-prepare`, obtain human approval, then tag/publish.                                                                                                  |
+| Deleting schemas or standards           | Downstream breakage           | Requires issue + maintainer review. Provide migration plan and version bump.                                                                                                                              |
+| Modifying CI workflows                  | Broken automation             | Review with @3leapsdave. Test in branch before merging.                                                                                                                                                   |
 
 ## Commit and Push Checklists
 

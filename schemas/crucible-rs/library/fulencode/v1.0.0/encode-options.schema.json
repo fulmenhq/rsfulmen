@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/library/fulencode/v1.0.0/encode-options.schema.json",
+  "title": "Fulencode Encode Options",
+  "description": "Options for fulencode encode() operation",
+  "type": "object",
+  "properties": {
+    "padding": {
+      "type": "boolean",
+      "description": "Enable/disable padding when supported (Base64/Base32)."
+    },
+    "case": {
+      "type": "string",
+      "description": "Hex output case.",
+      "enum": [
+        "upper",
+        "lower"
+      ]
+    },
+    "line_length": {
+      "description": "Optional line wrap length for text output.",
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "line_ending": {
+      "type": "string",
+      "description": "Line ending to use when line wrapping.",
+      "enum": [
+        "\n",
+        "\r\n"
+      ]
+    },
+    "max_encoded_size": {
+      "type": "integer",
+      "description": "Maximum encoded output size in bytes.",
+      "minimum": 1024
+    },
+    "compute_checksum": {
+      "type": "string",
+      "description": "Checksum algorithm to compute on encoded output.",
+      "enum": [
+        "xxh3-128",
+        "sha256",
+        "sha512",
+        "sha1",
+        "md5"
+      ]
+    },
+    "embed_checksum": {
+      "type": "boolean",
+      "description": "Whether to embed checksum alongside encoded output (implementation-defined framing)."
+    },
+    "on_error": {
+      "type": "string",
+      "description": "Error handling mode when encoding text inputs.",
+      "enum": [
+        "strict",
+        "replace",
+        "ignore"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

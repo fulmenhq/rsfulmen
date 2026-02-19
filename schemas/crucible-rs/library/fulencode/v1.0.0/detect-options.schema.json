@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/library/fulencode/v1.0.0/detect-options.schema.json",
+  "title": "Fulencode Detect Options",
+  "description": "Options for fulencode detect() operation",
+  "type": "object",
+  "properties": {
+    "max_sample_size": {
+      "type": "integer",
+      "description": "Maximum bytes to analyze.",
+      "minimum": 32
+    },
+    "min_confidence": {
+      "type": "number",
+      "description": "Minimum confidence threshold for a non-error detection result.",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "recognize_multibase": {
+      "type": "boolean",
+      "description": "Recognize multibase prefixes (detection only; encoding may require extension module)."
+    }
+  },
+  "additionalProperties": false
+}

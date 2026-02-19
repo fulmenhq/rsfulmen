@@ -1,0 +1,10 @@
+version: "1.0"
+cases:
+  - name: "invalid-base64-character"
+    format: "base64"
+    encoded: "SGVsbG8*"
+    expected_error_code: "INVALID_ENCODING"
+  - name: "invalid-base64-padding"
+    format: "base64"
+    encoded: "SGVsbG8="
+    expected_error_code: "INVALID_ENCODING"

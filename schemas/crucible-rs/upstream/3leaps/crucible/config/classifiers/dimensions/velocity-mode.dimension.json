@@ -1,0 +1,94 @@
+{
+  "$schema": "https://schemas.3leaps.dev/classifiers/v0/dimension-definition.schema.json",
+  "key": "velocity-mode",
+  "name": "Velocity Mode",
+  "version": "1.0.0",
+  "status": "stable",
+  "type": "categorical",
+  "cardinality": "single",
+  "description": "Data processing velocity pattern classification. Determines pipeline topology, infrastructure requirements, and processing semantics.",
+  "categorical": {
+    "values": [
+      {
+        "key": "unknown",
+        "label": "Unknown",
+        "description": "Velocity mode not yet classified; must be classified before pipeline design.",
+        "order": 0,
+        "is_none": false,
+        "synonyms": ["unclassified"]
+      },
+      {
+        "key": "batch",
+        "label": "Batch",
+        "description": "Scheduled batch processing; data at rest, periodic execution.",
+        "order": 1,
+        "is_none": true,
+        "synonyms": ["scheduled", "periodic"]
+      },
+      {
+        "key": "micro-batch",
+        "label": "Micro-batch",
+        "description": "Frequent small batches (minutes); near-real-time with batch semantics.",
+        "order": 2,
+        "is_none": false,
+        "synonyms": ["mini-batch"]
+      },
+      {
+        "key": "streaming",
+        "label": "Streaming",
+        "description": "Event-driven continuous processing; data in motion, sub-second latency.",
+        "order": 3,
+        "is_none": false,
+        "synonyms": ["real-time", "continuous"]
+      },
+      {
+        "key": "hybrid",
+        "label": "Hybrid",
+        "description": "Combined batch and streaming; lambda/kappa architecture patterns.",
+        "order": 4,
+        "is_none": false,
+        "synonyms": ["lambda", "kappa"]
+      }
+    ],
+    "index_strategy": {
+      "default_order": ["unknown", "batch", "micro-batch", "streaming", "hybrid"],
+      "ordinal_mapping": {
+        "unknown": 0,
+        "batch": 1,
+        "micro-batch": 2,
+        "streaming": 3,
+        "hybrid": 4
+      },
+      "missing_handling": "error",
+      "sentinel": 0
+    }
+  },
+  "governance": {
+    "owner": "3leaps-core",
+    "reviewers": ["platform", "data-engineering"],
+    "review_cycle": "semiannual",
+    "last_updated": "2026-01-22"
+  },
+  "examples": [
+    {
+      "dataset": "new-pipeline",
+      "value": "unknown"
+    },
+    {
+      "dataset": "daily-etl-jobs",
+      "value": "batch"
+    },
+    {
+      "dataset": "dashboard-metrics",
+      "value": "micro-batch"
+    },
+    {
+      "dataset": "fraud-detection",
+      "value": "streaming"
+    },
+    {
+      "dataset": "analytics-platform",
+      "value": "hybrid"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+version: "1.0"
+cases:
+  - name: "hello-world-base64"
+    format: "base64"
+    input_hex: "48656c6c6f2c20576f726c6421"
+    encoded: "SGVsbG8sIFdvcmxkIQ=="
+  - name: "hello-world-base64url-unpadded"
+    format: "base64url"
+    input_hex: "48656c6c6f2c20576f726c6421"
+    encoded: "SGVsbG8sIFdvcmxkIQ"
+    notes: "No padding, URL-safe alphabet"

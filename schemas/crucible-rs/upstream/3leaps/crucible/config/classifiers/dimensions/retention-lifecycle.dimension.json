@@ -1,0 +1,121 @@
+{
+  "$schema": "https://schemas.3leaps.dev/classifiers/v0/dimension-definition.schema.json",
+  "key": "retention-lifecycle",
+  "name": "Retention & Lifecycle",
+  "version": "1.0.0",
+  "status": "stable",
+  "type": "categorical",
+  "cardinality": "single",
+  "description": "Data retention period classification for deletion SLAs, archival policies, and compliance requirements. Governs storage lifecycle, backup retention, and legal hold procedures.",
+  "categorical": {
+    "values": [
+      {
+        "key": "unknown",
+        "label": "Unknown",
+        "description": "Retention not yet classified; must be classified before storage provisioning.",
+        "order": 0,
+        "is_none": false,
+        "synonyms": ["unclassified"]
+      },
+      {
+        "key": "transient",
+        "label": "Transient",
+        "description": "Short-lived data (≤7 days); auto-deleted, no backup required.",
+        "order": 1,
+        "is_none": false,
+        "synonyms": ["ephemeral", "temp"]
+      },
+      {
+        "key": "short",
+        "label": "Short",
+        "description": "Short retention (≤90 days); routine cleanup, basic backup.",
+        "order": 2,
+        "is_none": false,
+        "synonyms": ["short-term"]
+      },
+      {
+        "key": "standard",
+        "label": "Standard",
+        "description": "Standard retention (≤2 years); regular backup, tiered storage.",
+        "order": 3,
+        "is_none": true,
+        "synonyms": ["default"]
+      },
+      {
+        "key": "long",
+        "label": "Long",
+        "description": "Long retention (>2 years); archive storage, compliance backup.",
+        "order": 4,
+        "is_none": false,
+        "synonyms": ["long-term", "archive"]
+      },
+      {
+        "key": "legal-hold",
+        "label": "Legal Hold",
+        "description": "Indefinite retention; immutable, protected from deletion, chain of custody.",
+        "order": 5,
+        "is_none": false,
+        "synonyms": ["litigation-hold", "preservation"]
+      }
+    ],
+    "index_strategy": {
+      "default_order": ["unknown", "transient", "short", "standard", "long", "legal-hold"],
+      "ordinal_mapping": {
+        "unknown": 0,
+        "transient": 1,
+        "short": 2,
+        "standard": 3,
+        "long": 4,
+        "legal-hold": 5
+      },
+      "missing_handling": "error",
+      "sentinel": 0
+    }
+  },
+  "transitions": {
+    "downgrade": [
+      "legal-hold->long (legal release authorization)",
+      "long->standard (retention review)",
+      "standard->short (documented approval)",
+      "short->transient (explicit deletion policy)"
+    ],
+    "upgrade": [
+      "any->legal-hold (legal order or investigation)",
+      "transient->short (retention extension)",
+      "short->standard (compliance requirement)",
+      "standard->long (regulatory or archival need)"
+    ]
+  },
+  "governance": {
+    "owner": "3leaps-core",
+    "reviewers": ["compliance", "legal"],
+    "review_cycle": "semiannual",
+    "last_updated": "2026-01-22"
+  },
+  "examples": [
+    {
+      "dataset": "new-data-source",
+      "value": "unknown"
+    },
+    {
+      "dataset": "session-cache",
+      "value": "transient"
+    },
+    {
+      "dataset": "debug-logs",
+      "value": "short"
+    },
+    {
+      "dataset": "transaction-history",
+      "value": "standard"
+    },
+    {
+      "dataset": "audit-records",
+      "value": "long"
+    },
+    {
+      "dataset": "litigation-evidence",
+      "value": "legal-hold"
+    }
+  ]
+}

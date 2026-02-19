@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/library/fulencode/v1.0.0/fulencode-error.schema.json",
+  "title": "Fulencode Error",
+  "description": "Canonical error envelope for Fulencode operations",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "operation": {
+      "type": "string"
+    },
+    "input_format": {
+      "type": "string"
+    },
+    "output_format": {
+      "type": "string"
+    },
+    "details": {
+      "type": "object",
+      "properties": {
+        "byte_offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "codepoint_offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "detected_encoding": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "invalid_bytes": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          }
+        },
+        "expected": {
+          "type": "string"
+        },
+        "actual": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "code",
+    "message",
+    "operation"
+  ],
+  "additionalProperties": false
+}

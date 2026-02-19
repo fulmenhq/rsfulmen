@@ -1,0 +1,145 @@
+{
+  "$schema": "https://schemas.3leaps.dev/classifiers/v0/dimension-definition.schema.json",
+  "key": "sensitivity",
+  "name": "Data Sensitivity",
+  "version": "1.0.0",
+  "status": "stable",
+  "type": "categorical",
+  "cardinality": "single",
+  "description": "Realm-agnostic data sensitivity levels for classification, handling, access control, and publishing policy across all 3leaps ecosystems.",
+  "categorical": {
+    "values": [
+      {
+        "key": "unknown",
+        "label": "UNKNOWN",
+        "description": "Unclassified; isolate until classified within 24 hours.",
+        "order": 0,
+        "is_none": false,
+        "synonyms": []
+      },
+      {
+        "key": "0-public",
+        "label": "0 — Public",
+        "description": "Public domain or intended for public distribution.",
+        "order": 1,
+        "is_none": true,
+        "synonyms": ["public"]
+      },
+      {
+        "key": "1-confidential",
+        "label": "1 — Confidential",
+        "description": "Internal but non-sensitive; NDA-level, access logged.",
+        "order": 2,
+        "is_none": false,
+        "synonyms": ["internal"]
+      },
+      {
+        "key": "2-blinded",
+        "label": "2 — Blinded",
+        "description": "Identities/source obfuscated; verify blinding effectiveness.",
+        "order": 3,
+        "is_none": false,
+        "synonyms": ["anonymized", "de-identified"]
+      },
+      {
+        "key": "3-proprietary",
+        "label": "3 — Proprietary",
+        "description": "Enterprise-sensitive (MNPI, trade secrets); strict least-privilege.",
+        "order": 4,
+        "is_none": false,
+        "synonyms": []
+      },
+      {
+        "key": "4-personal",
+        "label": "4 — Personal/Secret",
+        "description": "NPPII or secrets; vault-managed only, real-time monitoring.",
+        "order": 5,
+        "is_none": false,
+        "synonyms": ["secret", "personal"]
+      },
+      {
+        "key": "5-privileged",
+        "label": "5 — Privileged/Sysadmin",
+        "description": "Platform control data; HSM/air-gapped isolation required.",
+        "order": 6,
+        "is_none": false,
+        "synonyms": ["privileged", "sysadmin"]
+      },
+      {
+        "key": "6-eyes-only",
+        "label": "6 — Eyes Only/Legal Hold",
+        "description": "Immutable storage, legal-controlled access, exec authorization.",
+        "order": 7,
+        "is_none": false,
+        "synonyms": ["legal-hold", "eyes-only"]
+      }
+    ],
+    "index_strategy": {
+      "default_order": [
+        "unknown",
+        "0-public",
+        "1-confidential",
+        "2-blinded",
+        "3-proprietary",
+        "4-personal",
+        "5-privileged",
+        "6-eyes-only"
+      ],
+      "ordinal_mapping": {
+        "unknown": 0,
+        "0-public": 1,
+        "1-confidential": 2,
+        "2-blinded": 3,
+        "3-proprietary": 4,
+        "4-personal": 5,
+        "5-privileged": 6,
+        "6-eyes-only": 7
+      },
+      "missing_handling": "error",
+      "sentinel": 0
+    }
+  },
+  "transitions": {
+    "downgrade": [
+      "4-personal->2-blinded (tokenization/masking/synthetic surrogates; verification required)",
+      "5-privileged->3-proprietary (with security review)",
+      "6-eyes-only->3-proprietary (legal release required)",
+      "2-blinded->1-confidential (statistical privacy checks)",
+      "1-confidential->0-public (publication review)"
+    ],
+    "upgrade": [
+      "unknown->1-confidential (default classification)",
+      "0-public->1-confidential (restriction applied)",
+      "any->4-personal (if secrets/PII discovered)",
+      "any->6-eyes-only (legal hold imposed)"
+    ]
+  },
+  "governance": {
+    "owner": "3leaps-core",
+    "reviewers": ["security", "compliance"],
+    "review_cycle": "quarterly",
+    "last_updated": "2026-01-22"
+  },
+  "examples": [
+    {
+      "dataset": "retail-pos-transactions",
+      "value": "0-public"
+    },
+    {
+      "dataset": "proxy-session-logs",
+      "value": "2-blinded"
+    },
+    {
+      "dataset": "api-keys-inventory",
+      "value": "4-personal"
+    },
+    {
+      "dataset": "credential-dumps",
+      "value": "5-privileged"
+    },
+    {
+      "dataset": "security-breach-evidence",
+      "value": "6-eyes-only"
+    }
+  ]
+}

@@ -1,0 +1,195 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/design/core/v1.0.0/typography-roles.schema.json",
+  "title": "Typography Roles Vocabulary",
+  "description": "Universal typographic semantic roles for design systems. Implementation-agnostic vocabulary shared across TUI and web contexts.",
+  "type": "object",
+  "$defs": {
+    "textRole": {
+      "type": "string",
+      "enum": [
+        "display",
+        "headline",
+        "title",
+        "subtitle",
+        "body",
+        "body-emphasis",
+        "caption",
+        "overline",
+        "code",
+        "code-block",
+        "label",
+        "button"
+      ],
+      "description": "Semantic text roles"
+    },
+    "fontWeight": {
+      "type": "string",
+      "enum": [
+        "thin",
+        "light",
+        "regular",
+        "medium",
+        "semibold",
+        "bold",
+        "extrabold"
+      ],
+      "description": "Font weight tokens (implementation maps to numeric values)"
+    },
+    "textEmphasis": {
+      "type": "string",
+      "enum": [
+        "normal",
+        "italic",
+        "bold",
+        "bold-italic",
+        "underline",
+        "strikethrough",
+        "dim",
+        "inverse"
+      ],
+      "description": "Text emphasis/decoration styles"
+    },
+    "textAlignment": {
+      "type": "string",
+      "enum": [
+        "start",
+        "center",
+        "end",
+        "justify"
+      ],
+      "description": "Text alignment (direction-agnostic)"
+    },
+    "textTransform": {
+      "type": "string",
+      "enum": [
+        "none",
+        "uppercase",
+        "lowercase",
+        "capitalize"
+      ],
+      "description": "Text transformation"
+    },
+    "typographyRoleDefinition": {
+      "type": "object",
+      "description": "A typography role definition with semantic meaning",
+      "properties": {
+        "role": {
+          "$ref": "#/$defs/textRole"
+        },
+        "description": {
+          "type": "string",
+          "description": "When to use this typography role"
+        },
+        "semantic_level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6,
+          "description": "Heading level for accessibility (1-6, optional for non-headings)"
+        },
+        "default_weight": {
+          "$ref": "#/$defs/fontWeight"
+        },
+        "default_emphasis": {
+          "$ref": "#/$defs/textEmphasis"
+        },
+        "use_cases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Example use cases"
+        }
+      },
+      "required": [
+        "role"
+      ]
+    },
+    "lineHeightToken": {
+      "type": "string",
+      "enum": [
+        "tight",
+        "snug",
+        "normal",
+        "relaxed",
+        "loose"
+      ],
+      "description": "Line height tokens"
+    },
+    "letterSpacingToken": {
+      "type": "string",
+      "enum": [
+        "tighter",
+        "tight",
+        "normal",
+        "wide",
+        "wider",
+        "widest"
+      ],
+      "description": "Letter spacing tokens"
+    }
+  },
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[vV]?\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of the typography vocabulary"
+    },
+    "text_roles": {
+      "type": "array",
+      "description": "Defined typography roles with metadata",
+      "items": {
+        "$ref": "#/$defs/typographyRoleDefinition"
+      }
+    },
+    "font_weights": {
+      "type": "array",
+      "description": "Available font weights",
+      "items": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "$ref": "#/$defs/fontWeight"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ]
+      }
+    },
+    "line_heights": {
+      "type": "array",
+      "description": "Line height tokens",
+      "items": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "$ref": "#/$defs/lineHeightToken"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ]
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Implementation-specific extensions",
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "version"
+  ],
+  "additionalProperties": false
+}

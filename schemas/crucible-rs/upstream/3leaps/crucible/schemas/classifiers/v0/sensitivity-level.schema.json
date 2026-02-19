@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.3leaps.dev/classifiers/v0/sensitivity-level.schema.json",
+  "title": "Data Sensitivity Level",
+  "description": "Standardized sensitivity level enumeration for data classification across 3leaps ecosystems. Levels range from 0 (Public) to 6 (Eyes Only), with UNKNOWN for unclassified data.",
+  "type": "string",
+  "enum": [
+    "unknown",
+    "0-public",
+    "1-confidential",
+    "2-blinded",
+    "3-proprietary",
+    "4-personal",
+    "5-privileged",
+    "6-eyes-only"
+  ],
+  "$defs": {
+    "labels": {
+      "description": "Human-readable labels for each sensitivity level",
+      "type": "object",
+      "properties": {
+        "unknown": {
+          "const": "UNKNOWN"
+        },
+        "0-public": {
+          "const": "0 — Public"
+        },
+        "1-confidential": {
+          "const": "1 — Confidential"
+        },
+        "2-blinded": {
+          "const": "2 — Blinded"
+        },
+        "3-proprietary": {
+          "const": "3 — Proprietary"
+        },
+        "4-personal": {
+          "const": "4 — Personal/Secret"
+        },
+        "5-privileged": {
+          "const": "5 — Privileged/Sysadmin"
+        },
+        "6-eyes-only": {
+          "const": "6 — Eyes Only/Legal Hold"
+        }
+      }
+    },
+    "ordinal_mapping": {
+      "description": "Ordinal values for comparator operations (lte/gte). Higher values indicate more restrictive sensitivity.",
+      "type": "object",
+      "properties": {
+        "unknown": {
+          "const": 0,
+          "description": "Sentinel for unclassified data"
+        },
+        "0-public": {
+          "const": 1
+        },
+        "1-confidential": {
+          "const": 2
+        },
+        "2-blinded": {
+          "const": 3
+        },
+        "3-proprietary": {
+          "const": 4
+        },
+        "4-personal": {
+          "const": 5
+        },
+        "5-privileged": {
+          "const": 6
+        },
+        "6-eyes-only": {
+          "const": 7
+        }
+      }
+    },
+    "level_descriptions": {
+      "description": "Brief descriptions of each sensitivity level",
+      "type": "object",
+      "properties": {
+        "unknown": {
+          "const": "Unclassified; isolate until classified within 24 hours"
+        },
+        "0-public": {
+          "const": "Public domain or intended for public distribution"
+        },
+        "1-confidential": {
+          "const": "Internal but non-sensitive; NDA-level protection, access logged"
+        },
+        "2-blinded": {
+          "const": "Identities/source obfuscated; verify blinding effectiveness"
+        },
+        "3-proprietary": {
+          "const": "Enterprise-sensitive (MNPI, trade secrets); strict least-privilege"
+        },
+        "4-personal": {
+          "const": "NPPII or secrets; vault-managed only, real-time monitoring"
+        },
+        "5-privileged": {
+          "const": "Platform control data (sysadmin); HSM/air-gapped isolation"
+        },
+        "6-eyes-only": {
+          "const": "Legal hold or extreme restriction; immutable storage, exec authorization"
+        }
+      }
+    }
+  }
+}

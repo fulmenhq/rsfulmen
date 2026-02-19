@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/design/core/v1.0.0/spacing-scale.schema.json",
+  "title": "Spacing Scale Vocabulary",
+  "description": "Universal spacing and sizing scale for design systems. Implementation-agnostic vocabulary shared across TUI and web contexts.",
+  "type": "object",
+  "$defs": {
+    "spacingToken": {
+      "type": "string",
+      "enum": [
+        "none",
+        "3xs",
+        "2xs",
+        "xs",
+        "sm",
+        "md",
+        "lg",
+        "xl",
+        "2xl",
+        "3xl"
+      ],
+      "description": "Standard spacing scale tokens"
+    },
+    "sizeToken": {
+      "type": "string",
+      "enum": [
+        "xs",
+        "sm",
+        "md",
+        "lg",
+        "xl",
+        "full"
+      ],
+      "description": "Component size tokens"
+    },
+    "spacingDefinition": {
+      "type": "object",
+      "description": "A spacing token definition with semantic meaning",
+      "properties": {
+        "token": {
+          "$ref": "#/$defs/spacingToken"
+        },
+        "description": {
+          "type": "string",
+          "description": "When to use this spacing value"
+        },
+        "use_cases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Example use cases for this token"
+        }
+      },
+      "required": [
+        "token"
+      ]
+    },
+    "responsiveTier": {
+      "type": "string",
+      "enum": [
+        "compact",
+        "default",
+        "comfortable",
+        "spacious"
+      ],
+      "description": "Responsive density tiers"
+    },
+    "breakpointDefinition": {
+      "type": "object",
+      "description": "Abstract breakpoint definition (implementation provides units)",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Breakpoint name"
+        },
+        "tier": {
+          "$ref": "#/$defs/responsiveTier"
+        },
+        "description": {
+          "type": "string",
+          "description": "When this breakpoint applies"
+        }
+      },
+      "required": [
+        "name",
+        "tier"
+      ]
+    }
+  },
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[vV]?\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of the spacing vocabulary"
+    },
+    "spacing_tokens": {
+      "type": "array",
+      "description": "Defined spacing tokens with metadata",
+      "items": {
+        "$ref": "#/$defs/spacingDefinition"
+      }
+    },
+    "size_tokens": {
+      "type": "array",
+      "description": "Defined size tokens for components",
+      "items": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "$ref": "#/$defs/sizeToken"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ]
+      }
+    },
+    "breakpoints": {
+      "type": "array",
+      "description": "Responsive breakpoint definitions",
+      "items": {
+        "$ref": "#/$defs/breakpointDefinition"
+      }
+    },
+    "density_scale": {
+      "type": "object",
+      "description": "How spacing scales across density tiers",
+      "properties": {
+        "compact": {
+          "type": "number",
+          "description": "Multiplier for compact density (e.g., 0.75)"
+        },
+        "default": {
+          "type": "number",
+          "description": "Multiplier for default density (1.0)"
+        },
+        "comfortable": {
+          "type": "number",
+          "description": "Multiplier for comfortable density (e.g., 1.25)"
+        },
+        "spacious": {
+          "type": "number",
+          "description": "Multiplier for spacious density (e.g., 1.5)"
+        }
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Implementation-specific extensions",
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "version"
+  ],
+  "additionalProperties": false
+}

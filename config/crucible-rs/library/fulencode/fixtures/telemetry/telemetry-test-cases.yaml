@@ -1,0 +1,24 @@
+version: "1.0"
+cases:
+  - name: "decode-base64-success"
+    operation: "decode"
+    format: "base64"
+    result: "success"
+    expected_metrics:
+      - metric: "fulencode_operation_total"
+        tags:
+          operation: "decode"
+          format: "base64"
+          result: "success"
+        value: 1
+  - name: "detect-utf8-bom"
+    operation: "detect"
+    result: "success"
+    expected_metrics:
+      - metric: "fulencode_detect_result_total"
+        tags:
+          encoding: "utf-8"
+          confidence: "high"
+          result: "success"
+          source: "bom"
+        value: 1

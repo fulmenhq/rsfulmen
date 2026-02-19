@@ -6,6 +6,9 @@ version: 1.0.0
 author: entarch
 status: approved
 category: marketing
+domains:
+  - delivery
+  - marketing
 tags:
   - role
   - marketing

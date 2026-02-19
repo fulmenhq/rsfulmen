@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.3leaps.dev/foundation/v0/release-phase.schema.json",
+  "title": "Release Phase",
+  "description": "Release cadence phase for distribution pipelines and policy gating. Tracks current deployment cycle state of a repository branch, complementing lifecycle-phases which tracks project maturity.",
+  "type": "string",
+  "enum": ["dev", "rc", "ga", "hotfix"],
+  "examples": ["dev", "rc", "ga"],
+  "$defs": {
+    "phase_descriptions": {
+      "dev": "Active development branch. CI runs tests but artifacts are not published to release channels.",
+      "rc": "Release candidate. Feature-frozen, undergoing final validation before GA. Artifacts may be published to pre-release channels.",
+      "ga": "General availability. Production-ready release. Artifacts published to stable release channels.",
+      "hotfix": "Urgent production fix. Bypasses normal release cadence for critical security or stability patches."
+    }
+  },
+  "$comment": "Drives CI thresholds, artifact publishing, and policy gates. Unlike lifecycle-phases (project maturity), release-phase describes branch/tag state in the release pipeline."
+}

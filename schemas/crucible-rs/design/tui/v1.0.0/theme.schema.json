@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/design/tui/v1.0.0/theme.schema.json",
+  "title": "TUI Theme",
+  "description": "Root composition schema for Terminal UI themes, aggregating color palette, typography, layout, and component patterns",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference for validation"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[vV]?\\d+\\.\\d+\\.\\d+$",
+      "description": "Theme version (SemVer)"
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0",
+      "description": "TUI design system schema version this theme conforms to"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Theme metadata",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Theme display name"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "description": "Theme identifier (kebab-case)"
+        },
+        "description": {
+          "type": "string",
+          "description": "Theme description and intended use"
+        },
+        "author": {
+          "type": "string",
+          "description": "Theme author or organization"
+        },
+        "license": {
+          "type": "string",
+          "description": "Theme license"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Theme tags for categorization"
+        },
+        "dark_mode": {
+          "type": "boolean",
+          "description": "Whether this is a dark mode theme"
+        },
+        "high_contrast": {
+          "type": "boolean",
+          "description": "Whether this is a high contrast theme"
+        }
+      },
+      "required": [
+        "name",
+        "id"
+      ]
+    },
+    "requirements": {
+      "type": "object",
+      "description": "Terminal capability requirements",
+      "properties": {
+        "min_color_capability": {
+          "type": "string",
+          "enum": [
+            "basic",
+            "16",
+            "256",
+            "truecolor"
+          ],
+          "description": "Minimum color capability for this theme"
+        },
+        "min_charset": {
+          "type": "string",
+          "enum": [
+            "ascii",
+            "extended-ascii",
+            "unicode-basic",
+            "unicode-full"
+          ],
+          "description": "Minimum character set required"
+        },
+        "nerd_font_recommended": {
+          "type": "boolean",
+          "description": "Whether Nerd Font is recommended"
+        },
+        "min_cols": {
+          "type": "integer",
+          "minimum": 40,
+          "description": "Minimum terminal width"
+        },
+        "min_rows": {
+          "type": "integer",
+          "minimum": 10,
+          "description": "Minimum terminal height"
+        }
+      }
+    },
+    "colors": {
+      "$ref": "color-palette.schema.json",
+      "description": "Color palette configuration"
+    },
+    "typography": {
+      "$ref": "typography.schema.json",
+      "description": "Typography configuration"
+    },
+    "layout": {
+      "$ref": "layout.schema.json",
+      "description": "Layout configuration"
+    },
+    "components": {
+      "$ref": "component.schema.json",
+      "description": "Component pattern configuration"
+    },
+    "platform_overrides": {
+      "type": "object",
+      "description": "Platform-specific overrides",
+      "properties": {
+        "windows_terminal": {
+          "type": "object",
+          "description": "Windows Terminal specific overrides",
+          "additionalProperties": true
+        },
+        "iterm2": {
+          "type": "object",
+          "description": "iTerm2 specific overrides",
+          "additionalProperties": true
+        },
+        "ghostty": {
+          "type": "object",
+          "description": "Ghostty specific overrides",
+          "additionalProperties": true
+        },
+        "apple_terminal": {
+          "type": "object",
+          "description": "Apple Terminal specific overrides",
+          "additionalProperties": true
+        },
+        "linux_console": {
+          "type": "object",
+          "description": "Linux console specific overrides",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "accessibility": {
+      "type": "object",
+      "description": "Accessibility configuration",
+      "properties": {
+        "wcag_level": {
+          "type": "string",
+          "enum": [
+            "A",
+            "AA",
+            "AAA"
+          ],
+          "description": "WCAG conformance target"
+        },
+        "min_contrast_ratio": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 21,
+          "description": "Minimum contrast ratio for text"
+        },
+        "focus_visible_required": {
+          "type": "boolean",
+          "description": "Whether focus indicators must be visible"
+        },
+        "motion_reduced": {
+          "type": "boolean",
+          "description": "Whether animations are reduced/disabled"
+        },
+        "color_blind_safe": {
+          "type": "boolean",
+          "description": "Whether theme is safe for common color blindness"
+        }
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Application-specific extensions",
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "version",
+    "schema_version",
+    "metadata",
+    "colors"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,272 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/design/tui/v1.0.0/layout.schema.json",
+  "title": "TUI Layout",
+  "description": "Terminal layout configuration with cell-based dimensions and responsive breakpoints",
+  "type": "object",
+  "$defs": {
+    "cellDimension": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Dimension in terminal cells (characters/rows)"
+    },
+    "spacingValue": {
+      "type": "object",
+      "description": "Spacing value in cells",
+      "properties": {
+        "cols": {
+          "$ref": "#/$defs/cellDimension",
+          "description": "Horizontal spacing in columns"
+        },
+        "rows": {
+          "$ref": "#/$defs/cellDimension",
+          "description": "Vertical spacing in rows"
+        }
+      },
+      "additionalProperties": false
+    },
+    "terminalBreakpoint": {
+      "type": "object",
+      "description": "Terminal size breakpoint",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Breakpoint identifier"
+        },
+        "min_cols": {
+          "$ref": "#/$defs/cellDimension",
+          "description": "Minimum terminal width in columns"
+        },
+        "min_rows": {
+          "$ref": "#/$defs/cellDimension",
+          "description": "Minimum terminal height in rows"
+        },
+        "tier": {
+          "type": "string",
+          "enum": [
+            "compact",
+            "default",
+            "comfortable",
+            "spacious"
+          ],
+          "description": "Density tier (references core/spacing-scale)"
+        },
+        "description": {
+          "type": "string",
+          "description": "Typical use case for this breakpoint"
+        }
+      },
+      "required": [
+        "name",
+        "min_cols",
+        "tier"
+      ]
+    },
+    "ribbonPosition": {
+      "type": "string",
+      "enum": [
+        "top",
+        "bottom",
+        "left",
+        "right"
+      ],
+      "description": "Ribbon/chrome position"
+    },
+    "ribbonDefinition": {
+      "type": "object",
+      "description": "UI chrome/ribbon area definition",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Ribbon identifier"
+        },
+        "position": {
+          "$ref": "#/$defs/ribbonPosition"
+        },
+        "size": {
+          "$ref": "#/$defs/cellDimension",
+          "description": "Height (for top/bottom) or width (for left/right)"
+        },
+        "visible": {
+          "type": "boolean",
+          "description": "Whether ribbon is visible by default"
+        },
+        "collapsible": {
+          "type": "boolean",
+          "description": "Whether ribbon can be collapsed"
+        },
+        "min_terminal_cols": {
+          "$ref": "#/$defs/cellDimension",
+          "description": "Minimum terminal width to show this ribbon"
+        },
+        "min_terminal_rows": {
+          "$ref": "#/$defs/cellDimension",
+          "description": "Minimum terminal height to show this ribbon"
+        }
+      },
+      "required": [
+        "id",
+        "position",
+        "size"
+      ]
+    },
+    "panelDefinition": {
+      "type": "object",
+      "description": "Content panel definition",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Panel identifier"
+        },
+        "flex": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Flex grow factor for available space"
+        },
+        "min_cols": {
+          "$ref": "#/$defs/cellDimension",
+          "description": "Minimum width in columns"
+        },
+        "max_cols": {
+          "$ref": "#/$defs/cellDimension",
+          "description": "Maximum width in columns"
+        },
+        "min_rows": {
+          "$ref": "#/$defs/cellDimension",
+          "description": "Minimum height in rows"
+        },
+        "max_rows": {
+          "$ref": "#/$defs/cellDimension",
+          "description": "Maximum height in rows"
+        },
+        "scrollable": {
+          "type": "boolean",
+          "description": "Whether panel content can scroll"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "alignmentValue": {
+      "type": "string",
+      "enum": [
+        "start",
+        "center",
+        "end",
+        "stretch"
+      ],
+      "description": "Alignment value"
+    }
+  },
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[vV]?\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of the layout configuration"
+    },
+    "breakpoints": {
+      "type": "array",
+      "description": "Terminal size breakpoints (ordered small to large)",
+      "items": {
+        "$ref": "#/$defs/terminalBreakpoint"
+      },
+      "minItems": 1
+    },
+    "spacing": {
+      "type": "object",
+      "description": "Spacing scale in terminal cells",
+      "properties": {
+        "none": {
+          "$ref": "#/$defs/spacingValue"
+        },
+        "xs": {
+          "$ref": "#/$defs/spacingValue"
+        },
+        "sm": {
+          "$ref": "#/$defs/spacingValue"
+        },
+        "md": {
+          "$ref": "#/$defs/spacingValue"
+        },
+        "lg": {
+          "$ref": "#/$defs/spacingValue"
+        },
+        "xl": {
+          "$ref": "#/$defs/spacingValue"
+        }
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/spacingValue"
+      }
+    },
+    "ribbons": {
+      "type": "array",
+      "description": "UI chrome areas (status bars, sidebars, etc.)",
+      "items": {
+        "$ref": "#/$defs/ribbonDefinition"
+      }
+    },
+    "panels": {
+      "type": "array",
+      "description": "Main content panel definitions",
+      "items": {
+        "$ref": "#/$defs/panelDefinition"
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "description": "Layout constraints",
+      "properties": {
+        "min_content_cols": {
+          "$ref": "#/$defs/cellDimension",
+          "description": "Minimum usable content width"
+        },
+        "min_content_rows": {
+          "$ref": "#/$defs/cellDimension",
+          "description": "Minimum usable content height"
+        },
+        "max_content_cols": {
+          "$ref": "#/$defs/cellDimension",
+          "description": "Maximum content width (for readability)"
+        },
+        "padding": {
+          "$ref": "#/$defs/spacingValue",
+          "description": "Default content padding"
+        },
+        "gap": {
+          "$ref": "#/$defs/spacingValue",
+          "description": "Default gap between elements"
+        }
+      }
+    },
+    "responsive_behavior": {
+      "type": "object",
+      "description": "Behavior at different terminal sizes",
+      "properties": {
+        "collapse_sidebars_below": {
+          "$ref": "#/$defs/cellDimension",
+          "description": "Column width below which sidebars collapse"
+        },
+        "hide_chrome_below": {
+          "$ref": "#/$defs/cellDimension",
+          "description": "Column width below which chrome is hidden"
+        },
+        "stack_panels_below": {
+          "$ref": "#/$defs/cellDimension",
+          "description": "Column width below which panels stack vertically"
+        }
+      }
+    }
+  },
+  "required": [
+    "version",
+    "breakpoints",
+    "spacing"
+  ],
+  "additionalProperties": false
+}

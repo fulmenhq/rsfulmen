@@ -86,6 +86,15 @@ Metrics endpoints:
 - Provide README describing available schemas (`health-response.schema.json`, `error-response.schema.json`).
 - Run validation via `goneat schema validate-data` in CI.
 
+## OpenAPI Documentation
+
+- Servers exposing HTTP APIs SHOULD publish an OpenAPI specification.
+- Generate spec via build tooling (e.g., `swag` for Go, FastAPI native for Python).
+- Serve spec at `/openapi.yaml` for runtime access.
+- Include coverage testing to prevent spec drift per [ADR-0014](../../architecture/decisions/ADR-0014-openapi-spec-coverage.md).
+- Use `info.x-*` extensions for provenance metadata (generated-by, generated-at, source-repo).
+- See [HTTP Server Patterns Guide](../../guides/testing/http-server-patterns.md) for implementation details.
+
 ## Related Documents
 
 - `docs/architecture/fulmen-server-management.md` - Server orchestration and lifecycle
@@ -94,3 +103,5 @@ Metrics endpoints:
 - `docs/standards/library/modules/ssot-sync.md`
 - `docs/standards/observability/logging.md`
 - `config/library/foundry/http-statuses.yaml` - HTTP status code catalog
+- [HTTP Server Patterns Guide](../guides/testing/http-server-patterns.md) - Compliance routing and implementation patterns
+- [HTTP Client Patterns Guide](../guides/testing/http-client-patterns.md) - Client testing patterns with fixture usage

@@ -198,8 +198,8 @@ Codex forges SHALL adhere to the "seven pillars" distilled by the Architecture C
 
 1. MDX-first authoring with component catalog (`src/components/mdx/`), hot reload, and error overlays.
 2. Rich code examples: syntax highlighting, line numbers, copy buttons, diff blocks, terminal renders.
-3. Automated API/spec documentation (OpenAPI, AsyncAPI, GraphQL) via Astro integrations or build scripts.
-4. Local dev “one command start”: `pnpm install && pnpm dev` must work cross-platform.
+3. Automated API/spec documentation (OpenAPI, AsyncAPI, GraphQL) via Astro integrations or build scripts. When ingesting OpenAPI specs from fixtures or workhorses, those upstream specs should follow [ADR-0014](decisions/ADR-0014-openapi-spec-coverage.md) coverage testing standards.
+4. Local dev "one command start": `pnpm install && pnpm dev` must work cross-platform.
 
 ### Pillar IV – Accessibility & Internationalisation
 

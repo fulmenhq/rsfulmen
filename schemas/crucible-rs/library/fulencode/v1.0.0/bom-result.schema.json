@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/library/fulencode/v1.0.0/bom-result.schema.json",
+  "title": "Fulencode BOM Result",
+  "description": "Result payload for fulencode BOM detection",
+  "type": "object",
+  "properties": {
+    "bom_type": {
+      "description": "Detected BOM type or null when none.",
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "utf-8",
+            "utf-16le",
+            "utf-16be",
+            "utf-32le",
+            "utf-32be"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "byte_length": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "encoding_implied": {
+      "description": "Encoding implied by the BOM when present.",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "bom_type",
+    "byte_length",
+    "encoding_implied"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,316 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/design/tui/v1.0.0/typography.schema.json",
+  "title": "TUI Typography",
+  "description": "Terminal typography configuration with charset support, glyph handling, and CJK width considerations",
+  "type": "object",
+  "$defs": {
+    "charsetLevel": {
+      "type": "string",
+      "enum": [
+        "ascii",
+        "extended-ascii",
+        "unicode-basic",
+        "unicode-full"
+      ],
+      "description": "Character set capability level"
+    },
+    "boxDrawingSet": {
+      "type": "string",
+      "enum": [
+        "ascii",
+        "single",
+        "double",
+        "rounded",
+        "heavy",
+        "double-single"
+      ],
+      "description": "Box drawing character set preference"
+    },
+    "boxCharacters": {
+      "type": "object",
+      "description": "Box drawing character definitions",
+      "properties": {
+        "horizontal": {
+          "type": "string",
+          "maxLength": 1
+        },
+        "vertical": {
+          "type": "string",
+          "maxLength": 1
+        },
+        "top_left": {
+          "type": "string",
+          "maxLength": 1
+        },
+        "top_right": {
+          "type": "string",
+          "maxLength": 1
+        },
+        "bottom_left": {
+          "type": "string",
+          "maxLength": 1
+        },
+        "bottom_right": {
+          "type": "string",
+          "maxLength": 1
+        },
+        "cross": {
+          "type": "string",
+          "maxLength": 1
+        },
+        "t_down": {
+          "type": "string",
+          "maxLength": 1
+        },
+        "t_up": {
+          "type": "string",
+          "maxLength": 1
+        },
+        "t_left": {
+          "type": "string",
+          "maxLength": 1
+        },
+        "t_right": {
+          "type": "string",
+          "maxLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "textEmphasis": {
+      "type": "string",
+      "enum": [
+        "normal",
+        "bold",
+        "dim",
+        "italic",
+        "underline",
+        "blink",
+        "inverse",
+        "hidden",
+        "strikethrough"
+      ],
+      "description": "Terminal text emphasis (SGR attributes)"
+    },
+    "glyphCategory": {
+      "type": "string",
+      "enum": [
+        "status",
+        "navigation",
+        "file-type",
+        "git",
+        "weather",
+        "powerline",
+        "devicon",
+        "custom"
+      ],
+      "description": "Glyph category for icon fonts"
+    },
+    "glyphDefinition": {
+      "type": "object",
+      "description": "A glyph with fallback chain",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Glyph identifier"
+        },
+        "category": {
+          "$ref": "#/$defs/glyphCategory"
+        },
+        "nerd_font": {
+          "type": "string",
+          "description": "Nerd Font glyph (requires Nerd Font)"
+        },
+        "unicode": {
+          "type": "string",
+          "description": "Standard Unicode fallback"
+        },
+        "ascii": {
+          "type": "string",
+          "description": "ASCII fallback"
+        },
+        "description": {
+          "type": "string",
+          "description": "What this glyph represents"
+        }
+      },
+      "required": [
+        "name",
+        "ascii"
+      ]
+    },
+    "typographyRoleStyle": {
+      "type": "object",
+      "description": "Terminal styling for a typography role",
+      "properties": {
+        "role": {
+          "type": "string",
+          "description": "Typography role (references core/typography-roles)"
+        },
+        "emphasis": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/textEmphasis"
+          },
+          "description": "Applied text emphasis"
+        },
+        "prefix": {
+          "type": "string",
+          "description": "Optional prefix glyph/text"
+        },
+        "suffix": {
+          "type": "string",
+          "description": "Optional suffix glyph/text"
+        }
+      },
+      "required": [
+        "role"
+      ]
+    },
+    "cjkWidthMode": {
+      "type": "string",
+      "enum": [
+        "narrow",
+        "wide",
+        "ambiguous-narrow",
+        "ambiguous-wide"
+      ],
+      "description": "CJK character width handling mode"
+    }
+  },
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[vV]?\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of the typography configuration"
+    },
+    "charset_level": {
+      "$ref": "#/$defs/charsetLevel",
+      "description": "Required character set capability"
+    },
+    "box_drawing": {
+      "type": "object",
+      "description": "Box drawing configuration",
+      "properties": {
+        "preferred_set": {
+          "$ref": "#/$defs/boxDrawingSet"
+        },
+        "fallback_set": {
+          "$ref": "#/$defs/boxDrawingSet"
+        },
+        "custom_chars": {
+          "$ref": "#/$defs/boxCharacters"
+        }
+      }
+    },
+    "text_roles": {
+      "type": "object",
+      "description": "Terminal styling for typography roles",
+      "additionalProperties": {
+        "$ref": "#/$defs/typographyRoleStyle"
+      }
+    },
+    "glyphs": {
+      "type": "object",
+      "description": "Glyph library with fallbacks",
+      "properties": {
+        "nerd_font_enabled": {
+          "type": "boolean",
+          "description": "Whether Nerd Font glyphs are available"
+        },
+        "definitions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/glyphDefinition"
+          }
+        }
+      }
+    },
+    "cjk_handling": {
+      "type": "object",
+      "description": "CJK and wide character handling",
+      "properties": {
+        "width_mode": {
+          "$ref": "#/$defs/cjkWidthMode"
+        },
+        "emoji_width": {
+          "type": "integer",
+          "enum": [
+            1,
+            2
+          ],
+          "description": "Display width of emoji characters"
+        },
+        "ambiguous_width": {
+          "type": "integer",
+          "enum": [
+            1,
+            2
+          ],
+          "description": "Display width of ambiguous-width characters"
+        }
+      }
+    },
+    "spinners": {
+      "type": "object",
+      "description": "Loading spinner character sequences",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "frames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Animation frames"
+          },
+          "interval_ms": {
+            "type": "integer",
+            "minimum": 50,
+            "description": "Frame interval in milliseconds"
+          }
+        },
+        "required": [
+          "frames",
+          "interval_ms"
+        ]
+      }
+    },
+    "progress_chars": {
+      "type": "object",
+      "description": "Progress bar characters",
+      "properties": {
+        "filled": {
+          "type": "string",
+          "maxLength": 1
+        },
+        "empty": {
+          "type": "string",
+          "maxLength": 1
+        },
+        "head": {
+          "type": "string",
+          "maxLength": 1
+        },
+        "left_bracket": {
+          "type": "string",
+          "maxLength": 1
+        },
+        "right_bracket": {
+          "type": "string",
+          "maxLength": 1
+        }
+      }
+    }
+  },
+  "required": [
+    "version",
+    "charset_level"
+  ],
+  "additionalProperties": false
+}

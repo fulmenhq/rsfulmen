@@ -1,0 +1,204 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/design/core/v1.0.0/component-states.schema.json",
+  "title": "Component States Vocabulary",
+  "description": "Universal component state definitions for design systems. Implementation-agnostic vocabulary shared across TUI and web contexts.",
+  "type": "object",
+  "$defs": {
+    "interactiveState": {
+      "type": "string",
+      "enum": [
+        "default",
+        "hover",
+        "focus",
+        "focus-visible",
+        "active",
+        "disabled",
+        "loading",
+        "selected",
+        "checked",
+        "indeterminate",
+        "expanded",
+        "collapsed"
+      ],
+      "description": "Interactive component states"
+    },
+    "validationState": {
+      "type": "string",
+      "enum": [
+        "valid",
+        "invalid",
+        "warning",
+        "pending"
+      ],
+      "description": "Form/input validation states"
+    },
+    "feedbackState": {
+      "type": "string",
+      "enum": [
+        "success",
+        "error",
+        "warning",
+        "info",
+        "neutral"
+      ],
+      "description": "User feedback states (for alerts, toasts, etc.)"
+    },
+    "visibilityState": {
+      "type": "string",
+      "enum": [
+        "visible",
+        "hidden",
+        "entering",
+        "exiting"
+      ],
+      "description": "Visibility/transition states"
+    },
+    "stateDefinition": {
+      "type": "object",
+      "description": "A state definition with semantic meaning",
+      "properties": {
+        "state": {
+          "type": "string",
+          "description": "State identifier"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "interactive",
+            "validation",
+            "feedback",
+            "visibility"
+          ],
+          "description": "State category"
+        },
+        "description": {
+          "type": "string",
+          "description": "When this state applies"
+        },
+        "aria_mapping": {
+          "type": "string",
+          "description": "Corresponding ARIA attribute/state"
+        },
+        "visual_indicators": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Required visual indicators for this state"
+        },
+        "can_combine_with": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "States that can coexist with this one"
+        },
+        "mutually_exclusive_with": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "States that cannot coexist with this one"
+        }
+      },
+      "required": [
+        "state",
+        "category"
+      ]
+    },
+    "stateTransition": {
+      "type": "object",
+      "description": "Valid state transition",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "Source state"
+        },
+        "to": {
+          "type": "string",
+          "description": "Target state"
+        },
+        "trigger": {
+          "type": "string",
+          "description": "What triggers this transition"
+        },
+        "reversible": {
+          "type": "boolean",
+          "description": "Whether transition can be reversed"
+        }
+      },
+      "required": [
+        "from",
+        "to",
+        "trigger"
+      ]
+    }
+  },
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[vV]?\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of the component states vocabulary"
+    },
+    "interactive_states": {
+      "type": "array",
+      "description": "Interactive state definitions",
+      "items": {
+        "$ref": "#/$defs/stateDefinition"
+      }
+    },
+    "validation_states": {
+      "type": "array",
+      "description": "Validation state definitions",
+      "items": {
+        "$ref": "#/$defs/stateDefinition"
+      }
+    },
+    "feedback_states": {
+      "type": "array",
+      "description": "Feedback state definitions",
+      "items": {
+        "$ref": "#/$defs/stateDefinition"
+      }
+    },
+    "state_transitions": {
+      "type": "array",
+      "description": "Valid state transitions",
+      "items": {
+        "$ref": "#/$defs/stateTransition"
+      }
+    },
+    "accessibility_requirements": {
+      "type": "object",
+      "description": "Accessibility requirements for states",
+      "properties": {
+        "focus_visible_required": {
+          "type": "boolean",
+          "description": "Whether focus-visible indicator is required"
+        },
+        "disabled_announcement": {
+          "type": "boolean",
+          "description": "Whether disabled state must be announced to AT"
+        },
+        "state_change_announcement": {
+          "type": "boolean",
+          "description": "Whether state changes should be announced"
+        }
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Implementation-specific extensions",
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "version"
+  ],
+  "additionalProperties": false
+}

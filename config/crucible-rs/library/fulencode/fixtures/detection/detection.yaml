@@ -1,0 +1,12 @@
+version: "1.0"
+cases:
+  - name: "ascii-ambiguous"
+    input_hex: "48656c6c6f"
+    expected:
+      encoding: "utf-8"
+      level: "low"
+  - name: "utf8-bom-high"
+    input_hex: "efbbbf48656c6c6f"
+    expected:
+      encoding: "utf-8"
+      level: "high"

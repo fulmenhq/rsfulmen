@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/library/fulencode/v1.0.0/normalization-result.schema.json",
+  "title": "Fulencode Normalization Result",
+  "description": "Result payload for fulencode normalize()",
+  "type": "object",
+  "properties": {
+    "text": {
+      "type": "string"
+    },
+    "profile": {
+      "type": "string"
+    },
+    "input_length": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "output_length": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "transformations_applied": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "semantic_changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "original": {
+            "type": "string"
+          },
+          "normalized": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "position",
+          "original",
+          "normalized",
+          "reason"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "text",
+    "profile",
+    "input_length",
+    "output_length",
+    "transformations_applied",
+    "semantic_changes",
+    "warnings"
+  ],
+  "additionalProperties": false
+}

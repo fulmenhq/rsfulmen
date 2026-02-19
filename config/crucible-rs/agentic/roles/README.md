@@ -2,7 +2,7 @@
 
 Baseline role prompts for AI agent sessions in the FulmenHQ ecosystem.
 
-**Schema**: [`role-prompt.schema.json`](../../../schemas/upstream/3leaps/agentic/v0/role-prompt.schema.json) (vendored from [3leaps/crucible](https://github.com/3leaps/crucible))
+**Schema**: [`role-prompt.schema.json`](../../../schemas/upstream/3leaps/crucible/schemas/agentic/v0/role-prompt.schema.json) (vendored from [3leaps/crucible](https://github.com/3leaps/crucible))
 
 ## Available Roles
 
@@ -10,6 +10,8 @@ Baseline role prompts for AI agent sessions in the FulmenHQ ecosystem.
 | -------------------------------------- | ---------- | ---------- | -------------------------------------------- |
 | [Development Lead](devlead.yaml)       | `devlead`  | agentic    | Implementation, architecture                 |
 | [Development Reviewer](devrev.yaml)    | `devrev`   | review     | Four-eyes code review                        |
+| [Quality Assurance](qa.yaml)           | `qa`       | review     | Testing, validation, dogfooding              |
+| [UX Developer](uxdev.yaml)             | `uxdev`    | agentic    | Frontend interfaces, TUI and web development |
 | [Information Architect](infoarch.yaml) | `infoarch` | agentic    | Documentation, schemas                       |
 | [Enterprise Architect](entarch.yaml)   | `entarch`  | governance | Cross-repo coordination, ecosystem alignment |
 | [CI/CD Automation](cicd.yaml)          | `cicd`     | automation | Pipelines, GitHub Actions                    |
@@ -21,13 +23,15 @@ Baseline role prompts for AI agent sessions in the FulmenHQ ecosystem.
 
 These roles extend the [3leaps baseline](https://github.com/3leaps/crucible/tree/main/config/agentic/roles):
 
-| Role       | Extension Purpose                                        |
-| ---------- | -------------------------------------------------------- |
-| `devlead`  | Adds FulmenHQ ecosystem patterns                         |
-| `devrev`   | Four-eyes code review (FulmenHQ-specific)                |
-| `entarch`  | Cross-repo coordination (FulmenHQ-specific)              |
-| `dataeng`  | Enterprise-scale data infrastructure (FulmenHQ-specific) |
-| `prodmktg` | Product marketing and branding (FulmenHQ-original)       |
+| Role       | Extension Purpose                                          |
+| ---------- | ---------------------------------------------------------- |
+| `devlead`  | Adds FulmenHQ ecosystem patterns                           |
+| `devrev`   | Four-eyes code review (FulmenHQ-specific)                  |
+| `qa`       | Layer-cake validation, fixture testing (FulmenHQ-specific) |
+| `uxdev`    | TUI and web frontend development (FulmenHQ-original)       |
+| `entarch`  | Cross-repo coordination (FulmenHQ-specific)                |
+| `dataeng`  | Enterprise-scale data infrastructure (FulmenHQ-specific)   |
+| `prodmktg` | Product marketing and branding (FulmenHQ-original)         |
 
 ## Usage
 
@@ -44,13 +48,13 @@ Reference roles by slug in `AGENTS.md`:
 
 ## Schema Validation
 
-All role files conform to the [role-prompt schema](../../../schemas/upstream/3leaps/agentic/v0/role-prompt.schema.json).
+All role files conform to the [role-prompt schema](../../../schemas/upstream/3leaps/crucible/schemas/agentic/v0/role-prompt.schema.json).
 
 Validate with:
 
 ```bash
 # Using goneat
-goneat schema validate --schema schemas/upstream/3leaps/agentic/v0/role-prompt.schema.json config/agentic/roles/*.yaml
+goneat schema validate --schema schemas/upstream/3leaps/crucible/schemas/agentic/v0/role-prompt.schema.json config/agentic/roles/*.yaml
 ```
 
 ## Extending Roles

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/library/fulencode/v1.0.0/normalize-options.schema.json",
+  "title": "Fulencode Normalize Options",
+  "description": "Options for fulencode normalize() operation",
+  "type": "object",
+  "properties": {
+    "warn_semantic_change": {
+      "type": "boolean",
+      "description": "Warn when normalization performs semantic-changing transforms (NFKC/NFKD)."
+    },
+    "reject_zero_width": {
+      "type": "boolean",
+      "description": "Reject zero-width characters when true."
+    },
+    "reject_bidi_controls": {
+      "type": "boolean",
+      "description": "Reject bidi control characters (override/isolate) when true."
+    },
+    "max_combining_marks": {
+      "type": "integer",
+      "description": "Maximum combining marks per base character.",
+      "minimum": 1,
+      "maximum": 100
+    },
+    "strip_accents": {
+      "type": "boolean",
+      "description": "Remove combining marks/diacritics when true."
+    },
+    "case_fold": {
+      "type": "boolean",
+      "description": "Apply Unicode case folding when true."
+    },
+    "remove_punctuation": {
+      "type": "boolean",
+      "description": "Remove punctuation and symbol categories when true."
+    },
+    "compress_whitespace": {
+      "type": "boolean",
+      "description": "Collapse consecutive whitespace to a single space when true."
+    }
+  },
+  "additionalProperties": false
+}

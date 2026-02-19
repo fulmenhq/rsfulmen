@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://example.com/schemas/draft-07-sample.json",
+  "title": "Draft-07 sample schema",
+  "type": "object",
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": [
+        "number",
+        "other"
+      ]
+    },
+    "value": {
+      "type": "integer"
+    }
+  },
+  "if": {
+    "properties": {
+      "kind": {
+        "const": "number"
+      }
+    },
+    "required": [
+      "kind"
+    ]
+  },
+  "then": {
+    "required": [
+      "value"
+    ]
+  },
+  "additionalProperties": false
+}

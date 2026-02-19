@@ -1,0 +1,90 @@
+{
+  "$schema": "https://schemas.3leaps.dev/classifiers/v0/dimension-definition.schema.json",
+  "key": "volatility",
+  "name": "Volatility & Update Cadence",
+  "version": "1.0.0",
+  "status": "stable",
+  "type": "sortable",
+  "cardinality": "single",
+  "description": "Ordered update cadence from static to streaming. Used to set freshness SLAs, scheduling, partitioning strategies, and caching policies across all 3leaps ecosystems.",
+  "sortable": {
+    "scale": "ordinal",
+    "order_direction": "asc",
+    "ordered_values": [
+      {
+        "key": "unknown",
+        "label": "Unknown",
+        "description": "Volatility not yet classified; must be classified before operational use.",
+        "order": 0
+      },
+      {
+        "key": "static",
+        "label": "Static",
+        "description": "No scheduled updates (one-time or ad-hoc).",
+        "order": 1
+      },
+      {
+        "key": "monthly",
+        "label": "Monthly",
+        "description": "Batch updates roughly monthly.",
+        "order": 2
+      },
+      {
+        "key": "weekly",
+        "label": "Weekly",
+        "description": "Batch updates roughly weekly.",
+        "order": 3
+      },
+      {
+        "key": "daily",
+        "label": "Daily",
+        "description": "Daily batches.",
+        "order": 4
+      },
+      {
+        "key": "hourly",
+        "label": "Hourly",
+        "description": "Sub-daily batches; hourly or more frequent.",
+        "order": 5
+      },
+      {
+        "key": "streaming",
+        "label": "Streaming",
+        "description": "Event-driven continuous updates (< minutes).",
+        "order": 6
+      }
+    ]
+  },
+  "governance": {
+    "owner": "3leaps-core",
+    "reviewers": ["platform", "data-engineering"],
+    "review_cycle": "semiannual",
+    "last_updated": "2026-01-22"
+  },
+  "examples": [
+    {
+      "dataset": "newly-ingested-feed",
+      "value": "unknown"
+    },
+    {
+      "dataset": "retail-pos-transactions",
+      "value": "daily"
+    },
+    {
+      "dataset": "network-telemetry",
+      "value": "streaming"
+    },
+    {
+      "dataset": "product-catalog",
+      "value": "weekly"
+    },
+    {
+      "dataset": "agentic-role-definitions",
+      "value": "static"
+    },
+    {
+      "dataset": "api-rate-limits",
+      "value": "hourly"
+    }
+  ]
+}

@@ -3,7 +3,7 @@
 # For reference data catalogs, see foundry-catalogs.yaml
 # Manually maintained but automatically validated
 version: "1.0.0"
-last_updated: "2025-11-15"
+last_updated: "2026-01-26"
 modules:
   # ============================================================================
   # CORE TIER - Always present, zero optional dependencies
@@ -301,7 +301,7 @@ modules:
     rationale: Widely useful reference data access; zero external dependencies
     evidence:
       has_schema: true
-      schema_path: schemas/library/foundry/v2.0.0/
+      schema_path: schemas/library/foundry/v1.0.0/
       has_config: true
       config_path: config/library/foundry/
     languages:

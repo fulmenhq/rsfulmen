@@ -6,6 +6,10 @@ version: 1.0.0
 author: entarch
 status: approved
 category: governance
+domains:
+  - governance
+  - architecture
+  - strategy
 tags:
   - role
   - architecture

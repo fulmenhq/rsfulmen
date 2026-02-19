@@ -3,9 +3,9 @@ title: "Schema Validation Helper Standard"
 description: "Contract for discovering Crucible schemas and validating documents across Fulmen helper libraries"
 author: "Schema Cartographer"
 date: "2025-10-09"
-last_updated: "2025-10-09"
-status: "draft"
-tags: ["standards", "library", "schema", "validation", "2025.10.2"]
+last_updated: "2026-01-22"
+status: "approved"
+tags: ["standards", "library", "schema", "validation", "meta-schema"]
 ---
 
 # Schema Validation Helper Standard
@@ -41,6 +41,33 @@ Helper libraries MAY expose streaming variants for large payloads.
 - Cache goneat binary path from FulDX bootstrap or allow consumers to supply custom path.
 - Normalize JSON Schema drafts by defaulting to 2020-12 (`$schema` field).
 
+## Meta-Schema Registry
+
+Helper libraries SHOULD implement a `MetaSchemaRegistry` API for offline schema validation. Crucible ships curated meta-schemas in `schemas/meta/` covering all major JSON Schema drafts:
+
+| Draft         | Path                                | Key Features                                                 |
+| ------------- | ----------------------------------- | ------------------------------------------------------------ |
+| Draft-04      | `schemas/meta/draft-04/schema.json` | Uses `id` (not `$id`), SchemaStore compatibility             |
+| Draft-06      | `schemas/meta/draft-06/schema.json` | Introduced `$id`, `const`, boolean schemas                   |
+| Draft-07      | `schemas/meta/draft-07/schema.json` | `if`/`then`/`else`, `readOnly`, wide tool support            |
+| Draft 2019-09 | `schemas/meta/draft-2019-09/`       | Modular vocabularies, `$vocabulary`, `unevaluatedProperties` |
+| Draft 2020-12 | `schemas/meta/draft-2020-12/`       | **Recommended default**, `$dynamicAnchor`, latest features   |
+
+### MetaSchemaRegistry API
+
+| Function                         | Description                                                             |
+| -------------------------------- | ----------------------------------------------------------------------- |
+| `ListDrafts()`                   | Return available draft identifiers (e.g., `draft-04`, `draft-2020-12`). |
+| `GetMetaSchema(draft)`           | Return the meta-schema for a specific draft.                            |
+| `DetectDraft(schema)`            | Infer draft from `$schema` field or heuristics.                         |
+| `ValidateSchema(schema, draft?)` | Validate a schema against its meta-schema.                              |
+
+### Offline Validation
+
+For network-isolated environments, use the `offline.schema.json` variants in `draft-2019-09/` and `draft-2020-12/`. These self-contained subsets avoid external `$ref` chains to vocabulary files.
+
+See `schemas/meta/README.md` for draft selection guidance.
+
 ## Error Reporting
 
 Validation errors MUST include:
@@ -61,6 +88,7 @@ Expose helper to render results as table, JSON, or human text.
 
 ## Related Documents
 
-- `schemas/` directory for authoritative schema files.
-- `docs/standards/schema-normalization.md`
-- `.plans/active/2025.10.2/library-module-specification-architecture-v2.md`
+- `schemas/` directory for authoritative schema files
+- `schemas/meta/README.md` - Meta-schema cache and draft selection guidance
+- `docs/standards/schema-normalization.md` - Schema formatting standards
+- `schemas/upstream/3leaps/crucible/` - Vendored classification schemas from 3leaps

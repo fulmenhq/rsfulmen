@@ -1,0 +1,115 @@
+{
+  "$schema": "https://schemas.3leaps.dev/classifiers/v0/dimension-definition.schema.json",
+  "key": "schema-stability",
+  "name": "Schema Stability",
+  "version": "1.0.0",
+  "status": "stable",
+  "type": "categorical",
+  "cardinality": "single",
+  "description": "Schema evolution and stability classification. Used to set expectations for backward compatibility, versioning cadence, and deprecation windows. Applies to APIs, data schemas, config formats, and protocol definitions.",
+  "categorical": {
+    "values": [
+      {
+        "key": "unknown",
+        "label": "Unknown",
+        "description": "Stability not yet classified; must be classified before consumers adopt.",
+        "order": 0,
+        "is_none": false,
+        "synonyms": ["unclassified"]
+      },
+      {
+        "key": "experimental",
+        "label": "Experimental",
+        "description": "No stability guarantees; may change without notice.",
+        "order": 1,
+        "is_none": false,
+        "synonyms": ["alpha", "unstable", "preview"]
+      },
+      {
+        "key": "evolving",
+        "label": "Evolving",
+        "description": "Active development; additive changes expected, breaking changes with notice.",
+        "order": 2,
+        "is_none": false,
+        "synonyms": ["beta", "developing"]
+      },
+      {
+        "key": "stable",
+        "label": "Stable",
+        "description": "Production-ready; breaking changes require major version bump and deprecation period.",
+        "order": 3,
+        "is_none": true,
+        "synonyms": ["ga", "production"]
+      },
+      {
+        "key": "frozen",
+        "label": "Frozen",
+        "description": "No changes expected; security patches only.",
+        "order": 4,
+        "is_none": false,
+        "synonyms": ["locked", "maintenance-only"]
+      },
+      {
+        "key": "deprecated",
+        "label": "Deprecated",
+        "description": "Scheduled for removal; migration path documented.",
+        "order": 5,
+        "is_none": false,
+        "synonyms": ["sunset", "legacy"]
+      }
+    ],
+    "index_strategy": {
+      "default_order": ["unknown", "experimental", "evolving", "stable", "frozen", "deprecated"],
+      "ordinal_mapping": {
+        "unknown": 0,
+        "experimental": 1,
+        "evolving": 2,
+        "stable": 3,
+        "frozen": 4,
+        "deprecated": 5
+      },
+      "missing_handling": "error",
+      "sentinel": 0
+    }
+  },
+  "transitions": {
+    "downgrade": [
+      "stable->evolving (breaking changes needed; major version bump)",
+      "frozen->stable (reactivation with new maintainer)"
+    ],
+    "upgrade": [
+      "experimental->evolving (initial users onboarded)",
+      "evolving->stable (GA release)",
+      "stable->frozen (maintenance mode)",
+      "any->deprecated (sunset decision)"
+    ]
+  },
+  "governance": {
+    "owner": "3leaps-core",
+    "reviewers": ["platform", "api-standards"],
+    "review_cycle": "quarterly",
+    "last_updated": "2026-01-22"
+  },
+  "examples": [
+    {
+      "path": "schemas/new-feature/",
+      "value": "unknown"
+    },
+    {
+      "path": "schemas/agentic/v0/",
+      "value": "experimental"
+    },
+    {
+      "path": "schemas/foundation/v1/",
+      "value": "stable"
+    },
+    {
+      "dataset": "api-v2-endpoints",
+      "value": "evolving"
+    },
+    {
+      "dataset": "api-v1-endpoints",
+      "value": "deprecated"
+    }
+  ]
+}

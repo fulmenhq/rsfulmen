@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/library/fulencode/v1.0.0/detection-result.schema.json",
+  "title": "Fulencode Detection Result",
+  "description": "Result payload for fulencode detect()",
+  "type": "object",
+  "properties": {
+    "encoding": {
+      "description": "Detected encoding or null when unknown.",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "level": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ]
+    },
+    "multibase_prefix": {
+      "description": "Detected multibase prefix if present.",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "encoding",
+    "confidence",
+    "level",
+    "warnings"
+  ],
+  "additionalProperties": false
+}

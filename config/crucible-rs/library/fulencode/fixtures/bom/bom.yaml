@@ -1,0 +1,14 @@
+version: "1.0"
+cases:
+  - name: "utf8-bom"
+    input_hex: "efbbbf48656c6c6f"
+    expected:
+      bom_type: "utf-8"
+      byte_length: 3
+      encoding_implied: "utf-8"
+  - name: "no-bom"
+    input_hex: "48656c6c6f"
+    expected:
+      bom_type: null
+      byte_length: 0
+      encoding_implied: null

@@ -1,0 +1,374 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/design/tui/v1.0.0/component.schema.json",
+  "title": "TUI Component Patterns",
+  "description": "Terminal UI component/widget patterns with state styling and extensibility",
+  "type": "object",
+  "$defs": {
+    "componentState": {
+      "type": "string",
+      "enum": [
+        "default",
+        "hover",
+        "focus",
+        "active",
+        "disabled",
+        "selected",
+        "error",
+        "success",
+        "loading"
+      ],
+      "description": "Component state (references core/component-states)"
+    },
+    "stateStyle": {
+      "type": "object",
+      "description": "Styling for a component state",
+      "properties": {
+        "foreground": {
+          "type": "string",
+          "description": "Foreground color reference (semantic or literal)"
+        },
+        "background": {
+          "type": "string",
+          "description": "Background color reference"
+        },
+        "border": {
+          "type": "string",
+          "description": "Border color reference"
+        },
+        "emphasis": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "bold",
+              "dim",
+              "italic",
+              "underline",
+              "inverse",
+              "strikethrough"
+            ]
+          },
+          "description": "Text emphasis attributes"
+        },
+        "prefix": {
+          "type": "string",
+          "description": "State indicator prefix"
+        },
+        "suffix": {
+          "type": "string",
+          "description": "State indicator suffix"
+        }
+      }
+    },
+    "componentDefinition": {
+      "type": "object",
+      "description": "A component type definition",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "description": "Component type identifier"
+        },
+        "description": {
+          "type": "string",
+          "description": "Component purpose and usage"
+        },
+        "states": {
+          "type": "object",
+          "description": "Styling for each state",
+          "additionalProperties": {
+            "$ref": "#/$defs/stateStyle"
+          }
+        },
+        "variants": {
+          "type": "object",
+          "description": "Component variants (e.g., size, intent)",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "states": {
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/$defs/stateStyle"
+                }
+              }
+            }
+          }
+        },
+        "anatomy": {
+          "type": "object",
+          "description": "Component parts/slots",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "required": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "id",
+        "states"
+      ]
+    },
+    "buttonComponent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/componentDefinition"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "min_width": {
+              "type": "integer",
+              "description": "Minimum button width in columns"
+            },
+            "padding_horizontal": {
+              "type": "integer",
+              "description": "Horizontal padding in columns"
+            }
+          }
+        }
+      ]
+    },
+    "inputComponent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/componentDefinition"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "cursor_char": {
+              "type": "string",
+              "maxLength": 1,
+              "description": "Cursor character"
+            },
+            "placeholder_style": {
+              "$ref": "#/$defs/stateStyle"
+            },
+            "selection_style": {
+              "$ref": "#/$defs/stateStyle"
+            }
+          }
+        }
+      ]
+    },
+    "listComponent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/componentDefinition"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "item_prefix": {
+              "type": "string",
+              "description": "Prefix for list items"
+            },
+            "selected_prefix": {
+              "type": "string",
+              "description": "Prefix for selected item"
+            },
+            "scrollbar": {
+              "type": "object",
+              "properties": {
+                "track_char": {
+                  "type": "string",
+                  "maxLength": 1
+                },
+                "thumb_char": {
+                  "type": "string",
+                  "maxLength": 1
+                },
+                "position": {
+                  "type": "string",
+                  "enum": [
+                    "left",
+                    "right"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "tableComponent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/componentDefinition"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "header_style": {
+              "$ref": "#/$defs/stateStyle"
+            },
+            "row_alternate": {
+              "type": "boolean",
+              "description": "Alternate row styling"
+            },
+            "row_alternate_style": {
+              "$ref": "#/$defs/stateStyle"
+            },
+            "cell_padding": {
+              "type": "integer",
+              "description": "Cell padding in columns"
+            },
+            "border_style": {
+              "type": "string",
+              "enum": [
+                "none",
+                "ascii",
+                "single",
+                "double",
+                "rounded"
+              ],
+              "description": "Table border style"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[vV]?\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of the component patterns"
+    },
+    "components": {
+      "type": "object",
+      "description": "Component definitions by type",
+      "properties": {
+        "button": {
+          "$ref": "#/$defs/buttonComponent"
+        },
+        "input": {
+          "$ref": "#/$defs/inputComponent"
+        },
+        "select": {
+          "$ref": "#/$defs/inputComponent"
+        },
+        "checkbox": {
+          "$ref": "#/$defs/componentDefinition"
+        },
+        "radio": {
+          "$ref": "#/$defs/componentDefinition"
+        },
+        "toggle": {
+          "$ref": "#/$defs/componentDefinition"
+        },
+        "list": {
+          "$ref": "#/$defs/listComponent"
+        },
+        "table": {
+          "$ref": "#/$defs/tableComponent"
+        },
+        "tabs": {
+          "$ref": "#/$defs/componentDefinition"
+        },
+        "modal": {
+          "$ref": "#/$defs/componentDefinition"
+        },
+        "toast": {
+          "$ref": "#/$defs/componentDefinition"
+        },
+        "progress": {
+          "$ref": "#/$defs/componentDefinition"
+        },
+        "spinner": {
+          "$ref": "#/$defs/componentDefinition"
+        },
+        "tooltip": {
+          "$ref": "#/$defs/componentDefinition"
+        },
+        "menu": {
+          "$ref": "#/$defs/listComponent"
+        },
+        "breadcrumb": {
+          "$ref": "#/$defs/componentDefinition"
+        },
+        "panel": {
+          "$ref": "#/$defs/componentDefinition"
+        },
+        "card": {
+          "$ref": "#/$defs/componentDefinition"
+        }
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/componentDefinition"
+      }
+    },
+    "focus_ring": {
+      "type": "object",
+      "description": "Focus indicator styling",
+      "properties": {
+        "style": {
+          "type": "string",
+          "enum": [
+            "outline",
+            "background",
+            "underline",
+            "bracket"
+          ],
+          "description": "Focus indicator style"
+        },
+        "color": {
+          "type": "string",
+          "description": "Focus ring color reference"
+        },
+        "char_left": {
+          "type": "string",
+          "maxLength": 1,
+          "description": "Left bracket character (for bracket style)"
+        },
+        "char_right": {
+          "type": "string",
+          "maxLength": 1,
+          "description": "Right bracket character (for bracket style)"
+        }
+      }
+    },
+    "icons": {
+      "type": "object",
+      "description": "Component icon definitions",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "nerd_font": {
+            "type": "string"
+          },
+          "unicode": {
+            "type": "string"
+          },
+          "ascii": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ascii"
+        ]
+      }
+    }
+  },
+  "required": [
+    "version",
+    "components"
+  ],
+  "additionalProperties": true
+}

@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.3leaps.dev/foundation/v0/lifecycle-phases.schema.json",
+  "title": "Lifecycle Phases",
+  "description": "Schema defining repository and component lifecycle phases with canonical ordering",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "https://schemas.3leaps.dev/foundation/v0/lifecycle-phases.schema.json"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Schema version (SemVer)"
+    },
+    "phases": {
+      "type": "array",
+      "description": "Ordered list of lifecycle phases (index determines progression order)",
+      "items": {
+        "$ref": "#/$defs/phase"
+      },
+      "minItems": 1
+    }
+  },
+  "required": ["version", "phases"],
+  "additionalProperties": false,
+  "$defs": {
+    "phase": {
+      "type": "object",
+      "description": "A lifecycle phase definition",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "description": "Phase identifier (lowercase, used in LIFECYCLE_PHASE file)"
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Explicit ordering for phase progression (0 = earliest)"
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-readable label"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of what this phase means"
+        },
+        "badge": {
+          "$ref": "#/$defs/badge",
+          "description": "Shields.io badge configuration"
+        },
+        "pr_policy": {
+          "type": "string",
+          "enum": ["none", "internal", "invited", "community", "critical-only"],
+          "description": "Pull request acceptance policy"
+        },
+        "stability": {
+          "type": "string",
+          "enum": ["unstable", "stabilizing", "stable", "frozen"],
+          "description": "API/schema stability expectation"
+        }
+      },
+      "required": ["id", "order", "label", "description", "badge", "pr_policy", "stability"],
+      "additionalProperties": false
+    },
+    "badge": {
+      "type": "object",
+      "description": "Shields.io badge configuration",
+      "properties": {
+        "color": {
+          "type": "string",
+          "description": "Badge color (shields.io color name or hex)"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Pre-built badge URL"
+        }
+      },
+      "required": ["color", "url"],
+      "additionalProperties": false
+    },
+    "phase_id": {
+      "type": "string",
+      "enum": [
+        "planned",
+        "prototype",
+        "alpha",
+        "beta",
+        "stable",
+        "maintenance",
+        "deprecated",
+        "archived"
+      ],
+      "description": "Valid phase identifier"
+    }
+  }
+}

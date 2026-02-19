@@ -1,0 +1,10 @@
+version: "1.0"
+cases:
+  - name: "reject-zero-width"
+    profile: "text_safe"
+    input: "pay​pal.com"
+    expected_error_code: "ZERO_WIDTH_CHARACTER"
+  - name: "reject-bidi-override"
+    profile: "text_safe"
+    input: "abc‮def"
+    expected_error_code: "BIDI_CONTROL_CHARACTER"

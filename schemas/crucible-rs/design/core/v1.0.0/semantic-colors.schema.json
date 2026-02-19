@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/design/core/v1.0.0/semantic-colors.schema.json",
+  "title": "Semantic Color Vocabulary",
+  "description": "Universal semantic color roles for design systems. Implementation-agnostic vocabulary shared across TUI and web contexts.",
+  "type": "object",
+  "$defs": {
+    "semanticColorRole": {
+      "type": "string",
+      "enum": [
+        "primary",
+        "secondary",
+        "accent",
+        "success",
+        "warning",
+        "error",
+        "info",
+        "muted"
+      ],
+      "description": "Standard semantic color roles"
+    },
+    "surfaceRole": {
+      "type": "string",
+      "enum": [
+        "background",
+        "surface",
+        "surface-elevated",
+        "surface-sunken",
+        "overlay"
+      ],
+      "description": "Surface/background color roles"
+    },
+    "textRole": {
+      "type": "string",
+      "enum": [
+        "text-primary",
+        "text-secondary",
+        "text-muted",
+        "text-inverse",
+        "text-link",
+        "text-on-primary",
+        "text-on-secondary",
+        "text-on-accent"
+      ],
+      "description": "Text color roles for different contexts"
+    },
+    "borderRole": {
+      "type": "string",
+      "enum": [
+        "border-default",
+        "border-subtle",
+        "border-strong",
+        "border-focus",
+        "border-error"
+      ],
+      "description": "Border color roles"
+    },
+    "interactiveRole": {
+      "type": "string",
+      "enum": [
+        "interactive-default",
+        "interactive-hover",
+        "interactive-active",
+        "interactive-disabled"
+      ],
+      "description": "Interactive element state colors"
+    },
+    "contrastRequirement": {
+      "type": "object",
+      "description": "WCAG contrast ratio requirements",
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": [
+            "AA",
+            "AAA"
+          ],
+          "description": "WCAG conformance level"
+        },
+        "min_ratio": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 21,
+          "description": "Minimum contrast ratio (e.g., 4.5 for AA normal text)"
+        },
+        "context": {
+          "type": "string",
+          "enum": [
+            "normal-text",
+            "large-text",
+            "ui-component",
+            "graphical"
+          ],
+          "description": "Context for contrast requirement"
+        }
+      },
+      "required": [
+        "level",
+        "min_ratio",
+        "context"
+      ]
+    },
+    "colorIntent": {
+      "type": "object",
+      "description": "Semantic intent and accessibility metadata for a color",
+      "properties": {
+        "role": {
+          "type": "string",
+          "description": "Semantic role from one of the role enums"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of when to use this color"
+        },
+        "pairs_with": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Recommended color roles to pair with (for contrast)"
+        },
+        "wcag_contrast": {
+          "$ref": "#/$defs/contrastRequirement"
+        }
+      },
+      "required": [
+        "role"
+      ]
+    }
+  },
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[vV]?\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of the color vocabulary"
+    },
+    "semantic_roles": {
+      "type": "array",
+      "description": "Defined semantic color roles with metadata",
+      "items": {
+        "$ref": "#/$defs/colorIntent"
+      }
+    },
+    "surface_roles": {
+      "type": "array",
+      "description": "Defined surface/background roles",
+      "items": {
+        "$ref": "#/$defs/colorIntent"
+      }
+    },
+    "text_roles": {
+      "type": "array",
+      "description": "Defined text color roles",
+      "items": {
+        "$ref": "#/$defs/colorIntent"
+      }
+    },
+    "border_roles": {
+      "type": "array",
+      "description": "Defined border color roles",
+      "items": {
+        "$ref": "#/$defs/colorIntent"
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Implementation-specific extensions (TUI, web)",
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "version"
+  ],
+  "additionalProperties": false
+}

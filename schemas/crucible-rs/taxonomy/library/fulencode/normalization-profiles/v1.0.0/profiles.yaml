@@ -91,6 +91,22 @@ custom_profiles:
       - "macOS uses NFD for file names"
       - "Windows/Linux prefer NFC"
       - "This profile standardizes to NFC"
+  text_safe:
+    based_on: nfc
+    restrictions:
+      - reject_control_chars: true
+      - reject_c1_controls: true
+      - reject_bidi_controls: true
+      - reject_zero_width: true
+      - allow_only_printable: true
+    use_case: "Log-safe and UI-safe text display (prevent spoofing and hidden content)"
+    transformations:
+      - "NFC composition"
+      - "Reject ASCII control characters (0x00-0x1F, 0x7F)"
+      - "Reject C1 controls (0x80-0x9F)"
+      - "Reject bidi override/isolate characters (U+202A..U+202E, U+2066..U+2069)"
+      - "Reject zero-width characters (U+200B, U+200C, U+200D, U+FEFF)"
+    security: "Prevents log injection, bidi spoofing, and hidden-content attacks"
   legacy_compatible:
     based_on: nfc
     strip_nonascii: false

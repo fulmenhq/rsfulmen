@@ -44,6 +44,19 @@ $defs:
       - fulhash_hash_string_total
       - fulhash_bytes_hashed_total
       - fulhash_operation_ms
+      - fulencode_operation_total
+      - fulencode_operation_duration_seconds
+      - fulencode_bytes_processed_total
+      - fulencode_expansion_ratio_percent
+      - fulencode_detect_result_total
+      - fulencode_detect_duration_seconds
+      - fulencode_normalize_total
+      - fulencode_normalize_semantic_changes_total
+      - fulencode_security_violations_total
+      - fulencode_corrections_total
+      - fulencode_bom_operations_total
+      - fulencode_bom_mismatches_total
+      - fulencode_errors_total
       - http_requests_total
       - http_request_duration_seconds
       - http_request_size_bytes
@@ -108,7 +121,7 @@ required:
   - version
   - metrics
 additionalProperties: false
-version: "0.4.4"
+version: "0.4.12"
 defaults:
   histogram_buckets:
     ms_metrics:
@@ -303,6 +316,71 @@ metrics:
     unit: ms
     description: >
       Hash operation latency in milliseconds for all algorithms. Uses ADR-0007 buckets: [1, 5, 10, 50, 100, 500, 1000, 5000, 10000]. Enables performance benchmarking across XXH3-128 and SHA256.
+
+  - name: fulencode_operation_total
+    unit: count
+    description: >
+      Total Fulencode operations executed. Required tags: operation (encode|decode|detect|normalize|bom), result (success|error). Optional tags: format (bounded set from EncodingFormat).
+
+  - name: fulencode_operation_duration_seconds
+    unit: s
+    description: >
+      Fulencode operation duration in seconds. Histogram metric. Required tags: operation (encode|decode|detect|normalize|bom), result (success|error). Optional tags: format. Uses default seconds buckets.
+
+  - name: fulencode_bytes_processed_total
+    unit: bytes
+    description: >
+      Total bytes processed by Fulencode. Counter or histogram payloads are permitted depending on implementation. Required tags: operation (encode|decode), direction (in|out), result (success|error). Optional tags: format.
+
+  - name: fulencode_expansion_ratio_percent
+    unit: percent
+    description: >
+      Expansion ratio (output/input) expressed as a percentage for encode/decode operations. Histogram metric. Required tags: operation (encode|decode), result (success|error). Optional tags: format. Implementations MUST emit value as ratio*100 (e.g., 250 = 2.5x expansion).
+
+  - name: fulencode_detect_result_total
+    unit: count
+    description: >
+      Total encoding detection outcomes. Required tags: encoding (detected encoding or unknown), confidence (high|medium|low), result (success|error). Optional tags: source (bom|validation|heuristic|multibase).
+
+  - name: fulencode_detect_duration_seconds
+    unit: s
+    description: >
+      Encoding detection duration in seconds. Histogram metric. Required tags: result (success|error). Optional tags: sample_size_bucket (<1kb|1-10kb|10-100kb|>100kb). Uses default seconds buckets.
+
+  - name: fulencode_normalize_total
+    unit: count
+    description: >
+      Total normalization operations executed. Required tags: profile (nfc|nfd|nfkc|nfkd|custom profile name), result (success|error).
+
+  - name: fulencode_normalize_semantic_changes_total
+    unit: count
+    description: >
+      Total semantic changes detected during normalization (typically NFKC/NFKD). Required tags: profile (nfkc|nfkd), change_type (ligatures|superscripts_subscripts|roman_numerals|circled_numbers|enclosed_alphanumerics|fractions|other).
+
+  - name: fulencode_security_violations_total
+    unit: count
+    description: >
+      Total security violations detected by Fulencode. Required tags: type (invalid_utf8|invalid_utf16|encoding_bomb|excessive_combining|zero_width|bidi_controls|bom_mismatch|other), operation (encode|decode|detect|normalize|bom).
+
+  - name: fulencode_corrections_total
+    unit: count
+    description: >
+      Total corrections applied in non-strict modes (replace/fallback). Required tags: error_mode (replace|fallback|ignore), error_type (invalid_utf8|invalid_utf16|invalid_encoding|bom_mismatch|other).
+
+  - name: fulencode_bom_operations_total
+    unit: count
+    description: >
+      Total BOM operations executed. Required tags: operation (detect|remove|add|validate|correct), bom_type (utf-8|utf-16le|utf-16be|utf-32le|utf-32be|none), result (success|error).
+
+  - name: fulencode_bom_mismatches_total
+    unit: count
+    description: >
+      Total BOM mismatch events detected. Required tags: detected_bom, expected_encoding, action (error|fix|ignore).
+
+  - name: fulencode_errors_total
+    unit: count
+    description: >
+      Total Fulencode errors by canonical error code. Required tags: operation (encode|decode|detect|normalize|bom), code (canonical FulencodeError code).
 
   - name: http_requests_total
     unit: count

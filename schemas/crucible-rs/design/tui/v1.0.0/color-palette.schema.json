@@ -1,0 +1,303 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/design/tui/v1.0.0/color-palette.schema.json",
+  "title": "TUI Color Palette",
+  "description": "Terminal color palette with capability-based fallback support (truecolor -> 256 -> 16 -> basic)",
+  "type": "object",
+  "$defs": {
+    "hexColor": {
+      "type": "string",
+      "pattern": "^#[0-9A-Fa-f]{6}$",
+      "description": "6-digit hex color (truecolor capable terminals)"
+    },
+    "ansi256": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255,
+      "description": "ANSI 256-color palette index"
+    },
+    "ansi16": {
+      "type": "string",
+      "enum": [
+        "black",
+        "red",
+        "green",
+        "yellow",
+        "blue",
+        "magenta",
+        "cyan",
+        "white",
+        "bright-black",
+        "bright-red",
+        "bright-green",
+        "bright-yellow",
+        "bright-blue",
+        "bright-magenta",
+        "bright-cyan",
+        "bright-white"
+      ],
+      "description": "ANSI 16-color name"
+    },
+    "basicColor": {
+      "type": "string",
+      "enum": [
+        "default",
+        "inverse"
+      ],
+      "description": "Basic terminal color (no color support)"
+    },
+    "terminalColor": {
+      "type": "object",
+      "description": "Terminal color with fallback chain",
+      "properties": {
+        "truecolor": {
+          "$ref": "#/$defs/hexColor",
+          "description": "24-bit color for modern terminals"
+        },
+        "ansi256": {
+          "$ref": "#/$defs/ansi256",
+          "description": "256-color fallback"
+        },
+        "ansi16": {
+          "$ref": "#/$defs/ansi16",
+          "description": "16-color fallback"
+        },
+        "basic": {
+          "$ref": "#/$defs/basicColor",
+          "description": "No-color fallback"
+        }
+      },
+      "required": [
+        "truecolor",
+        "ansi16"
+      ],
+      "additionalProperties": false
+    },
+    "semanticColorDefinition": {
+      "type": "object",
+      "description": "A semantic color with terminal-specific values",
+      "properties": {
+        "role": {
+          "type": "string",
+          "description": "Semantic role (references core/semantic-colors)"
+        },
+        "foreground": {
+          "$ref": "#/$defs/terminalColor",
+          "description": "Foreground/text color"
+        },
+        "background": {
+          "$ref": "#/$defs/terminalColor",
+          "description": "Background color"
+        },
+        "wcag_contrast_ratio": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 21,
+          "description": "Calculated contrast ratio between fg/bg"
+        }
+      },
+      "required": [
+        "role",
+        "foreground"
+      ]
+    },
+    "colorCapability": {
+      "type": "string",
+      "enum": [
+        "truecolor",
+        "256",
+        "16",
+        "basic"
+      ],
+      "description": "Terminal color capability level"
+    }
+  },
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[vV]?\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of the color palette"
+    },
+    "name": {
+      "type": "string",
+      "description": "Palette name (e.g., 'fulmen-dark', 'high-contrast')"
+    },
+    "description": {
+      "type": "string",
+      "description": "Palette description and intended use"
+    },
+    "min_capability": {
+      "$ref": "#/$defs/colorCapability",
+      "description": "Minimum terminal capability required for this palette"
+    },
+    "semantic_colors": {
+      "type": "object",
+      "description": "Semantic color definitions",
+      "properties": {
+        "primary": {
+          "$ref": "#/$defs/semanticColorDefinition"
+        },
+        "secondary": {
+          "$ref": "#/$defs/semanticColorDefinition"
+        },
+        "accent": {
+          "$ref": "#/$defs/semanticColorDefinition"
+        },
+        "success": {
+          "$ref": "#/$defs/semanticColorDefinition"
+        },
+        "warning": {
+          "$ref": "#/$defs/semanticColorDefinition"
+        },
+        "error": {
+          "$ref": "#/$defs/semanticColorDefinition"
+        },
+        "info": {
+          "$ref": "#/$defs/semanticColorDefinition"
+        },
+        "muted": {
+          "$ref": "#/$defs/semanticColorDefinition"
+        }
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/semanticColorDefinition"
+      }
+    },
+    "surface_colors": {
+      "type": "object",
+      "description": "Surface/background color definitions",
+      "properties": {
+        "background": {
+          "$ref": "#/$defs/terminalColor"
+        },
+        "surface": {
+          "$ref": "#/$defs/terminalColor"
+        },
+        "surface_elevated": {
+          "$ref": "#/$defs/terminalColor"
+        },
+        "surface_sunken": {
+          "$ref": "#/$defs/terminalColor"
+        },
+        "overlay": {
+          "$ref": "#/$defs/terminalColor"
+        }
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/terminalColor"
+      }
+    },
+    "text_colors": {
+      "type": "object",
+      "description": "Text color definitions",
+      "properties": {
+        "primary": {
+          "$ref": "#/$defs/terminalColor"
+        },
+        "secondary": {
+          "$ref": "#/$defs/terminalColor"
+        },
+        "muted": {
+          "$ref": "#/$defs/terminalColor"
+        },
+        "inverse": {
+          "$ref": "#/$defs/terminalColor"
+        },
+        "link": {
+          "$ref": "#/$defs/terminalColor"
+        }
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/terminalColor"
+      }
+    },
+    "border_colors": {
+      "type": "object",
+      "description": "Border color definitions",
+      "properties": {
+        "default": {
+          "$ref": "#/$defs/terminalColor"
+        },
+        "subtle": {
+          "$ref": "#/$defs/terminalColor"
+        },
+        "strong": {
+          "$ref": "#/$defs/terminalColor"
+        },
+        "focus": {
+          "$ref": "#/$defs/terminalColor"
+        }
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/terminalColor"
+      }
+    },
+    "ansi_overrides": {
+      "type": "object",
+      "description": "Optional overrides for standard ANSI colors (for themed terminals)",
+      "properties": {
+        "black": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "red": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "green": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "yellow": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "blue": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "magenta": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "cyan": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "white": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "bright_black": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "bright_red": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "bright_green": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "bright_yellow": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "bright_blue": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "bright_magenta": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "bright_cyan": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "bright_white": {
+          "$ref": "#/$defs/hexColor"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "version",
+    "name",
+    "semantic_colors",
+    "surface_colors",
+    "text_colors"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,84 @@
+{
+  "$schema": "https://schemas.3leaps.dev/classifiers/v0/dimension-definition.schema.json",
+  "key": "volume-tier",
+  "name": "Volume Tier",
+  "version": "1.0.0",
+  "status": "stable",
+  "type": "sortable",
+  "cardinality": "single",
+  "description": "Data volume classification for scale planning, partitioning strategies, file sizing, and benchmark profiles. Ordered from smallest to largest scale.",
+  "sortable": {
+    "scale": "ordinal",
+    "order_direction": "asc",
+    "ordered_values": [
+      {
+        "key": "unknown",
+        "label": "Unknown",
+        "description": "Volume not yet classified; must be classified before infrastructure provisioning.",
+        "order": 0
+      },
+      {
+        "key": "tiny",
+        "label": "Tiny",
+        "description": "Very small datasets (≤100K rows); single-file, in-memory processing.",
+        "order": 1
+      },
+      {
+        "key": "small",
+        "label": "Small",
+        "description": "Small datasets (≤10M rows); single-node processing, moderate file sizes.",
+        "order": 2
+      },
+      {
+        "key": "medium",
+        "label": "Medium",
+        "description": "Medium datasets (≤1B rows); partitioned storage, distributed processing beneficial.",
+        "order": 3
+      },
+      {
+        "key": "large",
+        "label": "Large",
+        "description": "Large datasets (≤100B rows); distributed processing required, columnar formats.",
+        "order": 4
+      },
+      {
+        "key": "massive",
+        "label": "Massive",
+        "description": "Massive datasets (>100B rows); specialized infrastructure, aggressive partitioning.",
+        "order": 5
+      }
+    ]
+  },
+  "governance": {
+    "owner": "3leaps-core",
+    "reviewers": ["platform", "data-engineering"],
+    "review_cycle": "semiannual",
+    "last_updated": "2026-01-22"
+  },
+  "examples": [
+    {
+      "dataset": "new-data-feed",
+      "value": "unknown"
+    },
+    {
+      "dataset": "test-fixtures",
+      "value": "tiny"
+    },
+    {
+      "dataset": "product-catalog",
+      "value": "small"
+    },
+    {
+      "dataset": "transaction-history",
+      "value": "medium"
+    },
+    {
+      "dataset": "event-telemetry",
+      "value": "large"
+    },
+    {
+      "dataset": "global-clickstream",
+      "value": "massive"
+    }
+  ]
+}

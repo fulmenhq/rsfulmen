@@ -1,0 +1,121 @@
+{
+  "$schema": "https://schemas.3leaps.dev/classifiers/v0/dimension-definition.schema.json",
+  "key": "access-tier",
+  "name": "Access Tier",
+  "version": "1.0.0",
+  "status": "stable",
+  "type": "categorical",
+  "cardinality": "single",
+  "description": "Distribution and access control classification. Often derived from sensitivity but can be overridden to further restrict distribution. Used for ACL policies, publishing gates, and data sharing decisions.",
+  "categorical": {
+    "values": [
+      {
+        "key": "unknown",
+        "label": "Unknown",
+        "description": "Access tier not yet classified; must be classified before sharing or distribution.",
+        "order": 0,
+        "is_none": false,
+        "synonyms": ["unclassified"]
+      },
+      {
+        "key": "public",
+        "label": "Public",
+        "description": "Unrestricted access; suitable for public distribution.",
+        "order": 1,
+        "is_none": true,
+        "synonyms": ["open"]
+      },
+      {
+        "key": "internal",
+        "label": "Internal",
+        "description": "Organization-wide access; authentication required.",
+        "order": 2,
+        "is_none": false,
+        "synonyms": ["org-wide"]
+      },
+      {
+        "key": "restricted",
+        "label": "Restricted",
+        "description": "Team or project-level access; explicit authorization required.",
+        "order": 3,
+        "is_none": false,
+        "synonyms": ["team-only"]
+      },
+      {
+        "key": "privileged",
+        "label": "Privileged",
+        "description": "Named individuals only; documented business need.",
+        "order": 4,
+        "is_none": false,
+        "synonyms": ["need-to-know"]
+      },
+      {
+        "key": "eyes-only",
+        "label": "Eyes Only",
+        "description": "Executive/legal authorization required; immutable audit trail.",
+        "order": 5,
+        "is_none": false,
+        "synonyms": ["legal-only", "exec-only"]
+      }
+    ],
+    "index_strategy": {
+      "default_order": ["unknown", "public", "internal", "restricted", "privileged", "eyes-only"],
+      "ordinal_mapping": {
+        "unknown": 0,
+        "public": 1,
+        "internal": 2,
+        "restricted": 3,
+        "privileged": 4,
+        "eyes-only": 5
+      },
+      "missing_handling": "error",
+      "sentinel": 0
+    }
+  },
+  "transitions": {
+    "downgrade": [
+      "eyes-only->privileged (legal release required)",
+      "privileged->restricted (documented approval)",
+      "restricted->internal (access review)",
+      "internal->public (publication review)"
+    ],
+    "upgrade": [
+      "public->internal (restriction applied)",
+      "internal->restricted (access tightening)",
+      "restricted->privileged (need-to-know imposed)",
+      "any->eyes-only (legal hold or exec order)"
+    ]
+  },
+  "governance": {
+    "owner": "3leaps-core",
+    "reviewers": ["security", "compliance"],
+    "review_cycle": "quarterly",
+    "last_updated": "2026-01-22"
+  },
+  "examples": [
+    {
+      "dataset": "unreviewed-upload",
+      "value": "unknown"
+    },
+    {
+      "dataset": "public-api-docs",
+      "value": "public"
+    },
+    {
+      "dataset": "internal-runbooks",
+      "value": "internal"
+    },
+    {
+      "dataset": "project-roadmap",
+      "value": "restricted"
+    },
+    {
+      "dataset": "security-audit-findings",
+      "value": "privileged"
+    },
+    {
+      "dataset": "legal-discovery-materials",
+      "value": "eyes-only"
+    }
+  ]
+}

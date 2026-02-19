@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://json-schema.org/draft/2019-09/schema",
+  "title": "Offline meta-schema (subset)",
+  "description": "Subset of the JSON Schema 2019-09 meta-schema for offline validation.",
+  "type": [
+    "object",
+    "boolean"
+  ],
+  "$defs": {
+    "simpleType": {
+      "enum": [
+        "array",
+        "boolean",
+        "integer",
+        "null",
+        "number",
+        "object",
+        "string"
+      ]
+    },
+    "schemaArray": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#"
+      }
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "default": []
+    }
+  },
+  "properties": {
+    "$id": {
+      "type": "string"
+    },
+    "$schema": {
+      "type": "string"
+    },
+    "$ref": {
+      "type": "string"
+    },
+    "$recursiveAnchor": {
+      "type": [
+        "boolean",
+        "string"
+      ]
+    },
+    "$recursiveRef": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "default": {},
+    "examples": {
+      "type": "array",
+      "items": {}
+    },
+    "type": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/simpleType"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/simpleType"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      ]
+    },
+    "enum": {
+      "type": "array"
+    },
+    "allOf": {
+      "$ref": "#/$defs/schemaArray"
+    },
+    "anyOf": {
+      "$ref": "#/$defs/schemaArray"
+    },
+    "oneOf": {
+      "$ref": "#/$defs/schemaArray"
+    },
+    "not": {
+      "$ref": "#"
+    },
+    "definitions": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#"
+      },
+      "default": {}
+    },
+    "$defs": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#"
+      },
+      "default": {}
+    },
+    "properties": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#"
+      },
+      "default": {}
+    },
+    "items": {
+      "anyOf": [
+        {
+          "$ref": "#"
+        },
+        {
+          "$ref": "#/$defs/schemaArray"
+        }
+      ],
+      "default": {}
+    },
+    "required": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "dependencies": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "$ref": "#"
+          },
+          {
+            "$ref": "#/$defs/stringArray"
+          }
+        ]
+      },
+      "default": {}
+    }
+  }
+}

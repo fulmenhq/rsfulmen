@@ -1,0 +1,102 @@
+{
+  "$schema": "https://schemas.3leaps.dev/foundation/v0/lifecycle-phases.schema.json",
+  "version": "1.0.0",
+  "phases": [
+    {
+      "id": "planned",
+      "order": 0,
+      "label": "Planned",
+      "description": "Repository or component is planned but development has not started. May have placeholder README only.",
+      "badge": {
+        "color": "lightgrey",
+        "url": "https://img.shields.io/badge/lifecycle-planned-lightgrey"
+      },
+      "pr_policy": "none",
+      "stability": "unstable"
+    },
+    {
+      "id": "prototype",
+      "order": 1,
+      "label": "Prototype",
+      "description": "Proof of concept or experimental implementation. Not intended for any use beyond exploration. May be discarded entirely.",
+      "badge": {
+        "color": "yellow",
+        "url": "https://img.shields.io/badge/lifecycle-prototype-yellow"
+      },
+      "pr_policy": "internal",
+      "stability": "unstable"
+    },
+    {
+      "id": "alpha",
+      "order": 2,
+      "label": "Alpha",
+      "description": "Active development with core functionality taking shape. APIs and schemas may change without notice. Not recommended for production. Early feedback welcome.",
+      "badge": {
+        "color": "orange",
+        "url": "https://img.shields.io/badge/lifecycle-alpha-orange"
+      },
+      "pr_policy": "invited",
+      "stability": "unstable"
+    },
+    {
+      "id": "beta",
+      "order": 3,
+      "label": "Beta",
+      "description": "Feature complete and stabilizing. APIs may still change but with deprecation notices. Suitable for non-critical use. Community contributions welcome.",
+      "badge": {
+        "color": "blue",
+        "url": "https://img.shields.io/badge/lifecycle-beta-blue"
+      },
+      "pr_policy": "community",
+      "stability": "stabilizing"
+    },
+    {
+      "id": "stable",
+      "order": 4,
+      "label": "Stable",
+      "description": "Production ready. APIs follow semantic versioning. Breaking changes only in major versions with migration guides.",
+      "badge": {
+        "color": "green",
+        "url": "https://img.shields.io/badge/lifecycle-stable-green"
+      },
+      "pr_policy": "community",
+      "stability": "stable"
+    },
+    {
+      "id": "maintenance",
+      "order": 5,
+      "label": "Maintenance",
+      "description": "No new features planned. Bug fixes and security patches only. Consider migration to successor if available.",
+      "badge": {
+        "color": "yellowgreen",
+        "url": "https://img.shields.io/badge/lifecycle-maintenance-yellowgreen"
+      },
+      "pr_policy": "critical-only",
+      "stability": "frozen"
+    },
+    {
+      "id": "deprecated",
+      "order": 6,
+      "label": "Deprecated",
+      "description": "Being phased out. No new PRs accepted. Users should migrate to recommended alternative.",
+      "badge": {
+        "color": "red",
+        "url": "https://img.shields.io/badge/lifecycle-deprecated-red"
+      },
+      "pr_policy": "none",
+      "stability": "frozen"
+    },
+    {
+      "id": "archived",
+      "order": 7,
+      "label": "Archived",
+      "description": "No longer maintained. Repository is read-only for historical reference. No support provided.",
+      "badge": {
+        "color": "lightgrey",
+        "url": "https://img.shields.io/badge/lifecycle-archived-lightgrey"
+      },
+      "pr_policy": "none",
+      "stability": "frozen"
+    }
+  ]
+}

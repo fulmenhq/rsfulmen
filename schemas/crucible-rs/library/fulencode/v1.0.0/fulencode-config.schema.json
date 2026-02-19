@@ -33,7 +33,8 @@
           "minimum": 1,
           "maximum": 100
         }
-      }
+      },
+      "additionalProperties": false
     },
     "defaults": {
       "type": "object",
@@ -66,7 +67,8 @@
           "description": "Default normalization profile",
           "default": "nfc"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "detection": {
       "type": "object",
@@ -84,7 +86,9 @@
           "default": 8192,
           "minimum": 32
         }
-      }
+      },
+      "additionalProperties": false
     }
-  }
+  },
+  "additionalProperties": false
 }

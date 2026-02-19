@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.3leaps.dev/foundation/v0/error-response.schema.json",
+  "title": "Error Response",
+  "description": "Standard error response structure for APIs and CLIs across 3leaps ecosystems",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]*$",
+      "description": "Machine-readable error code (uppercase with underscores)",
+      "examples": ["VALIDATION_ERROR", "NOT_FOUND", "AUTHENTICATION_FAILED", "RATE_LIMITED"]
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable error message"
+    },
+    "details": {
+      "type": "object",
+      "description": "Additional structured error details (context-specific)",
+      "additionalProperties": true
+    },
+    "path": {
+      "type": "string",
+      "description": "Path to the field or resource that caused the error",
+      "examples": ["$.config.port", "/api/v1/users/123"]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the error occurred (ISO 8601)"
+    },
+    "requestId": {
+      "type": "string",
+      "description": "Correlation ID for tracing (if applicable)"
+    }
+  },
+  "required": ["code", "message"],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "code": "VALIDATION_ERROR",
+      "message": "Invalid configuration",
+      "details": {
+        "field": "port",
+        "reason": "must be between 1 and 65535"
+      },
+      "path": "$.config.port"
+    },
+    {
+      "code": "NOT_FOUND",
+      "message": "Resource not found",
+      "path": "/api/v1/users/123",
+      "timestamp": "2024-12-28T10:30:00Z",
+      "requestId": "req_abc123"
+    }
+  ]
+}

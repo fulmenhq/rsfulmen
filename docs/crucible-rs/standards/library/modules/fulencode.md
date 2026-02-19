@@ -314,6 +314,16 @@ profiles:
     normalize_spaces: true
     use_case: "Cross-platform file names"
 
+  text_safe:
+    base_form: nfc
+    reject_control_chars: true
+    reject_zero_width: true
+    reject_bidi_controls: true
+    compress_whitespace: optional
+    use_case: "Log-safe and UI-safe text display"
+
+See `docs/standards/library/modules/fulencode-text-safe.md` for detailed rationale and algorithm notes.
+
   legacy_compatible:
     base_form: nfc
     strip_nonascii: false
@@ -2066,12 +2076,14 @@ def test_multiple_boms():
 
 ### Purpose
 
-All fulencode implementations MUST test telemetry instrumentation to ensure:
+All fulencode implementations MUST test telemetry instrumentation to ensure (at minimum, Wave 1 metrics):
 
 1. Metrics are emitted correctly with proper labels
 2. Security violations increment appropriate counters
-3. Error codes are tracked accurately
-4. Performance metrics capture operation timing
+3. Security violations increment appropriate counters
+4. Performance metrics capture operation timing for core operations
+
+Wave 2/3 metrics SHOULD have tests when implemented, but they MUST NOT block initial module adoption.
 
 **Rationale**: Specialized modules often skip telemetry testing, leading to blind spots in production monitoring. Making telemetry testing mandatory prevents this.
 
@@ -2097,16 +2109,21 @@ def test_encode_telemetry():
         )
 
     # Verify operation metrics
-    assert metrics.histogram("fulencode.operation.duration_seconds") > 0
+    assert metrics.histogram("fulencode_operation_duration_seconds") > 0
     assert metrics.counter(
-        "fulencode.operation.total",
-        labels={"operation": "encode", "format": "base64", "status": "success"}
+        "fulencode_operation_total",
+        labels={"operation": "encode", "format": "base64", "result": "success"}
     ) == 1
 
     # Verify data volume metrics
     assert metrics.histogram(
-        "fulencode.bytes.processed",
-        labels={"direction": "encode", "format": "base64"}
+        "fulencode_bytes_processed_total",
+        labels={
+            "operation": "encode",
+            "direction": "in",
+            "format": "base64",
+            "result": "success",
+        }
     ) == 13  # Length of "Hello, World!"
 
 def test_security_violation_telemetry():
@@ -2124,8 +2141,8 @@ def test_security_violation_telemetry():
 
     # Verify security violation was tracked
     assert metrics.counter(
-        "fulencode.security.violations_total",
-        labels={"type": "buffer_overflow", "operation": "decode"}
+        "fulencode_security_violations_total",
+        labels={"type": "encoding_bomb", "operation": "decode"}
     ) == 1
 
 def test_detection_confidence_telemetry():
@@ -2139,8 +2156,8 @@ def test_detection_confidence_telemetry():
 
     # Verify detection was tracked
     assert metrics.counter(
-        "fulencode.detect.result_total",
-        labels={"encoding": "utf-8", "confidence_bucket": "high"}
+        "fulencode_detect_result_total",
+        labels={"encoding": "utf-8", "confidence": "high", "result": "success"}
     ) == 1
 ```
 
@@ -2150,7 +2167,7 @@ def test_detection_confidence_telemetry():
 - ✅ Security violations tracked for all error codes
 - ✅ Bytes processed tracked for encode/decode
 - ✅ Detection confidence buckets populated correctly
-- ✅ Normalization semantic changes tracked
+- ⏸️ Normalization semantic changes tracked (Wave 2)
 
 #### Go (gofulmen)
 
@@ -2183,22 +2200,24 @@ func TestEncodeTelemetry(t *testing.T) {
     // Verify operation metrics
     metrics := sink.GetMetrics()
 
-    if !metrics.HasHistogram("fulencode.operation.duration_seconds") {
+    if !metrics.HasHistogram("fulencode_operation_duration_seconds") {
         t.Error("missing operation duration metric")
     }
 
-    if count := metrics.GetCounter("fulencode.operation.total", map[string]string{
+    if count := metrics.GetCounter("fulencode_operation_total", map[string]string{
         "operation": "encode",
         "format":    "base64",
-        "status":    "success",
+        "result":    "success",
     }); count != 1 {
         t.Errorf("expected 1 operation, got %d", count)
     }
 
     // Verify bytes processed
-    if bytes := metrics.GetHistogramValue("fulencode.bytes.processed", map[string]string{
-        "direction": "encode",
+    if bytes := metrics.GetHistogramValue("fulencode_bytes_processed_total", map[string]string{
+        "operation": "encode",
+        "direction": "in",
         "format":    "base64",
+        "result":    "success",
     }); bytes != int64(len(data)) {
         t.Errorf("expected %d bytes processed, got %d", len(data), bytes)
     }
@@ -2222,7 +2241,7 @@ func TestSecurityViolationTelemetry(t *testing.T) {
 
     // Verify security violation tracked
     metrics := sink.GetMetrics()
-    if count := metrics.GetCounter("fulencode.security.violations_total", map[string]string{
+    if count := metrics.GetCounter("fulencode_security_violations_total", map[string]string{
         "type":      "invalid_utf8",
         "operation": "decode",
     }); count != 1 {
@@ -2271,22 +2290,24 @@ describe("Fulencode Telemetry", () => {
     );
 
     // Verify metrics
-    expect(collector.hasHistogram("fulencode.operation.duration_seconds")).toBe(
+    expect(collector.hasHistogram("fulencode_operation_duration_seconds")).toBe(
       true,
     );
 
     expect(
-      collector.getCounter("fulencode.operation.total", {
+      collector.getCounter("fulencode_operation_total", {
         operation: "encode",
         format: "base64",
-        status: "success",
+        result: "success",
       }),
     ).toBe(1);
 
     expect(
-      collector.getHistogramValue("fulencode.bytes.processed", {
-        direction: "encode",
+      collector.getHistogramValue("fulencode_bytes_processed_total", {
+        operation: "encode",
+        direction: "in",
         format: "base64",
+        result: "success",
       }),
     ).toBe(5);
   });
@@ -2302,9 +2323,10 @@ describe("Fulencode Telemetry", () => {
     expect(detected.confidenceLevel).toBe("high");
 
     expect(
-      collector.getCounter("fulencode.detect.result_total", {
+      collector.getCounter("fulencode_detect_result_total", {
         encoding: "utf-8",
-        confidence_bucket: "high",
+        confidence: "high",
+        result: "success",
       }),
     ).toBe(1);
   });
@@ -2319,9 +2341,9 @@ describe("Fulencode Telemetry", () => {
 
     if (result.semanticChanges.length > 0) {
       expect(
-        collector.getCounter("fulencode.normalize.semantic_changes_total", {
+        collector.getCounter("fulencode_normalize_semantic_changes_total", {
           profile: "nfkc",
-          change_type: "ligature",
+          change_type: "ligatures",
         }),
       ).toBeGreaterThan(0);
     }
@@ -2336,7 +2358,7 @@ describe("Fulencode Telemetry", () => {
     ).rejects.toThrow(FulencodeError);
 
     expect(
-      collector.getCounter("fulencode.security.violations_total", {
+      collector.getCounter("fulencode_security_violations_total", {
         type: "buffer_overflow",
         operation: "decode",
       }),
@@ -2367,10 +2389,10 @@ test_cases:
       data: "SGVsbG8sIFdvcmxkIQ==" # Base64 of "Hello, World!"
       format: "base64"
     expected_metrics:
-      - metric: "fulencode.operation.total"
-        labels: { operation: "encode", format: "base64", status: "success" }
+      - metric: "fulencode_operation_total"
+        labels: { operation: "encode", format: "base64", result: "success" }
         value: 1
-      - metric: "fulencode.bytes.processed"
+      - metric: "fulencode_bytes_processed_total"
         labels: { direction: "encode", format: "base64" }
         value: 13
 
@@ -2382,8 +2404,8 @@ test_cases:
       options: { on_error: "strict" }
     expected_error: "INVALID_UTF8"
     expected_metrics:
-      - metric: "fulencode.security.violations_total"
-        labels: { type: "invalid_utf8", "operation": "decode" }
+      - metric: "fulencode_security_violations_total"
+        labels: { type: "invalid_utf8", operation: "decode" }
         value: 1
 
   - name: "high_confidence_detection"
@@ -2391,8 +2413,8 @@ test_cases:
     input:
       data: [0xEF, 0xBB, 0xBF, 72, 101, 108, 108, 111] # UTF-8 BOM + "Hello"
     expected_metrics:
-      - metric: "fulencode.detect.result_total"
-        labels: { encoding: "utf-8", confidence_bucket: "high" }
+      - metric: "fulencode_detect_result_total"
+        labels: { encoding: "utf-8", confidence: "high", result: "success" }
         value: 1
 ```
 
@@ -2472,7 +2494,7 @@ with MetricsCollector() as metrics: # Perform operation
 result = fulencode.encode(data, "base64")
 
         # Verify metrics
-        assert metrics.counter("fulencode.operation.total") == 1
+        assert metrics.counter("fulencode_operation_total") == 1
 
 \`\`\`
 
@@ -3690,24 +3712,30 @@ for result in results:
 
 **Module**: Uses Core-tier `telemetry` module for metrics instrumentation
 
-All fulencode implementations MUST instrument the following metrics. Metrics enable performance monitoring, security alerting, and usage analytics.
+Fulencode telemetry is implemented in waves to avoid blocking early helper library adoption.
+
+- Wave 1 metrics are required when telemetry is enabled.
+- Wave 2 metrics are recommended and should be added once implementations stabilize.
+- Wave 3 metrics are optional and typically added after error taxonomy/label conventions settle.
+
+All fulencode implementations MUST support telemetry hooks and MUST NOT error when telemetry is disabled/unconfigured.
 
 ### Core Operation Metrics
 
 **Operation Duration** (Histogram):
 
 ```
-fulencode.operation.duration_seconds
-Labels: operation={encode|decode|detect|normalize|bom}, format={base64|utf-8|etc}, status={success|error}
-Buckets: [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 2, 5]
+fulencode_operation_duration_seconds
+Tags: operation={encode|decode|detect|normalize|bom}, format={base64|utf-8|etc}, result={success|error}
+Buckets: Use default seconds buckets from `config/taxonomy/metrics.yaml` (unit `s`).
 Purpose: Track operation latency for performance monitoring
 ```
 
 **Operation Count** (Counter):
 
 ```
-fulencode.operation.total
-Labels: operation={encode|decode|detect|normalize|bom}, format={...}, status={success|error}
+fulencode_operation_total
+Tags: operation={encode|decode|detect|normalize|bom}, format={...}, result={success|error}
 Purpose: Track operation volume and success/failure rates
 ```
 
@@ -3716,11 +3744,11 @@ Purpose: Track operation volume and success/failure rates
 ```python
 from pyfulmen import telemetry, fulencode
 
-with telemetry.histogram("fulencode.operation.duration_seconds",
-                          labels={"operation": "decode", "format": "base64"}):
+with telemetry.histogram("fulencode_operation_duration_seconds",
+                          labels={"operation": "decode", "format": "base64", "result": "success"}):
     result = fulencode.decode(data, "base64", options)
-    telemetry.counter("fulencode.operation.total",
-                      labels={"operation": "decode", "format": "base64", "status": "success"})
+    telemetry.counter("fulencode_operation_total",
+                      labels={"operation": "decode", "format": "base64", "result": "success"})
 ```
 
 ### Data Volume Metrics
@@ -3728,17 +3756,17 @@ with telemetry.histogram("fulencode.operation.duration_seconds",
 **Bytes Processed** (Histogram):
 
 ```
-fulencode.bytes.processed
-Labels: direction={encode|decode}, format={base64|utf-8|etc}
-Buckets: [1024, 10240, 102400, 1048576, 10485760, 104857600]
+fulencode_bytes_processed_total
+Tags: operation={encode|decode}, direction={in|out}, format={base64|utf-8|etc}, result={success|error}
+Buckets: Use default bytes buckets from `config/taxonomy/metrics.yaml` (unit `bytes`).
 Purpose: Track payload sizes for capacity planning
 ```
 
 **Expansion Ratio** (Histogram):
 
 ```
-fulencode.expansion.ratio
-Labels: operation={encode|decode}, format={...}
+fulencode_expansion_ratio_percent
+Tags: operation={encode|decode}, format={...}, result={success|error}
 Buckets: [0.1, 0.5, 1, 2, 5, 10, 20, 50, 100]
 Purpose: Monitor encoding efficiency and detect potential bombs
 ```
@@ -3748,17 +3776,17 @@ Purpose: Monitor encoding efficiency and detect potential bombs
 **Detection Outcomes** (Counter):
 
 ```
-fulencode.detect.result_total
-Labels: encoding={utf-8|utf-16le|iso-8859-1|unknown}, confidence_bucket={low|medium|high}
+fulencode_detect_result_total
+Tags: encoding={utf-8|utf-16le|iso-8859-1|unknown}, confidence={low|medium|high}, result={success|error}
 Purpose: Track detection accuracy and encoding distribution
 ```
 
 **Detection Duration** (Histogram):
 
 ```
-fulencode.detect.duration_seconds
-Labels: sample_size_bucket={<1kb|1-10kb|10-100kb|>100kb}
-Buckets: [0.001, 0.01, 0.1, 0.5, 1]
+fulencode_detect_duration_seconds
+Tags: sample_size_bucket={<1kb|1-10kb|10-100kb|>100kb}, result={success|error}
+Buckets: Use default seconds buckets from `config/taxonomy/metrics.yaml` (unit `s`).
 Purpose: Monitor detection performance vs sample size
 ```
 
@@ -3767,16 +3795,16 @@ Purpose: Monitor detection performance vs sample size
 **Normalization Actions** (Counter):
 
 ```
-fulencode.normalize.total
-Labels: profile={nfc|nfd|nfkc|nfkd|custom}, status={success|error}
+fulencode_normalize_total
+Tags: profile={nfc|nfd|nfkc|nfkd|custom}, result={success|error}
 Purpose: Track normalization usage and errors
 ```
 
 **Semantic Changes Detected** (Counter):
 
 ```
-fulencode.normalize.semantic_changes_total
-Labels: profile={nfkc|nfkd}, change_type={ligature|superscript|compatibility}
+fulencode_normalize_semantic_changes_total
+Tags: profile={nfkc|nfkd}, change_type={ligatures|superscripts_subscripts|compatibility|other}
 Purpose: Track NFKC/NFKD semantic changes for security monitoring
 ```
 
@@ -3785,8 +3813,8 @@ Purpose: Track NFKC/NFKD semantic changes for security monitoring
 **Security Violations Detected** (Counter):
 
 ```
-fulencode.security.violations_total
-Labels: type={invalid_utf8|invalid_utf16|encoding_bomb|excessive_combining|zero_width|bom_mismatch}, operation={...}
+fulencode_security_violations_total
+Tags: type={invalid_utf8|invalid_utf16|encoding_bomb|excessive_combining|zero_width|bidi_controls|bom_mismatch}, operation={...}
 Purpose: Track security threats for alerting and audit logging
 Alert threshold: Any non-zero value in production
 ```
@@ -3794,8 +3822,8 @@ Alert threshold: Any non-zero value in production
 **Error Corrections Applied** (Counter):
 
 ```
-fulencode.corrections.total
-Labels: error_mode={replace|fallback}, error_type={invalid_utf8|invalid_utf16|etc}
+fulencode_corrections_total
+Tags: error_mode={replace|fallback|ignore}, error_type={invalid_utf8|invalid_utf16|invalid_encoding|etc}
 Purpose: Track how often correction modes are triggered (may indicate data quality issues)
 ```
 
@@ -3804,16 +3832,16 @@ Purpose: Track how often correction modes are triggered (may indicate data quali
 **BOM Operations** (Counter):
 
 ```
-fulencode.bom.operations_total
-Labels: operation={detect|remove|add|validate|correct}, bom_type={utf-8|utf-16le|utf-16be|none}
+fulencode_bom_operations_total
+Tags: operation={detect|remove|add|validate|correct}, bom_type={utf-8|utf-16le|utf-16be|utf-32le|utf-32be|none}, result={success|error}
 Purpose: Track BOM handling frequency
 ```
 
 **BOM Mismatches** (Counter):
 
 ```
-fulencode.bom.mismatches_total
-Labels: detected_bom={...}, expected_encoding={...}, action={error|fix|ignore}
+fulencode_bom_mismatches_total
+Tags: detected_bom={...}, expected_encoding={...}, action={error|fix|ignore}
 Purpose: Security monitoring for BOM injection attempts
 ```
 
@@ -3821,38 +3849,43 @@ Purpose: Security monitoring for BOM injection attempts
 
 **Use this checklist to validate metric coverage during implementation** (per EA Steward feedback):
 
-| Metric                                       | Must Emit From                  | Labels Required                               | When to Emit                                          |
-| -------------------------------------------- | ------------------------------- | --------------------------------------------- | ----------------------------------------------------- |
-| `fulencode.operation.duration_seconds`       | All operations                  | `operation`, `format`, `status`               | Start of operation (use timer/context manager)        |
-| `fulencode.operation.total`                  | All operations                  | `operation`, `format`, `status`               | After operation completes (success or error)          |
-| `fulencode.bytes.processed`                  | `encode`, `decode`              | `direction`, `format`                         | After processing input bytes                          |
-| `fulencode.expansion.ratio`                  | `encode`, `decode`              | `operation`, `format`                         | After operation (output_size / input_size)            |
-| `fulencode.detect.result_total`              | `detect`                        | `encoding`, `confidence_bucket`               | After detection completes                             |
-| `fulencode.detect.duration_seconds`          | `detect`                        | `sample_size_bucket`                          | Start of detection (use timer)                        |
-| `fulencode.normalize.total`                  | `normalize`                     | `profile`, `status`                           | After normalization attempt                           |
-| `fulencode.normalize.semantic_changes_total` | `normalize` (NFKC/NFKD only)    | `profile`, `change_type`                      | When semantic change detected (ligatures, etc.)       |
-| `fulencode.security.violations_total`        | All operations                  | `type`, `operation`                           | **Immediately** when violation detected               |
-| `fulencode.corrections.total`                | `encode`, `decode`, `normalize` | `error_mode`, `error_type`                    | When correction applied (error_mode=replace/fallback) |
-| `fulencode.bom.operations_total`             | `bom_*` functions               | `operation`, `bom_type`                       | After BOM operation                                   |
-| `fulencode.bom.mismatches_total`             | `bom_validate`, `detect`        | `detected_bom`, `expected_encoding`, `action` | When BOM mismatch detected                            |
+| Metric                                       | Must Emit From                  | Labels Required                               | When to Emit                                      |
+| -------------------------------------------- | ------------------------------- | --------------------------------------------- | ------------------------------------------------- |
+| `fulencode_operation_duration_seconds`       | All operations                  | `operation`, `format`, `result`               | Start of operation (use timer/context manager)    |
+| `fulencode_operation_total`                  | All operations                  | `operation`, `format`, `result`               | After operation completes (success or error)      |
+| `fulencode_bytes_processed_total`            | `encode`, `decode`              | `operation`, `direction`, `format`, `result`  | After processing input/output bytes               |
+| `fulencode_expansion_ratio_percent`          | `encode`, `decode`              | `operation`, `format`, `result`               | After operation (output_size / input_size)        |
+| `fulencode_detect_result_total`              | `detect`                        | `encoding`, `confidence`, `result`            | After detection completes                         |
+| `fulencode_detect_duration_seconds`          | `detect`                        | `sample_size_bucket`, `result`                | Start of detection (use timer)                    |
+| `fulencode_normalize_total`                  | `normalize`                     | `profile`, `result`                           | After normalization attempt                       |
+| `fulencode_normalize_semantic_changes_total` | `normalize` (NFKC/NFKD only)    | `profile`, `change_type`                      | When semantic change detected (ligatures, etc.)   |
+| `fulencode_security_violations_total`        | All operations                  | `type`, `operation`                           | **Immediately** when violation detected           |
+| `fulencode_corrections_total`                | `encode`, `decode`, `normalize` | `error_mode`, `error_type`                    | When correction applied (replace/fallback/ignore) |
+| `fulencode_bom_operations_total`             | `bom_*` functions               | `operation`, `bom_type`, `result`             | After BOM operation                               |
+| `fulencode_bom_mismatches_total`             | `bom_validate`, `detect`        | `detected_bom`, `expected_encoding`, `action` | When BOM mismatch detected                        |
 
-**Phase 1 (MVP) Required Metrics** (8 metrics):
+**Wave 1 (MVP) Required Metrics** (7 metrics):
 
-- ✅ `fulencode.operation.duration_seconds` - Core performance
-- ✅ `fulencode.operation.total` - Core volume
-- ✅ `fulencode.bytes.processed` - Data volume tracking
-- ✅ `fulencode.expansion.ratio` - Bomb detection
-- ✅ `fulencode.detect.result_total` - Detection outcomes
-- ✅ `fulencode.detect.duration_seconds` - Detection performance
-- ✅ `fulencode.normalize.total` - Normalization volume
-- ✅ `fulencode.security.violations_total` - **CRITICAL** security alerts
+- ✅ `fulencode_operation_duration_seconds` - Core performance
+- ✅ `fulencode_operation_total` - Core volume
+- ✅ `fulencode_bytes_processed_total` - Data volume tracking
+- ✅ `fulencode_expansion_ratio_percent` - Bomb detection
+- ✅ `fulencode_detect_result_total` - Detection outcomes
+- ✅ `fulencode_normalize_total` - Normalization volume
+- ✅ `fulencode_security_violations_total` - **CRITICAL** security alerts
 
-**Phase 2 Metrics** (4 metrics):
+**Wave 2 Metrics** (5 metrics):
 
-- ⏸️ `fulencode.normalize.semantic_changes_total` - Advanced normalization
-- ⏸️ `fulencode.corrections.total` - Error recovery tracking
-- ⏸️ `fulencode.bom.operations_total` - BOM handling volume
-- ⏸️ `fulencode.bom.mismatches_total` - BOM security
+- ⏸️ `fulencode_detect_duration_seconds` - Detection performance
+
+- ⏸️ `fulencode_normalize_semantic_changes_total` - Advanced normalization
+- ⏸️ `fulencode_corrections_total` - Error recovery tracking
+- ⏸️ `fulencode_bom_operations_total` - BOM handling volume
+- ⏸️ `fulencode_bom_mismatches_total` - BOM security
+
+**Wave 3 Metrics** (optional):
+
+- ⏸️ `fulencode_errors_total` - Error code distribution (emit after error taxonomy + label conventions stabilize)
 
 **Test Validation Pattern**:
 
@@ -3863,10 +3896,10 @@ def test_encode_emits_telemetry():
         fulencode.encode(b"test", "base64")
 
         # Assert required metrics present
-        assert "fulencode.operation.duration_seconds" in metrics
-        assert "fulencode.operation.total" in metrics
-        assert "fulencode.bytes.processed" in metrics
-        assert metrics["fulencode.operation.total"].labels["status"] == "success"
+        assert "fulencode_operation_duration_seconds" in metrics
+        assert "fulencode_operation_total" in metrics
+        assert "fulencode_bytes_processed_total" in metrics
+        assert metrics["fulencode_operation_total"].labels["result"] == "success"
 ```
 
 ### Complete Instrumentation Example
@@ -3888,28 +3921,33 @@ def decode_with_telemetry(data: bytes, format: str, options: dict):
 
         # Record success metrics
         duration = time.time() - start_time
-        telemetry.histogram("fulencode.operation.duration_seconds",
+        telemetry.histogram("fulencode_operation_duration_seconds",
                             duration,
-                            labels={**labels, "status": "success"})
-        telemetry.counter("fulencode.operation.total",
-                          labels={**labels, "status": "success"})
+                            labels={**labels, "result": "success"})
+        telemetry.counter("fulencode_operation_total",
+                          labels={**labels, "result": "success"})
 
         # Record data volume
-        telemetry.histogram("fulencode.bytes.processed",
+        telemetry.histogram("fulencode_bytes_processed_total",
                             len(data),
-                            labels={"direction": "decode", "format": format})
+                            labels={
+                                "operation": "decode",
+                                "direction": "in",
+                                "format": format,
+                                "result": "success",
+                            })
 
         # Record expansion ratio
         if result.output_size > 0:
             ratio = len(data) / result.output_size
-            telemetry.histogram("fulencode.expansion.ratio",
-                                ratio,
-                                labels={"operation": "decode", "format": format})
+            telemetry.histogram("fulencode_expansion_ratio_percent",
+                                ratio * 100,
+                                labels={"operation": "decode", "format": format, "result": "success"})
 
         # Record corrections if applied
         if result.corrections_applied > 0:
             error_mode = options.get("on_error", "strict")
-            telemetry.counter("fulencode.corrections.total",
+            telemetry.counter("fulencode_corrections_total",
                               result.corrections_applied,
                               labels={"error_mode": error_mode, "error_type": "invalid_utf8"})
 
@@ -3918,16 +3956,16 @@ def decode_with_telemetry(data: bytes, format: str, options: dict):
     except FulencodeError as e:
         # Record error metrics
         duration = time.time() - start_time
-        telemetry.histogram("fulencode.operation.duration_seconds",
+        telemetry.histogram("fulencode_operation_duration_seconds",
                             duration,
-                            labels={**labels, "status": "error"})
-        telemetry.counter("fulencode.operation.total",
-                          labels={**labels, "status": "error"})
+                            labels={**labels, "result": "error"})
+        telemetry.counter("fulencode_operation_total",
+                          labels={**labels, "result": "error"})
 
         # Record security violations
         if e.code in ["INVALID_UTF8", "INVALID_UTF16", "ENCODING_BOMB",
                       "EXCESSIVE_COMBINING_MARKS", "ZERO_WIDTH_CHARACTER", "BOM_MISMATCH"]:
-            telemetry.counter("fulencode.security.violations_total",
+            telemetry.counter("fulencode_security_violations_total",
                               labels={"type": e.code.lower(), "operation": "decode"})
 
         raise
@@ -3937,20 +3975,20 @@ def decode_with_telemetry(data: bytes, format: str, options: dict):
 
 **Critical Alerts** (page immediately):
 
-- `fulencode.security.violations_total{type="encoding_bomb"}` > 0
-- `fulencode.security.violations_total{type="bom_mismatch"}` > 5/hour (possible attack)
-- `fulencode.operation.duration_seconds` p99 > 5.0 seconds (performance degradation)
+- `fulencode_security_violations_total{type="encoding_bomb"}` > 0
+- `fulencode_security_violations_total{type="bom_mismatch"}` > 5/hour (possible attack)
+- `fulencode_operation_duration_seconds` p99 > 5.0 seconds (performance degradation)
 
 **Warning Alerts** (notify on-call):
 
-- `fulencode.security.violations_total{type="invalid_utf8"}` > 100/hour (data quality issue)
-- `fulencode.corrections.total` > 1000/hour (many corrections being applied)
-- `fulencode.detect.result_total{confidence_bucket="low"}` > 50% of detections (ambiguous data)
+- `fulencode_security_violations_total{type="invalid_utf8"}` > 100/hour (data quality issue)
+- `fulencode_corrections_total` > 1000/hour (many corrections being applied)
+- `fulencode_detect_result_total{confidence="low"}` > 50% of detections (ambiguous data)
 
 **Info Alerts** (log only):
 
-- `fulencode.normalize.semantic_changes_total` > 100/day (tracking NFKC usage)
-- `fulencode.bom.operations_total{operation="correct"}` > 100/day (BOM issues common)
+- `fulencode_normalize_semantic_changes_total` > 100/day (tracking NFKC usage)
+- `fulencode_bom_operations_total{operation="correct"}` > 100/day (BOM issues common)
 
 ---
 

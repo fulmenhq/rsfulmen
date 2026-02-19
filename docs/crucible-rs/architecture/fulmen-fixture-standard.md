@@ -3,9 +3,9 @@ title: "Fulmen Fixture Standard"
 description: "Standard structure and requirements for Fulmen Fixture repositories - test infrastructure providing real-but-test-purpose servers, clients, and datastores"
 author: "Schema Cartographer (@schema-cartographer)"
 date: "2026-01-06"
-last_updated: "2026-01-08"
+last_updated: "2026-01-12"
 status: "active"
-tags: ["architecture", "fixture", "testing", "infrastructure", "v0.4.4"]
+tags: ["architecture", "fixture", "testing", "infrastructure", "v0.4.6"]
 ---
 
 # Fulmen Fixture Standard
@@ -416,6 +416,77 @@ func main() {
 }
 ```
 
+## OpenAPI Publication
+
+Fixtures that expose HTTP endpoints MUST publish an OpenAPI specification to enable client generation, documentation, and contract testing.
+
+### Requirements
+
+| Requirement   | Level | Details                                       |
+| ------------- | ----- | --------------------------------------------- |
+| Generation    | MUST  | `make openapi` produces `dist/openapi.yaml`   |
+| Serving       | MUST  | `GET /openapi.yaml` returns the spec          |
+| Coverage test | MUST  | CI verifies spec covers all registered routes |
+| CI workflow   | MUST  | `make openapi` runs before `make test`        |
+
+### Build Artifact
+
+Fixtures MAY use either of these equivalent patterns:
+
+| Pattern        | Spec Location                    | Serving Mechanism               | Example  |
+| -------------- | -------------------------------- | ------------------------------- | -------- |
+| Build artifact | `dist/openapi.yaml`              | Read from filesystem at runtime | gauntlet |
+| Embedded       | `internal/handlers/openapi.yaml` | `//go:embed` into binary        | rampart  |
+
+Both patterns are acceptable as long as:
+
+- `GET /openapi.yaml` returns a deterministic, complete spec
+- The coverage test validates the published contract
+- `make openapi` generates/updates the spec; `make build` SHOULD depend on `openapi`
+
+### Coverage Testing
+
+Fixtures MUST include an automated coverage test that compares registered routes against the OpenAPI spec. See [ADR-0014: OpenAPI Spec Coverage Tests](decisions/ADR-0014-openapi-spec-coverage.md) for rationale and implementation patterns.
+
+The coverage test:
+
+1. Parses registered routes from the router source-of-truth
+2. Parses `paths` + methods from the generated spec
+3. Fails if any route is missing from the spec (unless explicitly excluded)
+
+**Intentional exclusions**: Maintainers MAY exclude experimental, internal, or self-referential endpoints (e.g., `/openapi.yaml` itself). All "going concern" endpoints intended for consumer use SHOULD be documented.
+
+### Release Assets
+
+Repository maintainers SHOULD decide whether the OpenAPI spec belongs in release assets (`dist/release/`). If included:
+
+- Copy `dist/openapi.yaml` to `dist/release/openapi.yaml` during `make release-prepare`
+- The spec becomes a signed release artifact alongside binaries
+- Document availability in release notes
+
+### Provenance Metadata
+
+OpenAPI specs SHOULD include provenance using the standard `info.x-*` extension mechanism (does NOT break OpenAPI tooling):
+
+```yaml
+openapi: "3.1.0"
+info:
+  title: "Rampart HTTP Testing Fixture"
+  version: "1.0.0"
+  x-generated-by: "swaggo/swag"
+  x-generated-at: "2026-01-12T10:00:00Z"
+  x-source-repo: "github.com/fulmenhq/fixture-server-proving-rampart"
+  x-crucible-version: "0.4.6"
+```
+
+Do NOT add YAML frontmatter or comments before the `openapi:` key—this breaks spec parsers.
+
+### Related Documentation
+
+- [ADR-0014: OpenAPI Spec Coverage Tests](decisions/ADR-0014-openapi-spec-coverage.md) - Decision rationale
+- [HTTP Server Patterns Guide](../guides/testing/http-server-patterns.md) - Implementation patterns
+- [HTTP REST Standard](../standards/protocol/http-rest-standards.md) - HTTP API conventions
+
 ## Port Management Tiers
 
 Fixtures operate at different complexity levels for port management. Choose the tier appropriate for your fixture.
@@ -762,6 +833,8 @@ Each scenario should document:
 - [Fulmen Ecosystem Guide](./fulmen-ecosystem-guide.md)
 - [Fulmen Forge Workhorse Standard](./fulmen-forge-workhorse-standard.md) - Layer 2 peer
 - [Fulmen Forge Microtool Standard](./fulmen-forge-microtool-standard.md) - Similar constraints model
+- [HTTP Server Patterns Guide](../guides/testing/http-server-patterns.md) - Implementation patterns and compliance checklists for fixture authors
+- [HTTP Client Patterns Guide](../guides/testing/http-client-patterns.md) - Testing patterns for fixture consumers
 
 ---
 

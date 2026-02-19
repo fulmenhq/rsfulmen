@@ -425,6 +425,8 @@ func Process(ctx context.Context, target string, config Config) (*Result, error)
 
 ## 8. Common Anti-Patterns to Avoid
 
+**See also**: [HTTP Server Patterns Guide](../../guides/testing/http-server-patterns.md) for HTTP-specific anti-patterns derived from rampart/gauntlet fixture development (json.Encoder handling, response body close, context cancellation in delay handlers).
+
 ### 8.1 Output Contamination
 
 ```go

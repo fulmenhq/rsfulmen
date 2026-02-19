@@ -66,6 +66,40 @@ Comprehensive guide to creating new Fulmen helper libraries following ecosystem 
 
 **When to use**: Creating a new helper library (gofulmen, pyfulmen, tsfulmen) or extending the Fulmen ecosystem.
 
+### Testing
+
+Testing guides serve as **compliance routing documents** - they direct you to normative standards and provide practical checklists for implementation and review.
+
+#### [HTTP Server Patterns](testing/http-server-patterns.md)
+
+Patterns for HTTP server and fixture implementations with compliance routing.
+
+**Topics**:
+
+- Compliance requirements (which standards apply)
+- Go HTTP handler anti-patterns (json.Encoder, closeBody, context cancellation)
+- Correlation ID propagation
+- Streaming correctness and determinism
+- Fixture author conformance checklist
+
+**When to use**: Building HTTP servers, fixtures, or reviewing server-side code.
+
+#### [HTTP Client Patterns](testing/http-client-patterns.md)
+
+Patterns for HTTP client library and middleware testing.
+
+**Topics**:
+
+- Timeout testing (connect vs header vs body tiers)
+- Redirect handling and loop detection
+- Retry and backoff behavior
+- Auth failure handling (401 vs 403)
+- Using rampart/gauntlet fixtures for integration tests
+
+**When to use**: Testing HTTP clients, middleware, or proxies.
+
+See [Testing Guides Index](testing/README.md) for the full testing guides family.
+
 ## Quick Reference
 
 ### By Task
@@ -74,6 +108,8 @@ Comprehensive guide to creating new Fulmen helper libraries following ecosystem 
 - **Integrating Crucible**: Start with [Integration Guide](integration-guide.md)
 - **Setting up formatting/linting**: See [Bootstrap goneat](bootstrap-goneat.md)
 - **Creating a new library**: Follow [Fulmen Library Bootstrap Guide](fulmen-library-bootstrap-guide.md)
+- **Building HTTP servers/fixtures**: See [HTTP Server Patterns](testing/http-server-patterns.md)
+- **Testing HTTP clients**: See [HTTP Client Patterns](testing/http-client-patterns.md)
 
 ### By Role
 

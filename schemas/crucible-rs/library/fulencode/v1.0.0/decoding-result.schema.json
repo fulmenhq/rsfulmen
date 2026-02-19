@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/library/fulencode/v1.0.0/decoding-result.schema.json",
+  "title": "Fulencode Decoding Result",
+  "description": "Result payload for fulencode decode()",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 255
+      }
+    },
+    "format": {
+      "type": "string",
+      "enum": [
+        "base64",
+        "base64url",
+        "base64_raw",
+        "base32",
+        "base32hex",
+        "hex",
+        "utf-8",
+        "utf-16le",
+        "utf-16be",
+        "iso-8859-1",
+        "cp1252",
+        "ascii"
+      ]
+    },
+    "input_size": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "output_size": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "checksum": {
+      "type": "string"
+    },
+    "checksum_verified": {
+      "type": "boolean"
+    },
+    "checksum_algorithm": {
+      "type": "string"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "corrections_applied": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": [
+    "data",
+    "format",
+    "input_size",
+    "output_size",
+    "warnings",
+    "corrections_applied"
+  ],
+  "additionalProperties": false
+}

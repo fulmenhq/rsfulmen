@@ -1,0 +1,259 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.3leaps.dev/classifiers/v0/dimension-definition.schema.json",
+  "title": "Classifier Dimension Definition",
+  "description": "Meta-schema for defining classifier dimensions. Dimensions are orthogonal classification axes that can be applied to datasets, artifacts, or other entities.",
+  "type": "object",
+  "required": ["key", "name", "version", "status", "type", "description"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "format": "uri",
+      "description": "Reference to this meta-schema"
+    },
+    "key": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "minLength": 2,
+      "maxLength": 32,
+      "description": "Machine-readable dimension identifier (lowercase, hyphens allowed)"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Human-readable dimension name"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Semantic version of the dimension definition"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "review", "stable", "deprecated"],
+      "description": "Lifecycle status of the dimension"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["categorical", "sortable", "numeric", "boolean"],
+      "description": "Dimension value type: categorical (unordered), sortable (ordered), numeric (continuous), boolean"
+    },
+    "cardinality": {
+      "type": "string",
+      "enum": ["single", "multiple"],
+      "default": "single",
+      "description": "Whether entities can have one or multiple values for this dimension"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 512,
+      "description": "Purpose and usage of this dimension"
+    },
+    "categorical": {
+      "$ref": "#/$defs/categorical_config",
+      "description": "Configuration for categorical dimensions"
+    },
+    "sortable": {
+      "$ref": "#/$defs/sortable_config",
+      "description": "Configuration for sortable (ordered) dimensions"
+    },
+    "transitions": {
+      "$ref": "#/$defs/transitions",
+      "description": "Valid state transitions between dimension values"
+    },
+    "governance": {
+      "$ref": "#/$defs/governance",
+      "description": "Ownership and review metadata"
+    },
+    "examples": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/example"
+      },
+      "description": "Usage examples"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "categorical_config": {
+      "type": "object",
+      "required": ["values"],
+      "properties": {
+        "values": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/categorical_value"
+          },
+          "minItems": 2,
+          "description": "Allowed values for this dimension"
+        },
+        "index_strategy": {
+          "$ref": "#/$defs/index_strategy",
+          "description": "Ordering and indexing configuration"
+        }
+      },
+      "additionalProperties": false
+    },
+    "categorical_value": {
+      "type": "object",
+      "required": ["key", "label", "description", "order"],
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "description": "Machine-readable value identifier"
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-readable display label"
+        },
+        "description": {
+          "type": "string",
+          "description": "Brief description of this value"
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Sort order (lower = first)"
+        },
+        "is_none": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this represents a null/none/default state"
+        },
+        "synonyms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Alternative names that map to this value"
+        }
+      },
+      "additionalProperties": false
+    },
+    "sortable_config": {
+      "type": "object",
+      "required": ["scale", "ordered_values"],
+      "properties": {
+        "scale": {
+          "type": "string",
+          "enum": ["ordinal", "interval", "ratio"],
+          "description": "Measurement scale type"
+        },
+        "order_direction": {
+          "type": "string",
+          "enum": ["asc", "desc"],
+          "default": "asc",
+          "description": "Default sort direction"
+        },
+        "ordered_values": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/categorical_value"
+          },
+          "minItems": 2,
+          "description": "Values in their natural order"
+        }
+      },
+      "additionalProperties": false
+    },
+    "index_strategy": {
+      "type": "object",
+      "properties": {
+        "default_order": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Default sort order of value keys"
+        },
+        "ordinal_mapping": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "description": "Numeric ordinal for each value key"
+        },
+        "missing_handling": {
+          "type": "string",
+          "enum": ["use_default", "error", "skip"],
+          "default": "use_default",
+          "description": "How to handle missing values"
+        },
+        "sentinel": {
+          "type": "integer",
+          "description": "Ordinal value for missing/unknown"
+        }
+      },
+      "additionalProperties": false
+    },
+    "transitions": {
+      "type": "object",
+      "properties": {
+        "downgrade": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Valid downgrade paths (e.g., '4-personal->2-blinded')"
+        },
+        "upgrade": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Valid upgrade paths"
+        }
+      },
+      "additionalProperties": false
+    },
+    "governance": {
+      "type": "object",
+      "properties": {
+        "owner": {
+          "type": "string",
+          "description": "Owning team or individual"
+        },
+        "reviewers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Required reviewers for changes"
+        },
+        "review_cycle": {
+          "type": "string",
+          "enum": ["monthly", "quarterly", "semiannual", "annual"],
+          "description": "Review cadence"
+        },
+        "last_updated": {
+          "type": "string",
+          "format": "date",
+          "description": "Last review/update date"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "dataset": {
+          "type": "string",
+          "description": "Dataset identifier"
+        },
+        "path": {
+          "type": "string",
+          "description": "File path"
+        },
+        "value": {
+          "type": "string",
+          "description": "Dimension value"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

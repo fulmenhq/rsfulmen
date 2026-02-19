@@ -21,6 +21,15 @@ Crucible serves as the single source of truth (SSOT) for schemas, standards, con
 
 **Current Implementation**: Dual distribution model—published packages for runtime use, pull scripts for build-time integration. See [Pull Script README](../../scripts/pull/README.md) for usage.
 
+### Bidirectional Relationship
+
+**Important**: This ADR focuses on how fulmenhq/crucible distributes assets TO downstream consumers. For how this repository RECEIVES content FROM upstream sources (3leaps/crucible), see [Upstream Sync Consumer Guide](../ops/upstream-sync-consumer.md).
+
+fulmenhq/crucible has a dual role:
+
+- **Consumer**: Receives vendored schemas from 3leaps/crucible via `make upstream-sync-3leaps`
+- **Producer**: Distributes combined assets to downstream via published packages and pull scripts
+
 ### Requirements
 
 1. **Flexibility**: Downstream repos need control over what they sync and when

@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/library/fulencode/v1.0.0/decode-options.schema.json",
+  "title": "Fulencode Decode Options",
+  "description": "Options for fulencode decode() operation",
+  "type": "object",
+  "properties": {
+    "verify_checksum": {
+      "type": "boolean",
+      "description": "Verify embedded checksum when present."
+    },
+    "compute_checksum": {
+      "type": "string",
+      "description": "Checksum algorithm to compute on decoded output.",
+      "enum": [
+        "xxh3-128",
+        "sha256",
+        "sha512",
+        "sha1",
+        "md5"
+      ]
+    },
+    "max_decoded_size": {
+      "type": "integer",
+      "description": "Maximum decoded output size in bytes.",
+      "minimum": 1024
+    },
+    "max_expansion_ratio": {
+      "type": "number",
+      "description": "Maximum decode expansion ratio (encoding bomb protection).",
+      "minimum": 1.0
+    },
+    "on_error": {
+      "type": "string",
+      "description": "Error handling mode.",
+      "enum": [
+        "strict",
+        "replace",
+        "ignore",
+        "fallback"
+      ]
+    },
+    "fallback_formats": {
+      "type": "array",
+      "description": "Fallback formats to attempt when on_error is fallback.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ignore_whitespace": {
+      "type": "boolean",
+      "description": "Ignore ASCII whitespace in encoded input when supported."
+    },
+    "validate_padding": {
+      "type": "boolean",
+      "description": "Require correct padding when supported."
+    }
+  },
+  "additionalProperties": false
+}

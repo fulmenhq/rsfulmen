@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.3leaps.dev/foundation/v0/types.schema.json",
+  "title": "3leaps Foundation Types",
+  "description": "Shared type definitions used across 3leaps and partner ecosystem schemas. Import via $ref.",
+  "$defs": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+      "minLength": 2,
+      "maxLength": 64,
+      "description": "URL-safe lowercase identifier with hyphens",
+      "examples": ["my-project", "api-gateway", "user-service"]
+    },
+    "slugRef": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+      "description": "Reference to a slug defined elsewhere"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp with timezone (UTC preferred)",
+      "examples": ["2024-12-16T14:30:00Z", "2024-12-16T09:30:00-05:00"]
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$",
+      "description": "Semantic version string (SemVer 2.0.0)",
+      "examples": ["1.0.0", "2.1.0-beta.1", "18.1.3+build.456"]
+    },
+    "versionConstraint": {
+      "type": "string",
+      "pattern": "^(>=?|<=?|=|~|\\^)?\\d+(\\.\\d+)?(\\.\\d+)?$",
+      "description": "Version constraint for dependency resolution",
+      "examples": [">=1.0.0", "^2.0.0", "~18.1.0", "=3.0.0"]
+    },
+    "schemaVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of a schema this document conforms to",
+      "examples": ["1.0.0", "2.1.0"]
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https?://",
+      "description": "HTTP or HTTPS URL",
+      "examples": ["https://example.com", "http://localhost:8000"]
+    },
+    "hostname": {
+      "type": "string",
+      "format": "hostname",
+      "description": "Valid DNS hostname",
+      "examples": ["app.example.com", "api-01.internal"]
+    },
+    "domainName": {
+      "type": "string",
+      "pattern": "^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}$",
+      "description": "Fully qualified domain name",
+      "examples": ["example.com", "app.mycompany.io"]
+    },
+    "port": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535,
+      "description": "TCP/UDP port number"
+    },
+    "ipv4Address": {
+      "type": "string",
+      "format": "ipv4",
+      "description": "IPv4 address",
+      "examples": ["192.168.1.1", "10.0.0.1"]
+    },
+    "ipv6Address": {
+      "type": "string",
+      "format": "ipv6",
+      "description": "IPv6 address"
+    },
+    "cidrBlock": {
+      "type": "string",
+      "pattern": "^([0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]{1,2}$",
+      "description": "IPv4 CIDR notation",
+      "examples": ["10.0.0.0/8", "192.168.1.0/24", "0.0.0.0/0"]
+    },
+    "emailAddress": {
+      "type": "string",
+      "format": "email",
+      "description": "Email address"
+    },
+    "filePath": {
+      "type": "string",
+      "pattern": "^/[^\\0]*$",
+      "description": "Absolute POSIX file path",
+      "examples": ["/etc/config.yaml", "/var/lib/data"]
+    },
+    "relativePath": {
+      "type": "string",
+      "pattern": "^\\.?/?[^\\0]+$",
+      "description": "Relative file path (may start with ./ or just filename)",
+      "examples": ["./config.yaml", "configs/main.yaml", "../shared/base.yaml"]
+    },
+    "anyPath": {
+      "type": "string",
+      "pattern": "^(\\.?/)?[^\\0]+$",
+      "description": "File path (absolute or relative)",
+      "examples": ["/etc/config.yaml", "./config.yaml", "config.yaml"]
+    },
+    "sha256Hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA-256 hash with prefix",
+      "examples": ["sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"]
+    },
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1,
+      "description": "String that cannot be empty"
+    },
+    "positiveInteger": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Integer greater than zero"
+    },
+    "nonNegativeInteger": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Integer zero or greater"
+    },
+    "percentage": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Percentage value 0-100"
+    },
+    "durationSeconds": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Duration in seconds"
+    },
+    "durationMilliseconds": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Duration in milliseconds"
+    },
+    "byteSize": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Size in bytes"
+    },
+    "keyValuePair": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": ["key", "value"],
+      "additionalProperties": false
+    },
+    "labelSet": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "description": "Key-value labels for metadata and filtering"
+    },
+    "tagList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/slug"
+      },
+      "uniqueItems": true,
+      "description": "List of unique tag slugs"
+    },
+    "markdown": {
+      "type": "string",
+      "description": "Markdown-formatted text content"
+    }
+  }
+}

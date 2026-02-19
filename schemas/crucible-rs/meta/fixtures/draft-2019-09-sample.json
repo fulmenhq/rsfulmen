@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "http://example.com/schemas/draft-2019-09-sample.json",
+  "title": "Draft 2019-09 sample schema",
+  "$defs": {
+    "positiveInt": {
+      "type": "integer",
+      "minimum": 1
+    }
+  },
+  "type": "object",
+  "properties": {
+    "n": {
+      "$ref": "#/$defs/positiveInt"
+    }
+  },
+  "required": [
+    "n"
+  ],
+  "unevaluatedProperties": false
+}
