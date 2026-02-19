@@ -4,10 +4,13 @@
 //! schemas, config) and exposes SSOT sync metadata.
 //!
 //! This module is the foundation for docscribe, schema validation, and
-//! ecosystem version reporting.
+//! ecosystem version reporting. The [`roles`] submodule provides typed
+//! access to the agentic role catalog.
 
 use once_cell::sync::Lazy;
 use serde::Deserialize;
+
+pub mod roles;
 
 /// Asset categories.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
