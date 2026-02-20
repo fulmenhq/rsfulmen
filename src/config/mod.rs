@@ -31,6 +31,7 @@
 
 use std::path::PathBuf;
 
+pub mod env;
 #[cfg(feature = "three-layer-config")]
 pub mod three_layer;
 
