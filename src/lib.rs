@@ -118,9 +118,11 @@ pub mod fulencode;
 #[cfg_attr(docsrs, doc(cfg(feature = "foundry")))]
 pub mod foundry;
 
-/// Cross-platform signal helpers.
+/// Runtime signal handling plus signal catalog helpers.
 ///
-/// This is a convenience re-export of `rsfulmen::foundry::signals`.
+/// Re-exports all foundry signal catalog helpers (`lookup_signal`, constants,
+/// platform support metadata) and adds runtime handling primitives via
+/// [`signals::SignalManager`].
 #[cfg(any(
     feature = "foundry",
     feature = "foundry-core",
