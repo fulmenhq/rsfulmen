@@ -19,6 +19,7 @@
 //! | [`signals`] | Signal definitions and platform support | ✅ |
 //! | [`mime_types`] | Common MIME types | ✅ (`foundry-mime-types`) |
 //! | [`patterns`] | Validated regex patterns | ✅ (`foundry-patterns`) |
+//! | [`correlation`] | UUIDv7 correlation ID helpers | ✅ (`foundry-correlation`) |
 //! | [`similarity`] | Text similarity + "did you mean?" helpers | ✅ (`similarity`) |
 //!
 //! ## Example
@@ -47,6 +48,9 @@ pub mod mime_types;
 
 #[cfg(feature = "foundry-patterns")]
 pub mod patterns;
+
+#[cfg(feature = "foundry-correlation")]
+pub mod correlation;
 
 // Compatibility re-export for older callers.
 #[cfg(feature = "similarity")]

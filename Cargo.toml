@@ -25,9 +25,10 @@ default = ["foundry", "config", "crucible", "docscribe", "three-layer-config", "
 foundry-core = []
 foundry-mime-types = ["foundry-core", "dep:serde_json"]
 foundry-patterns = ["foundry-core", "dep:regex", "dep:glob"]
+foundry-correlation = ["foundry-core", "dep:uuid"]
 
 # Convenience: enable all foundry catalogs supported by this crate.
-foundry = ["foundry-core", "foundry-mime-types", "foundry-patterns"]
+foundry = ["foundry-core", "foundry-mime-types", "foundry-patterns", "foundry-correlation"]
 
 # Platform modules.
 config = ["dep:dirs"]
@@ -97,6 +98,7 @@ xxhash-rust = { version = "0.8", features = ["xxh3"], optional = true }
 sha2 = { version = "0.10", optional = true }
 hex = { version = "0.4", optional = true }
 base64 = { version = "0.22", optional = true }
+uuid = { version = "1", features = ["v7"], optional = true }
 
 # Filesystem discovery (for pathfinder module)
 walkdir = { version = "2", optional = true }
