@@ -56,7 +56,7 @@ jobs:
     strategy:
       matrix:
         features:
-          - "" # no features
+          - ""  # no features
           - "config"
           - "foundry-core"
           - "foundry-mime-types"
