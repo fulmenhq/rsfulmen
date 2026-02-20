@@ -24,6 +24,7 @@
 //! - **fulhash** (default) - Canonical hashing (xxh3-128 + SHA-256)
 //! - **pathfinder** (default) - Safe filesystem discovery with glob patterns
 //! - **ascii** (default) - Terminal utilities + Unicode-aware string handling
+//! - **fulencode** (default) - Encoding/decoding, detection, normalization, BOM helpers
 //!
 //! ## Quick Start
 //!
@@ -93,6 +94,11 @@ pub mod pathfinder;
 #[cfg(feature = "ascii")]
 #[cfg_attr(docsrs, doc(cfg(feature = "ascii")))]
 pub mod ascii;
+
+/// Canonical encoding/decoding, detection, normalization, and BOM helpers.
+#[cfg(feature = "fulencode")]
+#[cfg_attr(docsrs, doc(cfg(feature = "fulencode")))]
+pub mod fulencode;
 
 /// Foundry catalog data structures.
 ///

@@ -19,7 +19,7 @@ path = "src/lib.rs"
 
 [features]
 # Keep default behavior for existing users.
-default = ["foundry", "config", "crucible", "docscribe", "three-layer-config", "schema-id", "schema-validation", "similarity", "error-handling", "telemetry-metrics", "appidentity", "logging", "fulhash", "pathfinder", "ascii"]
+default = ["foundry", "config", "crucible", "docscribe", "three-layer-config", "schema-id", "schema-validation", "similarity", "error-handling", "telemetry-metrics", "appidentity", "logging", "fulhash", "pathfinder", "ascii", "fulencode"]
 
 # Foundry feature groups (aligned to Crucible foundry-catalogs v1.1.0).
 foundry-core = []
@@ -39,6 +39,9 @@ fulhash = ["dep:xxhash-rust", "dep:sha2", "dep:hex"]
 
 # Safe filesystem discovery with glob patterns.
 pathfinder = ["dep:walkdir", "dep:sha2", "dep:hex", "dep:glob"]
+
+# Encoding/decoding + normalization helpers.
+fulencode = ["dep:base64", "dep:hex", "dep:unicode-normalization"]
 
 # Terminal utilities and Unicode-aware string handling.
 ascii = ["dep:unicode-width", "dep:unicode-segmentation"]
@@ -62,7 +65,7 @@ error-handling = ["dep:serde_json"]
 telemetry-metrics = ["dep:serde_json"]
 
 # Everything.
-full = ["foundry", "config", "crucible", "docscribe", "schema-validation", "similarity", "error-handling", "telemetry-metrics", "appidentity", "logging", "fulhash", "pathfinder", "ascii"]
+full = ["foundry", "config", "crucible", "docscribe", "schema-validation", "similarity", "error-handling", "telemetry-metrics", "appidentity", "logging", "fulhash", "pathfinder", "ascii", "fulencode"]
 
 [dependencies]
 # Serialization
@@ -93,6 +96,7 @@ unicode-segmentation = { version = "1.10", optional = true }
 xxhash-rust = { version = "0.8", features = ["xxh3"], optional = true }
 sha2 = { version = "0.10", optional = true }
 hex = { version = "0.4", optional = true }
+base64 = { version = "0.22", optional = true }
 
 # Filesystem discovery (for pathfinder module)
 walkdir = { version = "2", optional = true }
