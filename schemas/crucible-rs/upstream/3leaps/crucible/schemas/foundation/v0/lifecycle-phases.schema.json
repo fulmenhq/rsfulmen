@@ -23,7 +23,10 @@
       "minItems": 1
     }
   },
-  "required": ["version", "phases"],
+  "required": [
+    "version",
+    "phases"
+  ],
   "additionalProperties": false,
   "$defs": {
     "phase": {
@@ -54,16 +57,35 @@
         },
         "pr_policy": {
           "type": "string",
-          "enum": ["none", "internal", "invited", "community", "critical-only"],
+          "enum": [
+            "none",
+            "internal",
+            "invited",
+            "community",
+            "critical-only"
+          ],
           "description": "Pull request acceptance policy"
         },
         "stability": {
           "type": "string",
-          "enum": ["unstable", "stabilizing", "stable", "frozen"],
+          "enum": [
+            "unstable",
+            "stabilizing",
+            "stable",
+            "frozen"
+          ],
           "description": "API/schema stability expectation"
         }
       },
-      "required": ["id", "order", "label", "description", "badge", "pr_policy", "stability"],
+      "required": [
+        "id",
+        "order",
+        "label",
+        "description",
+        "badge",
+        "pr_policy",
+        "stability"
+      ],
       "additionalProperties": false
     },
     "badge": {
@@ -80,7 +102,10 @@
           "description": "Pre-built badge URL"
         }
       },
-      "required": ["color", "url"],
+      "required": [
+        "color",
+        "url"
+      ],
       "additionalProperties": false
     },
     "phase_id": {

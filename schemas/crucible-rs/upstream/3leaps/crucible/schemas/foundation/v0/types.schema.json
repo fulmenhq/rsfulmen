@@ -10,7 +10,11 @@
       "minLength": 2,
       "maxLength": 64,
       "description": "URL-safe lowercase identifier with hyphens",
-      "examples": ["my-project", "api-gateway", "user-service"]
+      "examples": [
+        "my-project",
+        "api-gateway",
+        "user-service"
+      ]
     },
     "slugRef": {
       "type": "string",
@@ -21,44 +25,68 @@
       "type": "string",
       "format": "date-time",
       "description": "ISO 8601 timestamp with timezone (UTC preferred)",
-      "examples": ["2024-12-16T14:30:00Z", "2024-12-16T09:30:00-05:00"]
+      "examples": [
+        "2024-12-16T14:30:00Z",
+        "2024-12-16T09:30:00-05:00"
+      ]
     },
     "semver": {
       "type": "string",
       "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$",
       "description": "Semantic version string (SemVer 2.0.0)",
-      "examples": ["1.0.0", "2.1.0-beta.1", "18.1.3+build.456"]
+      "examples": [
+        "1.0.0",
+        "2.1.0-beta.1",
+        "18.1.3+build.456"
+      ]
     },
     "versionConstraint": {
       "type": "string",
       "pattern": "^(>=?|<=?|=|~|\\^)?\\d+(\\.\\d+)?(\\.\\d+)?$",
       "description": "Version constraint for dependency resolution",
-      "examples": [">=1.0.0", "^2.0.0", "~18.1.0", "=3.0.0"]
+      "examples": [
+        ">=1.0.0",
+        "^2.0.0",
+        "~18.1.0",
+        "=3.0.0"
+      ]
     },
     "schemaVersion": {
       "type": "string",
       "pattern": "^\\d+\\.\\d+\\.\\d+$",
       "description": "Semantic version of a schema this document conforms to",
-      "examples": ["1.0.0", "2.1.0"]
+      "examples": [
+        "1.0.0",
+        "2.1.0"
+      ]
     },
     "url": {
       "type": "string",
       "format": "uri",
       "pattern": "^https?://",
       "description": "HTTP or HTTPS URL",
-      "examples": ["https://example.com", "http://localhost:8000"]
+      "examples": [
+        "https://example.com",
+        "http://localhost:8000"
+      ]
     },
     "hostname": {
       "type": "string",
       "format": "hostname",
       "description": "Valid DNS hostname",
-      "examples": ["app.example.com", "api-01.internal"]
+      "examples": [
+        "app.example.com",
+        "api-01.internal"
+      ]
     },
     "domainName": {
       "type": "string",
       "pattern": "^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}$",
       "description": "Fully qualified domain name",
-      "examples": ["example.com", "app.mycompany.io"]
+      "examples": [
+        "example.com",
+        "app.mycompany.io"
+      ]
     },
     "port": {
       "type": "integer",
@@ -70,7 +98,10 @@
       "type": "string",
       "format": "ipv4",
       "description": "IPv4 address",
-      "examples": ["192.168.1.1", "10.0.0.1"]
+      "examples": [
+        "192.168.1.1",
+        "10.0.0.1"
+      ]
     },
     "ipv6Address": {
       "type": "string",
@@ -81,7 +112,11 @@
       "type": "string",
       "pattern": "^([0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]{1,2}$",
       "description": "IPv4 CIDR notation",
-      "examples": ["10.0.0.0/8", "192.168.1.0/24", "0.0.0.0/0"]
+      "examples": [
+        "10.0.0.0/8",
+        "192.168.1.0/24",
+        "0.0.0.0/0"
+      ]
     },
     "emailAddress": {
       "type": "string",
@@ -92,25 +127,38 @@
       "type": "string",
       "pattern": "^/[^\\0]*$",
       "description": "Absolute POSIX file path",
-      "examples": ["/etc/config.yaml", "/var/lib/data"]
+      "examples": [
+        "/etc/config.yaml",
+        "/var/lib/data"
+      ]
     },
     "relativePath": {
       "type": "string",
       "pattern": "^\\.?/?[^\\0]+$",
       "description": "Relative file path (may start with ./ or just filename)",
-      "examples": ["./config.yaml", "configs/main.yaml", "../shared/base.yaml"]
+      "examples": [
+        "./config.yaml",
+        "configs/main.yaml",
+        "../shared/base.yaml"
+      ]
     },
     "anyPath": {
       "type": "string",
       "pattern": "^(\\.?/)?[^\\0]+$",
       "description": "File path (absolute or relative)",
-      "examples": ["/etc/config.yaml", "./config.yaml", "config.yaml"]
+      "examples": [
+        "/etc/config.yaml",
+        "./config.yaml",
+        "config.yaml"
+      ]
     },
     "sha256Hash": {
       "type": "string",
       "pattern": "^sha256:[a-f0-9]{64}$",
       "description": "SHA-256 hash with prefix",
-      "examples": ["sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"]
+      "examples": [
+        "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ]
     },
     "nonEmptyString": {
       "type": "string",
@@ -158,7 +206,10 @@
           "type": "string"
         }
       },
-      "required": ["key", "value"],
+      "required": [
+        "key",
+        "value"
+      ],
       "additionalProperties": false
     },
     "labelSet": {

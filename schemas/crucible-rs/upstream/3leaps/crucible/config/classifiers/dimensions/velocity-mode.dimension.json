@@ -15,7 +15,9 @@
         "description": "Velocity mode not yet classified; must be classified before pipeline design.",
         "order": 0,
         "is_none": false,
-        "synonyms": ["unclassified"]
+        "synonyms": [
+          "unclassified"
+        ]
       },
       {
         "key": "batch",
@@ -23,7 +25,10 @@
         "description": "Scheduled batch processing; data at rest, periodic execution.",
         "order": 1,
         "is_none": true,
-        "synonyms": ["scheduled", "periodic"]
+        "synonyms": [
+          "scheduled",
+          "periodic"
+        ]
       },
       {
         "key": "micro-batch",
@@ -31,7 +36,9 @@
         "description": "Frequent small batches (minutes); near-real-time with batch semantics.",
         "order": 2,
         "is_none": false,
-        "synonyms": ["mini-batch"]
+        "synonyms": [
+          "mini-batch"
+        ]
       },
       {
         "key": "streaming",
@@ -39,7 +46,10 @@
         "description": "Event-driven continuous processing; data in motion, sub-second latency.",
         "order": 3,
         "is_none": false,
-        "synonyms": ["real-time", "continuous"]
+        "synonyms": [
+          "real-time",
+          "continuous"
+        ]
       },
       {
         "key": "hybrid",
@@ -47,11 +57,20 @@
         "description": "Combined batch and streaming; lambda/kappa architecture patterns.",
         "order": 4,
         "is_none": false,
-        "synonyms": ["lambda", "kappa"]
+        "synonyms": [
+          "lambda",
+          "kappa"
+        ]
       }
     ],
     "index_strategy": {
-      "default_order": ["unknown", "batch", "micro-batch", "streaming", "hybrid"],
+      "default_order": [
+        "unknown",
+        "batch",
+        "micro-batch",
+        "streaming",
+        "hybrid"
+      ],
       "ordinal_mapping": {
         "unknown": 0,
         "batch": 1,
@@ -65,7 +84,10 @@
   },
   "governance": {
     "owner": "3leaps-core",
-    "reviewers": ["platform", "data-engineering"],
+    "reviewers": [
+      "platform",
+      "data-engineering"
+    ],
     "review_cycle": "semiannual",
     "last_updated": "2026-01-22"
   },

@@ -4,7 +4,14 @@
   "title": "Classifier Dimension Definition",
   "description": "Meta-schema for defining classifier dimensions. Dimensions are orthogonal classification axes that can be applied to datasets, artifacts, or other entities.",
   "type": "object",
-  "required": ["key", "name", "version", "status", "type", "description"],
+  "required": [
+    "key",
+    "name",
+    "version",
+    "status",
+    "type",
+    "description"
+  ],
   "properties": {
     "$schema": {
       "type": "string",
@@ -31,17 +38,30 @@
     },
     "status": {
       "type": "string",
-      "enum": ["draft", "review", "stable", "deprecated"],
+      "enum": [
+        "draft",
+        "review",
+        "stable",
+        "deprecated"
+      ],
       "description": "Lifecycle status of the dimension"
     },
     "type": {
       "type": "string",
-      "enum": ["categorical", "sortable", "numeric", "boolean"],
+      "enum": [
+        "categorical",
+        "sortable",
+        "numeric",
+        "boolean"
+      ],
       "description": "Dimension value type: categorical (unordered), sortable (ordered), numeric (continuous), boolean"
     },
     "cardinality": {
       "type": "string",
-      "enum": ["single", "multiple"],
+      "enum": [
+        "single",
+        "multiple"
+      ],
       "default": "single",
       "description": "Whether entities can have one or multiple values for this dimension"
     },
@@ -79,7 +99,9 @@
   "$defs": {
     "categorical_config": {
       "type": "object",
-      "required": ["values"],
+      "required": [
+        "values"
+      ],
       "properties": {
         "values": {
           "type": "array",
@@ -98,7 +120,12 @@
     },
     "categorical_value": {
       "type": "object",
-      "required": ["key", "label", "description", "order"],
+      "required": [
+        "key",
+        "label",
+        "description",
+        "order"
+      ],
       "properties": {
         "key": {
           "type": "string",
@@ -135,16 +162,26 @@
     },
     "sortable_config": {
       "type": "object",
-      "required": ["scale", "ordered_values"],
+      "required": [
+        "scale",
+        "ordered_values"
+      ],
       "properties": {
         "scale": {
           "type": "string",
-          "enum": ["ordinal", "interval", "ratio"],
+          "enum": [
+            "ordinal",
+            "interval",
+            "ratio"
+          ],
           "description": "Measurement scale type"
         },
         "order_direction": {
           "type": "string",
-          "enum": ["asc", "desc"],
+          "enum": [
+            "asc",
+            "desc"
+          ],
           "default": "asc",
           "description": "Default sort direction"
         },
@@ -178,7 +215,11 @@
         },
         "missing_handling": {
           "type": "string",
-          "enum": ["use_default", "error", "skip"],
+          "enum": [
+            "use_default",
+            "error",
+            "skip"
+          ],
           "default": "use_default",
           "description": "How to handle missing values"
         },
@@ -225,7 +266,12 @@
         },
         "review_cycle": {
           "type": "string",
-          "enum": ["monthly", "quarterly", "semiannual", "annual"],
+          "enum": [
+            "monthly",
+            "quarterly",
+            "semiannual",
+            "annual"
+          ],
           "description": "Review cadence"
         },
         "last_updated": {
@@ -238,7 +284,9 @@
     },
     "example": {
       "type": "object",
-      "required": ["value"],
+      "required": [
+        "value"
+      ],
       "properties": {
         "dataset": {
           "type": "string",

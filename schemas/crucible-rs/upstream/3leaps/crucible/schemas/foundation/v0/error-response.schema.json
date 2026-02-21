@@ -9,7 +9,12 @@
       "type": "string",
       "pattern": "^[A-Z][A-Z0-9_]*$",
       "description": "Machine-readable error code (uppercase with underscores)",
-      "examples": ["VALIDATION_ERROR", "NOT_FOUND", "AUTHENTICATION_FAILED", "RATE_LIMITED"]
+      "examples": [
+        "VALIDATION_ERROR",
+        "NOT_FOUND",
+        "AUTHENTICATION_FAILED",
+        "RATE_LIMITED"
+      ]
     },
     "message": {
       "type": "string",
@@ -24,7 +29,10 @@
     "path": {
       "type": "string",
       "description": "Path to the field or resource that caused the error",
-      "examples": ["$.config.port", "/api/v1/users/123"]
+      "examples": [
+        "$.config.port",
+        "/api/v1/users/123"
+      ]
     },
     "timestamp": {
       "type": "string",
@@ -36,7 +44,10 @@
       "description": "Correlation ID for tracing (if applicable)"
     }
   },
-  "required": ["code", "message"],
+  "required": [
+    "code",
+    "message"
+  ],
   "additionalProperties": false,
   "examples": [
     {

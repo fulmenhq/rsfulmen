@@ -15,7 +15,9 @@
         "description": "Retention not yet classified; must be classified before storage provisioning.",
         "order": 0,
         "is_none": false,
-        "synonyms": ["unclassified"]
+        "synonyms": [
+          "unclassified"
+        ]
       },
       {
         "key": "transient",
@@ -23,7 +25,10 @@
         "description": "Short-lived data (≤7 days); auto-deleted, no backup required.",
         "order": 1,
         "is_none": false,
-        "synonyms": ["ephemeral", "temp"]
+        "synonyms": [
+          "ephemeral",
+          "temp"
+        ]
       },
       {
         "key": "short",
@@ -31,7 +36,9 @@
         "description": "Short retention (≤90 days); routine cleanup, basic backup.",
         "order": 2,
         "is_none": false,
-        "synonyms": ["short-term"]
+        "synonyms": [
+          "short-term"
+        ]
       },
       {
         "key": "standard",
@@ -39,7 +46,9 @@
         "description": "Standard retention (≤2 years); regular backup, tiered storage.",
         "order": 3,
         "is_none": true,
-        "synonyms": ["default"]
+        "synonyms": [
+          "default"
+        ]
       },
       {
         "key": "long",
@@ -47,7 +56,10 @@
         "description": "Long retention (>2 years); archive storage, compliance backup.",
         "order": 4,
         "is_none": false,
-        "synonyms": ["long-term", "archive"]
+        "synonyms": [
+          "long-term",
+          "archive"
+        ]
       },
       {
         "key": "legal-hold",
@@ -55,11 +67,21 @@
         "description": "Indefinite retention; immutable, protected from deletion, chain of custody.",
         "order": 5,
         "is_none": false,
-        "synonyms": ["litigation-hold", "preservation"]
+        "synonyms": [
+          "litigation-hold",
+          "preservation"
+        ]
       }
     ],
     "index_strategy": {
-      "default_order": ["unknown", "transient", "short", "standard", "long", "legal-hold"],
+      "default_order": [
+        "unknown",
+        "transient",
+        "short",
+        "standard",
+        "long",
+        "legal-hold"
+      ],
       "ordinal_mapping": {
         "unknown": 0,
         "transient": 1,
@@ -88,7 +110,10 @@
   },
   "governance": {
     "owner": "3leaps-core",
-    "reviewers": ["compliance", "legal"],
+    "reviewers": [
+      "compliance",
+      "legal"
+    ],
     "review_cycle": "semiannual",
     "last_updated": "2026-01-22"
   },

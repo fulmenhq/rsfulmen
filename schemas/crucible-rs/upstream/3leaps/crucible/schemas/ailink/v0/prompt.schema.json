@@ -4,7 +4,12 @@
   "title": "AILink Prompt Configuration",
   "description": "Schema for AILink prompt configuration files. Prompts define how AI backends process requests, including input variables, tools, and response validation.",
   "type": "object",
-  "required": ["slug", "name", "description", "version"],
+  "required": [
+    "slug",
+    "name",
+    "description",
+    "version"
+  ],
   "properties": {
     "slug": {
       "type": "string",
@@ -69,7 +74,12 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["image/png", "image/jpeg", "image/webp", "image/gif"]
+            "enum": [
+              "image/png",
+              "image/jpeg",
+              "image/webp",
+              "image/gif"
+            ]
           },
           "description": "Accepted image MIME types (if accepts_images is true)"
         },
@@ -115,7 +125,9 @@
         },
         {
           "type": "object",
-          "required": ["$ref"],
+          "required": [
+            "$ref"
+          ],
           "properties": {
             "$ref": {
               "type": "string",
@@ -173,7 +185,9 @@
   "$defs": {
     "tool": {
       "type": "object",
-      "required": ["type"],
+      "required": [
+        "type"
+      ],
       "properties": {
         "type": {
           "type": "string",

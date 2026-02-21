@@ -47,7 +47,12 @@
     },
     "status": {
       "type": "string",
-      "enum": ["draft", "review", "approved", "deprecated"],
+      "enum": [
+        "draft",
+        "review",
+        "approved",
+        "deprecated"
+      ],
       "description": "Role prompt lifecycle status"
     },
     "category": {
@@ -205,7 +210,10 @@
   "$defs": {
     "escalation": {
       "type": "object",
-      "required": ["target", "when"],
+      "required": [
+        "target",
+        "when"
+      ],
       "properties": {
         "target": {
           "type": "string",
@@ -220,11 +228,19 @@
     },
     "example": {
       "type": "object",
-      "required": ["type", "content"],
+      "required": [
+        "type",
+        "content"
+      ],
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["commit", "review", "checklist", "other"],
+          "enum": [
+            "commit",
+            "review",
+            "checklist",
+            "other"
+          ],
           "description": "Type of example"
         },
         "title": {

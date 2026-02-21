@@ -15,7 +15,9 @@
         "description": "Stability not yet classified; must be classified before consumers adopt.",
         "order": 0,
         "is_none": false,
-        "synonyms": ["unclassified"]
+        "synonyms": [
+          "unclassified"
+        ]
       },
       {
         "key": "experimental",
@@ -23,7 +25,11 @@
         "description": "No stability guarantees; may change without notice.",
         "order": 1,
         "is_none": false,
-        "synonyms": ["alpha", "unstable", "preview"]
+        "synonyms": [
+          "alpha",
+          "unstable",
+          "preview"
+        ]
       },
       {
         "key": "evolving",
@@ -31,7 +37,10 @@
         "description": "Active development; additive changes expected, breaking changes with notice.",
         "order": 2,
         "is_none": false,
-        "synonyms": ["beta", "developing"]
+        "synonyms": [
+          "beta",
+          "developing"
+        ]
       },
       {
         "key": "stable",
@@ -39,7 +48,10 @@
         "description": "Production-ready; breaking changes require major version bump and deprecation period.",
         "order": 3,
         "is_none": true,
-        "synonyms": ["ga", "production"]
+        "synonyms": [
+          "ga",
+          "production"
+        ]
       },
       {
         "key": "frozen",
@@ -47,7 +59,10 @@
         "description": "No changes expected; security patches only.",
         "order": 4,
         "is_none": false,
-        "synonyms": ["locked", "maintenance-only"]
+        "synonyms": [
+          "locked",
+          "maintenance-only"
+        ]
       },
       {
         "key": "deprecated",
@@ -55,11 +70,21 @@
         "description": "Scheduled for removal; migration path documented.",
         "order": 5,
         "is_none": false,
-        "synonyms": ["sunset", "legacy"]
+        "synonyms": [
+          "sunset",
+          "legacy"
+        ]
       }
     ],
     "index_strategy": {
-      "default_order": ["unknown", "experimental", "evolving", "stable", "frozen", "deprecated"],
+      "default_order": [
+        "unknown",
+        "experimental",
+        "evolving",
+        "stable",
+        "frozen",
+        "deprecated"
+      ],
       "ordinal_mapping": {
         "unknown": 0,
         "experimental": 1,
@@ -86,7 +111,10 @@
   },
   "governance": {
     "owner": "3leaps-core",
-    "reviewers": ["platform", "api-standards"],
+    "reviewers": [
+      "platform",
+      "api-standards"
+    ],
     "review_cycle": "quarterly",
     "last_updated": "2026-01-22"
   },

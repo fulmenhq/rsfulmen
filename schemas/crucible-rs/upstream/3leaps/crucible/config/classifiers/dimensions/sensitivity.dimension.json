@@ -23,7 +23,9 @@
         "description": "Public domain or intended for public distribution.",
         "order": 1,
         "is_none": true,
-        "synonyms": ["public"]
+        "synonyms": [
+          "public"
+        ]
       },
       {
         "key": "1-confidential",
@@ -31,7 +33,9 @@
         "description": "Internal but non-sensitive; NDA-level, access logged.",
         "order": 2,
         "is_none": false,
-        "synonyms": ["internal"]
+        "synonyms": [
+          "internal"
+        ]
       },
       {
         "key": "2-blinded",
@@ -39,7 +43,10 @@
         "description": "Identities/source obfuscated; verify blinding effectiveness.",
         "order": 3,
         "is_none": false,
-        "synonyms": ["anonymized", "de-identified"]
+        "synonyms": [
+          "anonymized",
+          "de-identified"
+        ]
       },
       {
         "key": "3-proprietary",
@@ -55,7 +62,10 @@
         "description": "NPPII or secrets; vault-managed only, real-time monitoring.",
         "order": 5,
         "is_none": false,
-        "synonyms": ["secret", "personal"]
+        "synonyms": [
+          "secret",
+          "personal"
+        ]
       },
       {
         "key": "5-privileged",
@@ -63,7 +73,10 @@
         "description": "Platform control data; HSM/air-gapped isolation required.",
         "order": 6,
         "is_none": false,
-        "synonyms": ["privileged", "sysadmin"]
+        "synonyms": [
+          "privileged",
+          "sysadmin"
+        ]
       },
       {
         "key": "6-eyes-only",
@@ -71,7 +84,10 @@
         "description": "Immutable storage, legal-controlled access, exec authorization.",
         "order": 7,
         "is_none": false,
-        "synonyms": ["legal-hold", "eyes-only"]
+        "synonyms": [
+          "legal-hold",
+          "eyes-only"
+        ]
       }
     ],
     "index_strategy": {
@@ -116,7 +132,10 @@
   },
   "governance": {
     "owner": "3leaps-core",
-    "reviewers": ["security", "compliance"],
+    "reviewers": [
+      "security",
+      "compliance"
+    ],
     "review_cycle": "quarterly",
     "last_updated": "2026-01-22"
   },

@@ -8,7 +8,8 @@ lastUpdated: "2026-01-22"
 maintainer: "3leaps-core"
 reviewers: ["platform", "data-engineering"]
 approvers: ["3leapsdave"]
-tags: ["classification", "volatility", "cadence", "scheduling", "data-lifecycle"]
+tags:
+  ["classification", "volatility", "cadence", "scheduling", "data-lifecycle"]
 content_license: "CC0"
 relatedDocs:
   - "schemas/classifiers/v0/dimension-definition.schema.json"

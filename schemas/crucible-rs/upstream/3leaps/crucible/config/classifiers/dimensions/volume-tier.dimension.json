@@ -51,7 +51,10 @@
   },
   "governance": {
     "owner": "3leaps-core",
-    "reviewers": ["platform", "data-engineering"],
+    "reviewers": [
+      "platform",
+      "data-engineering"
+    ],
     "review_cycle": "semiannual",
     "last_updated": "2026-01-22"
   },

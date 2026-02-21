@@ -210,14 +210,16 @@ lint: ## Run linting checks (clippy)
 	@cargo clippy --all-targets --all-features -- -D warnings
 	@echo "✅ Linting passed"
 
-fmt: ## Format code (rustfmt)
+fmt: ## Format code (rustfmt + goneat format)
 	@echo "Formatting code..."
 	@cargo fmt
+	@goneat assess --categories format --fix 2>/dev/null || true
 	@echo "✅ Formatting complete"
 
 fmt-check: ## Check code formatting without changes
 	@echo "Checking code format..."
 	@cargo fmt -- --check
+	@goneat assess --categories format --check --fail-on critical
 	@echo "✅ Format check passed"
 
 test: ## Run all tests
@@ -354,9 +356,9 @@ precommit: ## Run pre-commit hooks (fast, critical issues only)
 	@cargo clippy --all-targets --all-features -- -D warnings
 	@echo "✅ Clippy OK"
 	@echo ""
-	@echo "Step 3: Goneat assess (format, lint, security - fail on critical)..."
-	@goneat assess --categories format,lint,security --fail-on critical --staged-only 2>/dev/null || \
-		goneat assess --categories format,lint,security --fail-on critical
+	@echo "Step 3: Goneat assess (format, lint, security - check only, fail on critical)..."
+	@goneat assess --categories format,lint,security --check --fail-on critical --staged-only 2>/dev/null || \
+		goneat assess --categories format,lint,security --check --fail-on critical
 	@echo ""
 	@echo "✅ Pre-commit checks passed"
 
@@ -375,8 +377,8 @@ prepush: ## Run pre-push hooks (comprehensive, fail on high severity)
 	@cargo test --all-features
 	@echo "✅ Tests OK"
 	@echo ""
-	@echo "Step 4: Goneat assess (format, lint, security - fail on high)..."
-	@goneat assess --categories format,lint,security --fail-on high
+	@echo "Step 4: Goneat assess (format, lint, security - check only, fail on high)..."
+	@goneat assess --categories format,lint,security --check --fail-on high
 	@echo ""
 	@echo "✅ Pre-push checks passed"
 

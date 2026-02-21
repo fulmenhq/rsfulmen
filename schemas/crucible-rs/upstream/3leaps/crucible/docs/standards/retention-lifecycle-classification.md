@@ -8,7 +8,8 @@ lastUpdated: "2026-01-22"
 maintainer: "3leaps-core"
 reviewers: ["compliance", "legal"]
 approvers: ["3leapsdave"]
-tags: ["classification", "retention", "lifecycle", "compliance", "data-governance"]
+tags:
+  ["classification", "retention", "lifecycle", "compliance", "data-governance"]
 content_license: "CC0"
 relatedDocs:
   - "docs/standards/data-sensitivity-classification.md"

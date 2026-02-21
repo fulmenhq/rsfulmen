@@ -4,7 +4,9 @@
   "title": "AILink Search Response",
   "description": "Base schema for AILink search/analysis response validation. Extensible for domain-specific responses.",
   "type": "object",
-  "required": ["summary"],
+  "required": [
+    "summary"
+  ],
   "properties": {
     "summary": {
       "type": "string",
@@ -13,7 +15,13 @@
     },
     "risk_level": {
       "type": "string",
-      "enum": ["low", "medium", "high", "critical", "unknown"],
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical",
+        "unknown"
+      ],
       "description": "Overall risk assessment"
     },
     "confidence": {
@@ -55,11 +63,22 @@
   "$defs": {
     "mention": {
       "type": "object",
-      "required": ["source", "description"],
+      "required": [
+        "source",
+        "description"
+      ],
       "properties": {
         "source": {
           "type": "string",
-          "enum": ["web", "news", "social", "github", "registry", "trademark", "other"],
+          "enum": [
+            "web",
+            "news",
+            "social",
+            "github",
+            "registry",
+            "trademark",
+            "other"
+          ],
           "description": "Source type of the mention"
         },
         "description": {
@@ -73,12 +92,21 @@
         },
         "relevance": {
           "type": "string",
-          "enum": ["high", "medium", "low"],
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ],
           "description": "Relevance to the query"
         },
         "sentiment": {
           "type": "string",
-          "enum": ["positive", "neutral", "negative", "mixed"],
+          "enum": [
+            "positive",
+            "neutral",
+            "negative",
+            "mixed"
+          ],
           "description": "Sentiment of the mention"
         },
         "date": {
@@ -91,7 +119,9 @@
     },
     "attachment": {
       "type": "object",
-      "required": ["type"],
+      "required": [
+        "type"
+      ],
       "properties": {
         "type": {
           "type": "string",
