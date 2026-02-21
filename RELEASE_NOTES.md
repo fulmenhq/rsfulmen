@@ -4,6 +4,66 @@ This document tracks release notes for rsfulmen releases.
 
 > **Convention**: Keep only the latest 3 releases here to prevent file bloat. Older releases are archived in `docs/releases/`.
 
+## [0.1.4] - 2026-02-21
+
+### Crucible v0.4.12 integration, five new modules, runtime signal handling
+
+**Release Type**: Feature Release
+
+#### Overview
+
+Major feature release adding typed role catalog, fulencode (encoding/decoding/normalization), runtime signal handling, UUIDv7 correlation IDs, and config env overrides. Syncs Crucible from v0.4.4 to v0.4.12, the largest SSOT update in rsfulmen's history. Brings rsfulmen significantly closer to gofulmen parity.
+
+#### Highlights
+
+- **Typed Role Catalog** (`crucible::roles`) — Load agentic role definitions as full-fidelity `RolePrompt` structs. 22 fields covering the entire `role-prompt.schema.json` spec, including three fields discovered during the v0.4.12 cross-team review (`pre_push_checklist`, `required_reading`, `cross_role_note`). Forward-compatible enums for `RoleCategory` and `ExampleType`. 14 roles embedded (8 approved + 6 including 3 draft).
+- **Fulencode** (`fulencode`) — Binary-to-text encoding/decoding (Base64, Base64URL, Hex), character encoding (UTF-8, UTF-16LE/BE), encoding detection with BOM/heuristic confidence, Unicode normalization (NFC/NFD/NFKC/NFKD + text-safe profile rejecting zero-width and bidi attacks), BOM management. Cross-language fixture tests from Crucible SSOT.
+- **Runtime Signal Handling** (`signals`) — `SignalManager` with thread-safe handler dispatch, LIFO shutdown chains, FIFO reload chains, SIGINT double-tap force-quit, and cross-platform support (`signal-hook` on Unix, `ctrlc` on Windows). Includes `SignalInjector` for deterministic test injection.
+- **Correlation IDs** (`foundry::correlation`) — UUIDv7 generation, parsing, validation. `CorrelationId` newtype with strict v7 enforcement, serde support, and lowercase canonical form.
+- **Config Env Overrides** (`config::env`) — Map environment variables to config key paths with type parsing, alias support, conflict detection, and sensitive value masking. Feeds directly into three-layer config.
+- **Crucible v0.4.12** — 6 new agentic roles, updated role-prompt schema, fulencode schemas/fixtures, design tokens, expanded upstream standards.
+
+#### New Feature Flags
+
+| Feature               | Dependencies                       | Description                      |
+| --------------------- | ---------------------------------- | -------------------------------- |
+| `fulencode`           | base64, hex, unicode-normalization | Encoding/decoding/normalization  |
+| `foundry-correlation` | uuid                               | UUIDv7 correlation ID generation |
+
+#### New Modules
+
+| Module                   | Feature               | Key Functions                                                     |
+| ------------------------ | --------------------- | ----------------------------------------------------------------- |
+| `crucible::roles`        | `crucible`            | `load_role()`, `list_role_slugs()`, `load_role_catalog()`         |
+| `fulencode`              | `fulencode`           | `encode()`, `decode()`, `detect()`, `normalize()`, `detect_bom()` |
+| `signals::SignalManager` | `foundry-core`        | `handle()`, `on_shutdown()`, `on_reload()`, `listen()`            |
+| `foundry::correlation`   | `foundry-correlation` | `generate()`, `parse()`, `is_valid()`, `CorrelationId`            |
+| `config::env`            | `config`              | `load_env_overrides()`, `load_env_overrides_with_report()`        |
+
+#### Bug Fixes
+
+- **Pathfinder temp-dir race** — Parallel tests could collide when `SystemTime::now()` returned the same nanosecond. Fixed with `AtomicU64` sequence counter.
+- **CI yamllint warning** — Fixed missing space before inline comment in `ci.yml`.
+
+#### Breaking Changes
+
+None. All new modules are additive. Existing APIs unchanged.
+
+#### Testing
+
+- `make check-all` — 362 unit tests, 74 doc tests
+- Role catalog: invariant-based tests (core slugs present, sorted, README excluded)
+- Fulencode: cross-language fixture tests from Crucible SSOT
+- Signal handling: injector-based tests with deterministic dispatch
+- Correlation IDs: uniqueness, version validation, serde roundtrip
+
+#### Requirements
+
+- **Rust**: 1.88+ (MSRV, unchanged)
+- **Crucible**: v0.4.12 (embedded)
+
+---
+
 ## [0.1.3] - 2026-02-08
 
 ### Five new modules — closing gofulmen parity
@@ -124,39 +184,6 @@ assert!(usr_signals.contains(&"SIGUSR1"));
 
 - **Rust**: 1.83+ (MSRV)
 - **Crucible**: v0.4.4 (embedded)
-
----
-
-## [0.1.1] - 2026-01-08
-
-### Documentation scaffolding and compliance
-
-**Release Type**: Documentation Release
-
-#### Overview
-
-This release adds the documentation structure required by the Fulmen Helper Library Standard. No new code features.
-
-#### Highlights
-
-- **Documentation Scaffolding** – Added `docs/development/` directory with README, operations runbook, and ADR structure.
-- **Crucible Version Section** – README now documents how to query embedded Crucible metadata via the shim API.
-- **Release Documentation** – Established CHANGELOG.md, RELEASE_NOTES.md, and `docs/releases/` archive pattern.
-
-#### Changes
-
-- `docs/development/README.md` – Local development guide index
-- `docs/development/operations.md` – Build, test, release, and tooling runbook
-- `docs/development/adr/README.md` – ADR index with ecosystem adoption tracking
-- `docs/development/adr/0001-template.md` – Template for rsfulmen-specific ADRs
-- `README.md` – Added Crucible Version section with API example
-- `CHANGELOG.md` – New file tracking all notable changes
-- `RELEASE_NOTES.md` – This file
-- `docs/releases/v0.1.0.md` – Archive of v0.1.0 release notes
-
-#### Testing
-
-- `make check-all` – All quality gates pass
 
 ---
 

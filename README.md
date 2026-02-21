@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Rust: 1.83+](https://img.shields.io/badge/rust-1.83%2B-orange.svg)](https://www.rust-lang.org/)
-[![Crucible: v0.4.2](https://img.shields.io/badge/crucible-v0.4.2-purple.svg)](https://github.com/fulmenhq/crucible)
+[![Crucible: v0.4.12](https://img.shields.io/badge/crucible-v0.4.12-purple.svg)](https://github.com/fulmenhq/crucible)
 
 **Stop reinventing catalogs. Start shipping.**
 
@@ -12,7 +12,7 @@ Every team writes their own HTTP status helpers, exit code enums, and country co
 - **Cross-language parity**: Same exit codes, signals, and schemas as gofulmen, pyfulmen, tsfulmen
 - **Minimal footprint**: Feature flags let you include only what you need
 
-**Lifecycle Phase**: `alpha` | **Version**: 0.1.1
+**Lifecycle Phase**: `alpha` | **Version**: 0.1.4
 
 📖 **[Read the complete rsfulmen overview](docs/rsfulmen-overview.md)** for comprehensive documentation including module catalog and roadmap.
 
@@ -78,7 +78,7 @@ fn main() {
 
 | Field         | Description                                                  |
 | ------------- | ------------------------------------------------------------ |
-| `version`     | CalVer Crucible version (e.g., `0.4.2`)                      |
+| `version`     | CalVer Crucible version (e.g., `0.4.12`)                     |
 | `commit`      | Git commit SHA of the synced Crucible snapshot               |
 | `dirty`       | `true` if synced from uncommitted changes (development only) |
 | `synced_at`   | RFC3339 timestamp when sync occurred                         |
@@ -213,6 +213,82 @@ let err = ErrorResponse::wrap(
 println!("{}", err.to_json_string_pretty().unwrap());
 ```
 
+### Fulencode (`fulencode`)
+
+_Use case: Encode, decode, detect, and normalize text encodings with security protections against normalization attacks._
+
+Binary-to-text encoding/decoding, encoding detection, Unicode normalization, and BOM handling following the Crucible fulencode standard.
+
+```rust
+use rsfulmen::fulencode::{self, EncodingFormat, NormalizationProfile};
+
+// Encode/decode
+let encoded = fulencode::encode(b"Hello, World!", EncodingFormat::Base64, None).unwrap();
+assert_eq!(encoded.data, "SGVsbG8sIFdvcmxkIQ==");
+let decoded = fulencode::decode(&encoded.data, EncodingFormat::Base64, None).unwrap();
+
+// Unicode normalization (text-safe rejects zero-width and bidi attacks)
+let result = fulencode::normalize("café", NormalizationProfile::Nfc, None).unwrap();
+
+// BOM detection
+let bom = fulencode::detect_bom(b"\xef\xbb\xbfHello").unwrap();
+assert_eq!(bom.bom_type, Some("utf-8".to_string()));
+```
+
+### Correlation IDs (`foundry::correlation`)
+
+_Use case: Generate and validate UUIDv7 correlation IDs for distributed tracing and log correlation._
+
+```rust
+use rsfulmen::foundry::correlation::{self, CorrelationId};
+
+let id = correlation::generate();           // UUIDv7 string
+assert!(correlation::is_valid(&id));        // strictly v7, rejects v4
+
+let typed = CorrelationId::new();           // validated newtype
+println!("correlation_id={}", typed);       // lowercase canonical form
+```
+
+### Signal Handling (`signals`)
+
+_Use case: Graceful shutdown, config reload on SIGHUP, and double-tap Ctrl+C in CLI tools and services._
+
+Runtime signal manager with ordered cleanup chains, cross-platform support, and test injection.
+
+```rust
+use rsfulmen::signals::SignalManager;
+
+let mut manager = SignalManager::new();
+manager.on_shutdown(|| { println!("cleaning up..."); Ok(()) });
+manager.on_reload(|| { println!("reloading config..."); Ok(()) });
+manager.enable_double_tap(Default::default());
+
+// Start listener on a dedicated thread
+std::thread::spawn(move || manager.listen());
+```
+
+### Config Env Overrides (`config::env`)
+
+_Use case: Map environment variables to config keys for 12-factor app compliance._
+
+```rust
+use rsfulmen::config::env::{self, EnvVarSpec, EnvVarType};
+
+let specs = vec![
+    EnvVarSpec {
+        name: "APP_PORT".into(),
+        path: vec!["server".into(), "port".into()],
+        var_type: EnvVarType::Int,
+        aliases: vec!["PORT".into()],
+    },
+];
+
+let report = env::load_env_overrides_with_report(&specs).unwrap();
+// report.overrides → feeds into three-layer config
+// report.applied → which env vars were used
+// report.conflicts → canonical vs alias disagreements (secrets masked)
+```
+
 ### Telemetry Metrics (`telemetry_metrics`)
 
 _Use case: Emit metrics that conform to your organization's taxonomy without building a custom metrics framework._
@@ -266,17 +342,20 @@ rsfulmen = { version = "0.1", default-features = false, features = ["schema-vali
 
 #### Feature Matrix
 
-| Feature              | Includes                                      | Notes                                        |
-| -------------------- | --------------------------------------------- | -------------------------------------------- |
-| `foundry-core`       | signals, exit-codes, countries, http-statuses | Minimal catalog install                      |
-| `foundry-mime-types` | mime-types                                    | Adds `serde_json`                            |
-| `foundry-patterns`   | patterns                                      | Adds `regex` + `glob`                        |
-| `similarity`         | `rsfulmen::similarity` (+ foundry re-export)  | Heavy deps (strsim/unicode)                  |
-| `schema-validation`  | `rsfulmen::schema_validation`                 | Heavy deps (jsonschema/url)                  |
-| `error-handling`     | `rsfulmen::error_handling`                    | Canonical error envelope (adds `serde_json`) |
-| `telemetry-metrics`  | `rsfulmen::telemetry_metrics`                 | Metrics export (schema-valid JSON events)    |
-| `crucible`           | `rsfulmen::crucible`                          | Embedded SSOT access                         |
-| `docscribe`          | `rsfulmen::docscribe`                         | Doc access + frontmatter parsing             |
+| Feature               | Includes                                      | Notes                                        |
+| --------------------- | --------------------------------------------- | -------------------------------------------- |
+| `foundry-core`        | signals, exit-codes, countries, http-statuses | Minimal catalog install + signal manager     |
+| `foundry-mime-types`  | mime-types                                    | Adds `serde_json`                            |
+| `foundry-patterns`    | patterns                                      | Adds `regex` + `glob`                        |
+| `foundry-correlation` | UUIDv7 correlation IDs                        | Adds `uuid`                                  |
+| `foundry`             | All foundry submodules                        | Convenience flag                             |
+| `fulencode`           | encode/decode/detect/normalize/BOM            | Adds `base64` + `unicode-normalization`      |
+| `similarity`          | `rsfulmen::similarity` (+ foundry re-export)  | Heavy deps (strsim/unicode)                  |
+| `schema-validation`   | `rsfulmen::schema_validation`                 | Heavy deps (jsonschema/url)                  |
+| `error-handling`      | `rsfulmen::error_handling`                    | Canonical error envelope (adds `serde_json`) |
+| `telemetry-metrics`   | `rsfulmen::telemetry_metrics`                 | Metrics export (schema-valid JSON events)    |
+| `crucible`            | `rsfulmen::crucible` + typed role catalog     | Embedded SSOT access                         |
+| `docscribe`           | `rsfulmen::docscribe`                         | Doc access + frontmatter parsing             |
 
 ## Development
 
@@ -342,7 +421,7 @@ rsfulmen is part of the Fulmen helper library family. All libraries derive their
 | [gofulmen](https://github.com/fulmenhq/gofulmen) | Go         | Reference impl | v0.4.x           |
 | [tsfulmen](https://github.com/fulmenhq/tsfulmen) | TypeScript | Stable         | v0.4.x           |
 | [pyfulmen](https://github.com/fulmenhq/pyfulmen) | Python     | Stable         | v0.4.x           |
-| rsfulmen                                         | Rust       | Alpha          | v0.4.2           |
+| rsfulmen                                         | Rust       | Alpha          | v0.4.12          |
 
 **Why this matters**: A Rust service using `EXIT_CONFIG_INVALID` (code 20) will match a Go service using the same exit code. Your alerting rules and runbooks work across the entire stack.
 

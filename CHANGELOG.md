@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-02-21
+
+### Added
+
+- **Crucible v0.4.12 Sync** — Major SSOT sync jump from v0.4.4, adding 6 new agentic roles
+  (cxotech, deliverylead, infraeng, qa, releng, uxdev), updated role-prompt schema with new
+  fields (domains, pre_push_checklist, required_reading, cross_role_note), fulencode schemas
+  and fixtures, design token schemas, and expanded upstream standards
+- **Typed Role Catalog** (`crucible::roles`) — Full-fidelity `RolePrompt` deserialization from
+  embedded role YAMLs with `load_role()`, `list_role_slugs()`, `load_role_catalog()`
+  - 22 fields covering entire `role-prompt.schema.json` specification
+  - Forward-compatible enums (`RoleCategory`, `ExampleType`) with `#[serde(other)]`
+  - Invariant-based tests (no brittle role counts)
+- **Fulencode** (`fulencode`) — Encoding, decoding, detection, normalization, and BOM handling
+  - `encode()` / `decode()` for Base64, Base64URL, Hex, UTF-8, UTF-16LE/BE
+  - `detect()` with BOM, UTF-8 validation, and NULL-byte heuristics
+  - `normalize()` with NFC/NFD/NFKC/NFKD + text-safe profile (zero-width/bidi rejection)
+  - `detect_bom()` / `remove_bom()` / `add_bom()` for BOM management
+  - Cross-language fixture-driven tests from Crucible SSOT
+- **Runtime Signal Handling** (`signals`) — Upgraded from catalog re-export to full runtime manager
+  - `SignalManager` with thread-safe handler dispatch
+  - Shutdown chains (LIFO) and reload chains (FIFO)
+  - SIGINT double-tap force-quit with catalog-driven defaults
+  - Cross-platform: `signal-hook` on Unix, `ctrlc` on Windows
+  - `SignalInjector` test helper for deterministic signal delivery
+- **Correlation IDs** (`foundry::correlation`) — UUIDv7 generation, parsing, and validation
+  - `generate()`, `parse()`, `is_valid()` module-level functions
+  - `CorrelationId` newtype with serde, `Display`, `FromStr` (strictly v7, rejects v4)
+  - Uppercase input normalized to lowercase canonical form
+- **Config Env Overrides** (`config::env`) — Environment variable to config key mapping
+  - `load_env_overrides()` / `load_env_overrides_with_report()` with diagnostics
+  - Type-safe parsing (String, Int, Float, Bool with flexible true/false variants)
+  - Alias support with conflict detection and sensitive value masking
+  - Output feeds directly into three-layer config as `runtime_overrides`
+
+### Fixed
+
+- **Pathfinder** — Eliminated temp-dir race condition in parallel tests by adding
+  `AtomicU64` sequence counter to `TestDir::new()`
+- **CI** — Fixed yamllint warning (missing space before inline comment in ci.yml)
+
+### Changed
+
+- **Crucible** — Updated from v0.4.4 to v0.4.12
+- **Feature flags** — Added `fulencode`, `foundry-correlation`; `foundry` convenience
+  now includes `foundry-correlation`
+
+### Infrastructure
+
+- **Test Coverage** — 362 unit tests, 74 doc tests
+- **Feature Flags** — `fulencode`, `foundry-correlation` added to default set
+- **Dependencies** — Added `base64`, `hex`, `unicode-normalization`, `uuid`,
+  `signal-hook` (Unix), `ctrlc` (Windows)
+
 ## [0.1.3] - 2026-02-08
 
 ### Added
