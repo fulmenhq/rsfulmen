@@ -1,14 +1,16 @@
 //! Runtime signal handling plus foundry signal catalog re-exports.
 //!
 //! This module preserves the catalog API from `rsfulmen::foundry::signals` and
-//! adds a runtime manager for handler dispatch, shutdown/reload chains, and
-//! deterministic test injection.
+//! adds a runtime manager for handler dispatch, shutdown/reload chains,
+//! `/admin/signal` endpoint utilities, and deterministic test injection.
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{mpsc, Arc, Condvar, Mutex, Weak};
 use std::thread;
 use std::time::{Duration, Instant};
+
+use serde::{Deserialize, Serialize};
 
 /// Test helpers for deterministic signal injection.
 pub mod testing;
@@ -37,6 +39,9 @@ pub type CleanupFn = Box<dyn FnOnce() -> SignalResult + Send + 'static>;
 
 /// Reload function for SIGHUP chains.
 pub type ReloadFn = dyn Fn() -> SignalResult + Send + Sync + 'static;
+
+/// Logger callback used for `/admin/signal` endpoint request events.
+pub type EndpointLogFn = dyn Fn(&SignalEndpointLogEvent) + Send + Sync + 'static;
 
 /// Errors returned by [`SignalManager`] operations.
 #[derive(Debug, thiserror::Error)]
@@ -113,6 +118,94 @@ impl Default for DoubleTapConfig {
     }
 }
 
+/// Request payload for `POST /admin/signal`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SignalEndpointRequest {
+    /// Signal token: one of `HUP`, `TERM`, `INT`, `QUIT`, `USR1`, `USR2`.
+    pub signal: String,
+    /// Optional operator-provided reason.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+    /// Optional request correlation identifier.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub correlation_id: Option<String>,
+}
+
+/// Optional endpoint metadata typically derived from the HTTP layer.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct SignalEndpointMetadata {
+    /// Source client IP, if known.
+    pub source_ip: Option<String>,
+    /// Authenticated principal, if known.
+    pub authenticated_identity: Option<String>,
+}
+
+/// Success response body for accepted endpoint requests.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SignalEndpointAccepted {
+    /// Fixed status marker: `accepted`.
+    pub status: String,
+    /// Echoed short signal token (for example: `HUP`).
+    pub signal: String,
+    /// Echoed correlation ID (canonicalized when `foundry-correlation` is enabled).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub correlation_id: Option<String>,
+    /// Human-friendly result message.
+    pub message: String,
+}
+
+/// Error response body for endpoint request failures.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SignalEndpointErrorResponse {
+    /// Fixed status marker: `error`.
+    pub status: String,
+    /// Machine-readable error identifier.
+    pub error: String,
+    /// Human-friendly error detail.
+    pub message: String,
+}
+
+/// Response wrapper for `/admin/signal` helper processing.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SignalEndpointResponse {
+    /// Request accepted and queued for async processing.
+    Accepted(SignalEndpointAccepted),
+    /// Request rejected due to invalid input or processing failure.
+    Error(SignalEndpointErrorResponse),
+}
+
+impl SignalEndpointResponse {
+    /// HTTP status code aligned with the response payload.
+    pub fn status_code(&self) -> u16 {
+        match self {
+            SignalEndpointResponse::Accepted(_) => 202,
+            SignalEndpointResponse::Error(err) => match err.error.as_str() {
+                "invalid_signal" | "invalid_correlation_id" => 400,
+                _ => 500,
+            },
+        }
+    }
+}
+
+/// Structured endpoint log event emitted after request processing.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SignalEndpointLogEvent {
+    /// Resolved short signal token.
+    pub signal: String,
+    /// Optional request reason.
+    pub reason: Option<String>,
+    /// Optional correlation identifier.
+    pub correlation_id: Option<String>,
+    /// Optional source IP from HTTP metadata.
+    pub source_ip: Option<String>,
+    /// Optional authenticated identity from HTTP metadata.
+    pub authenticated_identity: Option<String>,
+    /// Outcome status: `accepted` or `error`.
+    pub status: String,
+    /// Optional error code when status is `error`.
+    pub error: Option<String>,
+}
+
 #[derive(Clone)]
 struct RegisteredHandler {
     id: u64,
@@ -131,6 +224,7 @@ struct Inner {
     listen_cv: Condvar,
     inject_tx: mpsc::Sender<i32>,
     inject_rx: Mutex<mpsc::Receiver<i32>>,
+    endpoint_logger: Mutex<Option<Arc<EndpointLogFn>>>,
 }
 
 impl Inner {
@@ -212,6 +306,7 @@ impl SignalManager {
                 listen_cv: Condvar::new(),
                 inject_tx,
                 inject_rx: Mutex::new(inject_rx),
+                endpoint_logger: Mutex::new(None),
             }),
         }
     }
@@ -307,6 +402,152 @@ impl SignalManager {
             .lock()
             .expect("double_tap mutex poisoned unexpectedly");
         *lock = None;
+    }
+
+    /// Install a callback invoked for every processed `/admin/signal` request.
+    pub fn set_endpoint_logger<F>(&self, logger: F)
+    where
+        F: Fn(&SignalEndpointLogEvent) + Send + Sync + 'static,
+    {
+        let mut lock = self
+            .inner
+            .endpoint_logger
+            .lock()
+            .expect("endpoint logger mutex poisoned unexpectedly");
+        *lock = Some(Arc::new(logger));
+    }
+
+    /// Remove the endpoint request logger callback.
+    pub fn clear_endpoint_logger(&self) {
+        let mut lock = self
+            .inner
+            .endpoint_logger
+            .lock()
+            .expect("endpoint logger mutex poisoned unexpectedly");
+        *lock = None;
+    }
+
+    /// Process a `POST /admin/signal` request body.
+    pub fn handle_admin_signal_request(
+        &self,
+        request: SignalEndpointRequest,
+    ) -> SignalEndpointResponse {
+        self.handle_admin_signal_request_with_metadata(request, SignalEndpointMetadata::default())
+    }
+
+    /// Process a `POST /admin/signal` request body with HTTP-derived metadata.
+    pub fn handle_admin_signal_request_with_metadata(
+        &self,
+        request: SignalEndpointRequest,
+        metadata: SignalEndpointMetadata,
+    ) -> SignalEndpointResponse {
+        let signal_name = match parse_admin_signal_name(&request.signal) {
+            Some(name) => name,
+            None => {
+                let error = SignalEndpointErrorResponse {
+                    status: "error".to_string(),
+                    error: "invalid_signal".to_string(),
+                    message: format!(
+                        "Signal '{}' is not recognized. Valid signals: {}",
+                        request.signal.trim(),
+                        ADMIN_ENDPOINT_SIGNAL_TOKENS.join(", ")
+                    ),
+                };
+                self.emit_endpoint_log_event(SignalEndpointLogEvent {
+                    signal: request.signal.trim().to_ascii_uppercase(),
+                    reason: request.reason.clone(),
+                    correlation_id: request.correlation_id.clone(),
+                    source_ip: metadata.source_ip,
+                    authenticated_identity: metadata.authenticated_identity,
+                    status: "error".to_string(),
+                    error: Some("invalid_signal".to_string()),
+                });
+                return SignalEndpointResponse::Error(error);
+            }
+        };
+
+        let signal_number = match get_signal_number(signal_name) {
+            Some(number) => number,
+            None => {
+                let error = SignalEndpointErrorResponse {
+                    status: "error".to_string(),
+                    error: "invalid_signal".to_string(),
+                    message: format!(
+                        "Signal '{}' is not available on this platform",
+                        endpoint_signal_token(signal_name)
+                    ),
+                };
+                self.emit_endpoint_log_event(SignalEndpointLogEvent {
+                    signal: endpoint_signal_token(signal_name).to_string(),
+                    reason: request.reason.clone(),
+                    correlation_id: request.correlation_id.clone(),
+                    source_ip: metadata.source_ip,
+                    authenticated_identity: metadata.authenticated_identity,
+                    status: "error".to_string(),
+                    error: Some("invalid_signal".to_string()),
+                });
+                return SignalEndpointResponse::Error(error);
+            }
+        };
+
+        let correlation_id =
+            match normalize_endpoint_correlation_id(request.correlation_id.as_deref()) {
+                Ok(value) => value,
+                Err(message) => {
+                    let error = SignalEndpointErrorResponse {
+                        status: "error".to_string(),
+                        error: "invalid_correlation_id".to_string(),
+                        message,
+                    };
+                    self.emit_endpoint_log_event(SignalEndpointLogEvent {
+                        signal: endpoint_signal_token(signal_name).to_string(),
+                        reason: request.reason.clone(),
+                        correlation_id: request.correlation_id.clone(),
+                        source_ip: metadata.source_ip,
+                        authenticated_identity: metadata.authenticated_identity,
+                        status: "error".to_string(),
+                        error: Some("invalid_correlation_id".to_string()),
+                    });
+                    return SignalEndpointResponse::Error(error);
+                }
+            };
+
+        if self.inject(signal_number).is_err() {
+            let error = SignalEndpointErrorResponse {
+                status: "error".to_string(),
+                error: "inject_failed".to_string(),
+                message: "Signal queue is unavailable".to_string(),
+            };
+            self.emit_endpoint_log_event(SignalEndpointLogEvent {
+                signal: endpoint_signal_token(signal_name).to_string(),
+                reason: request.reason.clone(),
+                correlation_id: correlation_id.clone(),
+                source_ip: metadata.source_ip,
+                authenticated_identity: metadata.authenticated_identity,
+                status: "error".to_string(),
+                error: Some("inject_failed".to_string()),
+            });
+            return SignalEndpointResponse::Error(error);
+        }
+
+        let accepted = SignalEndpointAccepted {
+            status: "accepted".to_string(),
+            signal: endpoint_signal_token(signal_name).to_string(),
+            correlation_id: correlation_id.clone(),
+            message: "Signal will be processed asynchronously".to_string(),
+        };
+
+        self.emit_endpoint_log_event(SignalEndpointLogEvent {
+            signal: accepted.signal.clone(),
+            reason: request.reason,
+            correlation_id,
+            source_ip: metadata.source_ip,
+            authenticated_identity: metadata.authenticated_identity,
+            status: "accepted".to_string(),
+            error: None,
+        });
+
+        SignalEndpointResponse::Accepted(accepted)
     }
 
     /// Check whether a signal is supported on the current platform.
@@ -545,6 +786,19 @@ impl SignalManager {
             Err(SignalManagerError::ListenTimeout(timeout))
         }
     }
+
+    fn emit_endpoint_log_event(&self, event: SignalEndpointLogEvent) {
+        let logger = self
+            .inner
+            .endpoint_logger
+            .lock()
+            .expect("endpoint logger mutex poisoned unexpectedly")
+            .clone();
+
+        if let Some(logger) = logger {
+            logger(&event);
+        }
+    }
 }
 
 impl Default for SignalManager {
@@ -623,6 +877,67 @@ fn sigterm_number() -> i32 {
 
 fn sighup_number() -> i32 {
     get_signal_number("SIGHUP").unwrap_or(SIGHUP)
+}
+
+const ADMIN_ENDPOINT_SIGNAL_TOKENS: [&str; 6] = ["HUP", "TERM", "INT", "QUIT", "USR1", "USR2"];
+
+fn parse_admin_signal_name(raw: &str) -> Option<&'static str> {
+    let mut normalized = raw.trim().to_ascii_uppercase();
+    if normalized.starts_with("SIG") {
+        normalized = normalized[3..].to_string();
+    }
+
+    match normalized.as_str() {
+        "HUP" => Some("SIGHUP"),
+        "TERM" => Some("SIGTERM"),
+        "INT" => Some("SIGINT"),
+        "QUIT" => Some("SIGQUIT"),
+        "USR1" => Some("SIGUSR1"),
+        "USR2" => Some("SIGUSR2"),
+        _ => None,
+    }
+}
+
+fn endpoint_signal_token(signal_name: &str) -> &'static str {
+    match signal_name {
+        "SIGHUP" => "HUP",
+        "SIGTERM" => "TERM",
+        "SIGINT" => "INT",
+        "SIGQUIT" => "QUIT",
+        "SIGUSR1" => "USR1",
+        "SIGUSR2" => "USR2",
+        _ => "UNKNOWN",
+    }
+}
+
+#[cfg(feature = "foundry-correlation")]
+fn normalize_endpoint_correlation_id(raw: Option<&str>) -> Result<Option<String>, String> {
+    let Some(raw) = raw else {
+        return Ok(None);
+    };
+
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+
+    crate::foundry::correlation::parse(trimmed)
+        .map(|id| Some(id.to_string()))
+        .map_err(|err| format!("Correlation ID is invalid UUIDv7: {err}"))
+}
+
+#[cfg(not(feature = "foundry-correlation"))]
+fn normalize_endpoint_correlation_id(raw: Option<&str>) -> Result<Option<String>, String> {
+    let Some(raw) = raw else {
+        return Ok(None);
+    };
+
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+
+    Ok(Some(trimmed.to_string()))
 }
 
 #[cfg(target_os = "windows")]
@@ -816,6 +1131,137 @@ mod tests {
         let platform_usr1 = get_signal_number("SIGUSR1").expect("platform SIGUSR1 number");
         manager.dispatch_signal(platform_usr1, &mut None);
         assert!(called.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn admin_signal_endpoint_accepts_valid_signal() {
+        let manager = SignalManager::new();
+
+        let response = manager.handle_admin_signal_request(SignalEndpointRequest {
+            signal: "hup".to_string(),
+            reason: Some("reload requested".to_string()),
+            correlation_id: None,
+        });
+
+        match response {
+            SignalEndpointResponse::Accepted(body) => {
+                assert_eq!(body.status, "accepted");
+                assert_eq!(body.signal, "HUP");
+                assert!(body.correlation_id.is_none());
+                assert_eq!(body.message, "Signal will be processed asynchronously");
+            }
+            SignalEndpointResponse::Error(_) => panic!("expected accepted response"),
+        }
+    }
+
+    #[test]
+    fn admin_signal_endpoint_rejects_invalid_signal() {
+        let manager = SignalManager::new();
+
+        let response = manager.handle_admin_signal_request(SignalEndpointRequest {
+            signal: "foo".to_string(),
+            reason: None,
+            correlation_id: None,
+        });
+
+        match response {
+            SignalEndpointResponse::Accepted(_) => panic!("expected invalid signal error"),
+            SignalEndpointResponse::Error(body) => {
+                assert_eq!(body.status, "error");
+                assert_eq!(body.error, "invalid_signal");
+            }
+        }
+    }
+
+    #[test]
+    fn admin_signal_endpoint_logs_request_event() {
+        let manager = SignalManager::new();
+        let events = Arc::new(Mutex::new(Vec::<SignalEndpointLogEvent>::new()));
+        let captured = Arc::clone(&events);
+
+        manager.set_endpoint_logger(move |event| {
+            captured
+                .lock()
+                .expect("events mutex poisoned unexpectedly")
+                .push(event.clone());
+        });
+
+        let response = manager.handle_admin_signal_request_with_metadata(
+            SignalEndpointRequest {
+                signal: "TERM".to_string(),
+                reason: Some("maintenance".to_string()),
+                correlation_id: Some("019503E7-2C4A-7000-8000-A1B2C3D4E5F6".to_string()),
+            },
+            SignalEndpointMetadata {
+                source_ip: Some("127.0.0.1".to_string()),
+                authenticated_identity: Some("ops-admin".to_string()),
+            },
+        );
+
+        assert_eq!(response.status_code(), 202);
+
+        let events = events.lock().expect("events mutex poisoned unexpectedly");
+        assert_eq!(events.len(), 1);
+        let event = &events[0];
+        assert_eq!(event.signal, "TERM");
+        assert_eq!(event.reason.as_deref(), Some("maintenance"));
+        let expected_correlation_id = if cfg!(feature = "foundry-correlation") {
+            "019503e7-2c4a-7000-8000-a1b2c3d4e5f6"
+        } else {
+            "019503E7-2C4A-7000-8000-A1B2C3D4E5F6"
+        };
+        assert_eq!(
+            event.correlation_id.as_deref(),
+            Some(expected_correlation_id)
+        );
+        assert_eq!(event.source_ip.as_deref(), Some("127.0.0.1"));
+        assert_eq!(event.authenticated_identity.as_deref(), Some("ops-admin"));
+        assert_eq!(event.status, "accepted");
+        assert!(event.error.is_none());
+    }
+
+    #[cfg(feature = "foundry-correlation")]
+    #[test]
+    fn admin_signal_endpoint_normalizes_correlation_id_when_enabled() {
+        let manager = SignalManager::new();
+
+        let response = manager.handle_admin_signal_request(SignalEndpointRequest {
+            signal: "USR1".to_string(),
+            reason: None,
+            correlation_id: Some("019503E7-2C4A-7000-8000-A1B2C3D4E5F6".to_string()),
+        });
+
+        match response {
+            SignalEndpointResponse::Accepted(body) => {
+                assert_eq!(
+                    body.correlation_id.as_deref(),
+                    Some("019503e7-2c4a-7000-8000-a1b2c3d4e5f6")
+                );
+            }
+            SignalEndpointResponse::Error(_) => panic!("expected accepted response"),
+        }
+    }
+
+    #[cfg(feature = "foundry-correlation")]
+    #[test]
+    fn admin_signal_endpoint_rejects_invalid_correlation_id_when_enabled() {
+        let manager = SignalManager::new();
+
+        let response = manager.handle_admin_signal_request(SignalEndpointRequest {
+            signal: "INT".to_string(),
+            reason: None,
+            correlation_id: Some("not-a-uuid".to_string()),
+        });
+
+        match response {
+            SignalEndpointResponse::Accepted(_) => {
+                panic!("expected invalid correlation ID error")
+            }
+            SignalEndpointResponse::Error(body) => {
+                assert_eq!(body.status, "error");
+                assert_eq!(body.error, "invalid_correlation_id");
+            }
+        }
     }
 
     #[test]
