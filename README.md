@@ -1,8 +1,8 @@
 # rsfulmen
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Rust: 1.83+](https://img.shields.io/badge/rust-1.83%2B-orange.svg)](https://www.rust-lang.org/)
-[![Crucible: v0.4.12](https://img.shields.io/badge/crucible-v0.4.12-purple.svg)](https://github.com/fulmenhq/crucible)
+[![Rust: 1.88+](https://img.shields.io/badge/rust-1.88%2B-orange.svg)](https://www.rust-lang.org/)
+[![Crucible: v0.4.13](https://img.shields.io/badge/crucible-v0.4.13-purple.svg)](https://github.com/fulmenhq/crucible)
 
 **Stop reinventing catalogs. Start shipping.**
 
@@ -12,7 +12,7 @@ Every team writes their own HTTP status helpers, exit code enums, and country co
 - **Cross-language parity**: Same exit codes, signals, and schemas as gofulmen, pyfulmen, tsfulmen
 - **Minimal footprint**: Feature flags let you include only what you need
 
-**Lifecycle Phase**: `alpha` | **Version**: 0.1.4
+**Lifecycle Phase**: `alpha` | **Version**: 0.1.5
 
 📖 **[Read the complete rsfulmen overview](docs/rsfulmen-overview.md)** for comprehensive documentation including module catalog and roadmap.
 
@@ -78,7 +78,7 @@ fn main() {
 
 | Field         | Description                                                  |
 | ------------- | ------------------------------------------------------------ |
-| `version`     | CalVer Crucible version (e.g., `0.4.12`)                     |
+| `version`     | CalVer Crucible version (e.g., `0.4.13`)                     |
 | `commit`      | Git commit SHA of the synced Crucible snapshot               |
 | `dirty`       | `true` if synced from uncommitted changes (development only) |
 | `synced_at`   | RFC3339 timestamp when sync occurred                         |
@@ -361,7 +361,7 @@ rsfulmen = { version = "0.1", default-features = false, features = ["schema-vali
 
 ### Prerequisites
 
-- Rust 1.83+
+- Rust 1.88+
 - [goneat](https://github.com/fulmenhq/goneat) for SSOT sync (installed via `make bootstrap`)
 
 ### Quick Start
@@ -421,7 +421,7 @@ rsfulmen is part of the Fulmen helper library family. All libraries derive their
 | [gofulmen](https://github.com/fulmenhq/gofulmen) | Go         | Reference impl | v0.4.x           |
 | [tsfulmen](https://github.com/fulmenhq/tsfulmen) | TypeScript | Stable         | v0.4.x           |
 | [pyfulmen](https://github.com/fulmenhq/pyfulmen) | Python     | Stable         | v0.4.x           |
-| rsfulmen                                         | Rust       | Alpha          | v0.4.12          |
+| rsfulmen                                         | Rust       | Alpha          | v0.4.13          |
 
 **Why this matters**: A Rust service using `EXIT_CONFIG_INVALID` (code 20) will match a Go service using the same exit code. Your alerting rules and runbooks work across the entire stack.
 
