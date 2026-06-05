@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-06-05
+
+Process and maintenance release: adopts a branch/PR development workflow, syncs
+Crucible v0.4.13, and clears dependency and tooling tech debt. No new modules,
+no public API changes, no breaking changes.
+
+### Changed
+
+- **Development workflow** — moved from direct-push (micro-team) to a branch/PR
+  model. Branch protection to be enabled after this release.
+- **Git hooks** — removed the guardian browser-intercept on commit and push
+  (obsolete under branch-based review); hooks regenerated guardian-free via
+  `goneat hooks generate`.
+- **goneat** — pin bumped `v0.5.1` → `v0.5.13`.
+- **Crucible SSOT** — synced `v0.4.12` → `v0.4.13`: `devlead`/`devrev`/`qa`
+  role-prompt enrichment (contract-conformance checklists, cross-role notes;
+  role `v1.0.0` → `v1.0.1`), upstream schema slimming, and mechanical YAML
+  normalization.
+- **Dependencies** — migrated off the deprecated/archived `serde_yaml` to the
+  maintained, API-compatible `serde_yaml_ng` (aliased; no source changes).
+
+### Added
+
+- **`.goneatignore`** — excludes the deliberately-malformed negative-test
+  fixtures synced from Crucible from goneat assess (standard galaxy protocol).
+
+### Fixed
+
+- **Flaky `appidentity` test isolation** — `TestDir` temp dirs could collide
+  under parallel test threads (shared `{pid}-{nanos}`), causing one test to read
+  another's `.fulmen/app.yaml`. Added an `AtomicU64` sequence counter to the
+  temp-dir name (mirrors the v0.1.4 pathfinder fix).
+
+### Requirements
+
+- **Rust**: 1.88+ (MSRV, unchanged)
+- **Crucible**: v0.4.13 (embedded)
+
 ## [0.1.4] - 2026-02-21
 
 ### Added
