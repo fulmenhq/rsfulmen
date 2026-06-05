@@ -3,27 +3,27 @@
 # Description: Default recipe config (e.g., for Mattermost MVP); loaded via three-layer.
 # Rationale: Declarative base (components/phases); procedural actions for bootstrap.
 # Version: v1.0.0 (Ties to schema; refs taxonomies for provider/backend/phase).
-name: mattermost-stack # Slug-safe
+name: mattermost-stack  # Slug-safe
 type: deploy
 target:
-  provider: doc # From infra-providers
+  provider: doc  # From infra-providers
   region: nyc3
-  backend: opentofu # From toolchains
+  backend: opentofu  # From toolchains
 components:
   - name: postgres
     image: postgres:15
-    phase: storage # From infra-phases (order 3)
+    phase: storage  # From infra-phases (order 3)
     ports: [5432]
     env:
       POSTGRES_DB: mattermost
     secrets:
       - ref: "gpg://keyring/acme/db-pass"
         injectAs: POSTGRES_PASSWORD
-    dependsOn: [] # No deps for base DB
-    module: db-postgres # Tofu module
+    dependsOn: []  # No deps for base DB
+    module: db-postgres  # Tofu module
   - name: mattermost
     image: mattermost/mattermost-team:latest
-    phase: compute # Order 4
+    phase: compute  # Order 4
     ports: [8065]
     env:
       MM_POSTGRES_URL: "postgres://user:pass@localhost:5432/mattermost"
@@ -34,15 +34,15 @@ components:
     module: app-mattermost
 actions:
   - type: bootstrap
-    phase: bootstrap # Order 0; procedural for key gen
-    cmd: "gpg --gen-key --batch acme-bootstrap" # Example script
+    phase: bootstrap  # Order 0; procedural for key gen
+    cmd: "gpg --gen-key --batch acme-bootstrap"  # Example script
     dependsOn: []
   - type: script
-    phase: network # Order 2
-    cmd: "doctl compute vpc create --name acme-vpc" # SDK wrapper for VPC
+    phase: network  # Order 2
+    cmd: "doctl compute vpc create --name acme-vpc"  # SDK wrapper for VPC
     dependsOn: [bootstrap]
 secrets:
-  backend: gpg-keyring # Refs policy.isolation.store
+  backend: gpg-keyring  # Refs policy.isolation.store
   globalRefs:
     - ref: "turso://shared-network-key"
 validate:
@@ -50,7 +50,7 @@ validate:
     endpoint: "http://localhost:8065/health"
   - type: connect
     endpoint: "postgres://localhost:5432/mattermost"
-diff: # For seed type
+diff:  # For seed type
   from: v1-0
   to: v1-1
   changes:

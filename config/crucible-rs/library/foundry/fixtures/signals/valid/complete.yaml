@@ -8,7 +8,7 @@ signals:
     windows_event: CTRL_CLOSE_EVENT
     description: Graceful termination signal
     default_behavior: graceful_shutdown
-    exit_code: 143 # 128 + 15
+    exit_code: 143  # 128 + 15
     timeout_seconds: 30
     cleanup_actions:
       - close_connections
@@ -22,7 +22,7 @@ signals:
     windows_event: CTRL_C_EVENT
     description: User interrupt (Ctrl+C)
     default_behavior: graceful_shutdown_with_double_tap
-    exit_code: 130 # 128 + 2
+    exit_code: 130  # 128 + 2
     timeout_seconds: 5
     double_tap_window_seconds: 2
     double_tap_message: "Press Ctrl+C again within 2s to force quit"
@@ -40,7 +40,7 @@ signals:
     windows_event: null
     description: Hangup signal (config reload via restart)
     default_behavior: reload_via_restart
-    exit_code: 129 # 128 + 1
+    exit_code: 129  # 128 + 1
     reload_strategy: restart_based
     validation_required: true
     timeout_seconds: 30
@@ -64,7 +64,7 @@ signals:
     windows_event: CTRL_BREAK_EVENT
     description: Quit with core dump (immediate termination)
     default_behavior: immediate_exit
-    exit_code: 131 # 128 + 3
+    exit_code: 131  # 128 + 3
     timeout_seconds: 0
     usage_notes: Immediate termination signal (Ctrl+\\ on Unix, Ctrl+Break on Windows). Does not perform cleanup. Use for emergency shutdown or debugging (core dumps).
   - id: pipe
@@ -73,7 +73,7 @@ signals:
     windows_event: null
     description: Broken pipe (write to closed socket/pipe)
     default_behavior: observe_only
-    exit_code: 141 # 128 + 13
+    exit_code: 141  # 128 + 13
     usage_notes: Default POSIX behavior terminates process immediately. Fulmen default is observe_only (log at INFO level + exit gracefully with code 141). Applications may override to ignore SIGPIPE for network services that expect broken pipes. Long-running servers typically ignore; CLI tools typically exit.
     windows_fallback:
       log_level: WARN
@@ -88,7 +88,7 @@ signals:
     windows_event: null
     description: Alarm timer expired (watchdog timeout)
     default_behavior: immediate_exit
-    exit_code: 142 # 128 + 14
+    exit_code: 142  # 128 + 14
     timeout_seconds: 0
     usage_notes: Used by watchdog timers. Treat as timeout-induced exit unless application overrides. Watchdog pattern - call signal.alarm(N) to set timer, reset periodically with progress; if no reset within N seconds, SIGALRM fires and process exits. Out of scope for v1.0.0 module implementations.
     windows_fallback:
@@ -107,7 +107,7 @@ signals:
     windows_event: null
     description: User-defined signal 1
     default_behavior: custom
-    exit_code: 138 # 128 + 10
+    exit_code: 138  # 128 + 10
     usage_notes: Application-specific signal (e.g., reopen log files, dump statistics, toggle verbose logging). Helper libraries provide registration API; application provides custom handler.
     windows_fallback:
       log_level: WARN
@@ -126,7 +126,7 @@ signals:
     windows_event: null
     description: User-defined signal 2
     default_behavior: custom
-    exit_code: 140 # 128 + 12
+    exit_code: 140  # 128 + 12
     usage_notes: Application-specific signal (e.g., toggle debug mode, trigger profiling, rotate credentials). Helper libraries provide registration API; application provides custom handler.
     windows_fallback:
       log_level: WARN
@@ -219,9 +219,9 @@ os_mappings:
     SIGQUIT: 3
     SIGPIPE: 13
     SIGALRM: 14
-    SIGUSR1: 10 # Linux standard
-    SIGUSR2: 12 # Linux standard
-    SIGKILL: 9 # Not catchable, documented for completeness
+    SIGUSR1: 10  # Linux standard
+    SIGUSR2: 12  # Linux standard
+    SIGKILL: 9  # Not catchable, documented for completeness
   windows:
     CTRL_C_EVENT: 0
     CTRL_BREAK_EVENT: 1
@@ -230,7 +230,7 @@ os_mappings:
     CTRL_SHUTDOWN_EVENT: 6
   # Platform-specific signal number overrides
   platform_overrides:
-    darwin: # macOS
+    darwin:  # macOS
       SIGUSR1: 30
       SIGUSR2: 31
     freebsd:
@@ -241,24 +241,24 @@ os_mappings:
     SIGTERM: CTRL_CLOSE_EVENT
     SIGINT: CTRL_C_EVENT
     SIGQUIT: CTRL_BREAK_EVENT
-    SIGHUP: null # No Windows equivalent - use HTTP fallback
-    SIGPIPE: null # No Windows equivalent - handled via exceptions
-    SIGALRM: null # No Windows equivalent - use timers
-    SIGUSR1: null # No Windows equivalent - use HTTP fallback
-    SIGUSR2: null # No Windows equivalent - use HTTP fallback
+    SIGHUP: null  # No Windows equivalent - use HTTP fallback
+    SIGPIPE: null  # No Windows equivalent - handled via exceptions
+    SIGALRM: null  # No Windows equivalent - use timers
+    SIGUSR1: null  # No Windows equivalent - use HTTP fallback
+    SIGUSR2: null  # No Windows equivalent - use HTTP fallback
 # Platform support matrix for helper library implementations
 platform_support:
   - signal: SIGTERM
     linux: native
     macos: native
     freebsd: native
-    windows: mapped # CTRL_CLOSE_EVENT
+    windows: mapped  # CTRL_CLOSE_EVENT
     notes: Fully supported across all platforms
   - signal: SIGINT
     linux: native
     macos: native
     freebsd: native
-    windows: mapped # CTRL_C_EVENT
+    windows: mapped  # CTRL_C_EVENT
     notes: Fully supported across all platforms
   - signal: SIGHUP
     linux: native
@@ -271,7 +271,7 @@ platform_support:
     linux: native
     macos: native
     freebsd: native
-    windows: mapped # CTRL_BREAK_EVENT
+    windows: mapped  # CTRL_BREAK_EVENT
     notes: Fully supported across all platforms
   - signal: SIGPIPE
     linux: native
@@ -289,26 +289,26 @@ platform_support:
     notes: On Windows, use threading.Timer (Python) or setTimeout (TypeScript)
   - signal: SIGUSR1
     linux: native
-    macos: native # signal 30
-    freebsd: native # signal 30
+    macos: native  # signal 30
+    freebsd: native  # signal 30
     windows: unsupported
     fallback: http_admin_endpoint
     notes: Signal number varies by platform. On Windows, use HTTP POST /admin/signal with signal=USR1
   - signal: SIGUSR2
     linux: native
-    macos: native # signal 31
-    freebsd: native # signal 31
+    macos: native  # signal 31
+    freebsd: native  # signal 31
     windows: unsupported
     fallback: http_admin_endpoint
     notes: Signal number varies by platform. On Windows, use HTTP POST /admin/signal with signal=USR2
 # Exit code mappings (128+N pattern per POSIX)
 exit_codes:
-  SIGTERM: 143 # 128 + 15
-  SIGINT: 130 # 128 + 2
-  SIGHUP: 129 # 128 + 1
-  SIGQUIT: 131 # 128 + 3
-  SIGPIPE: 141 # 128 + 13
-  SIGALRM: 142 # 128 + 14
-  SIGUSR1: 138 # 128 + 10
-  SIGUSR2: 140 # 128 + 12
+  SIGTERM: 143  # 128 + 15
+  SIGINT: 130  # 128 + 2
+  SIGHUP: 129  # 128 + 1
+  SIGQUIT: 131  # 128 + 3
+  SIGPIPE: 141  # 128 + 13
+  SIGALRM: 142  # 128 + 14
+  SIGUSR1: 138  # 128 + 10
+  SIGUSR2: 140  # 128 + 12
   note: Exit codes follow POSIX 128+N pattern where N is the signal number. These codes are cross-referenced in config/library/foundry/exit-codes.yaml.

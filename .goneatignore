@@ -1,0 +1,12 @@
+# goneat ignore patterns for rsfulmen
+# Excludes files that must not be formatted / linted / validated by goneat.
+# Syntax is gitignore-style (supports ! negation). Loaded by goneat assess,
+# format, and validate in addition to .gitignore.
+
+# Deliberately malformed / invalid test fixtures synced from Crucible.
+# These are intentionally non-conformant (parse-failure and invalid-value
+# negative-test cases) and must NOT be "fixed" by goneat format or flagged
+# by lint. Mirrors crucible's own .goneatignore (standard galaxy protocol),
+# adjusted for the crucible-rs synced-asset prefix.
+config/crucible-rs/repository/app-identity/fixtures/invalid/
+config/crucible-rs/library/foundry/fixtures/signals/invalid/

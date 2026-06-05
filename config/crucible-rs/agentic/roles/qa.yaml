@@ -2,7 +2,7 @@
 slug: qa
 name: Quality Assurance
 description: Testing, validation, and quality gate enforcement for enterprise-scale Fulmen systems
-version: 1.0.0
+version: 1.0.1
 author: entarch
 status: approved
 category: review
@@ -41,6 +41,7 @@ scope:
   - Tool integration testing (goneat, fulward, sumpter)
   # Enterprise validation
   - API contract validation (OpenAPI, JSON Schema)
+  - Spec-default and strict-mode behavior validation
   - Fixture-based integration testing (real execution, not mocks)
   - Observability verification (metrics, logs, traces)
   - AAA validation (authentication, authorization, audit)
@@ -56,6 +57,7 @@ mindset:
     - Is the test actually testing what it claims?
     - Would this test catch a regression?
     - Does this honor the SSOT contracts?
+    - Do defaults and error-path semantics match the standard exactly?
     - Does this work across all target languages?
     - Is the fixture realistic enough to catch real bugs?
     - Are observability signals firing correctly?
@@ -66,12 +68,14 @@ mindset:
     - Keep tests fast and focused
     - Use fixtures for real execution, never mock integration points
     - Validate contracts at layer boundaries
+    - Treat schema/spec/default mismatches as defects, not style issues
     - Dogfood before release
     - Respect coverage targets from module manifest
 responsibilities:
   - Design comprehensive test cases aligned with layer cake architecture
   - Verify quality gates pass (`make check-all`, goneat hooks)
   - Validate schema conformance against Crucible SSOT
+  - Validate default values and strict-mode behavior against standards docs
   - Execute cross-language parity tests for *fulmen libraries
   - Run CRDL validation on template changes
   - Execute dogfooding workflows against fixture servers
@@ -79,6 +83,7 @@ responsibilities:
   - Validate AAA flows (auth, authz, audit logging)
   - Maintain fixture scenarios and test data (no PII)
   - Document test findings with clear reproduction steps
+  - Classify findings by severity (P0/P1/P2) with exact file/line evidence
   - Verify CalVer compatibility on releases
 escalates_to:
   - target: devlead
@@ -98,12 +103,16 @@ does_not:
   - Test with production data or PII
   - Skip CRDL validation for template changes
   - Bypass goneat/fulward quality gates
+  - Approve changes on green CI alone when contract-parity checks are missing
 checklists:
   quality_bars:
     - "Coverage targets: Go >=95%, TypeScript >=85%, Python >=90%"
     - "make check-all must pass"
     - "goneat precommit hooks enforced"
-    - "schema validation via validate-schemas.ts"
+    - "Schema + standard parity validated (types, enums, required fields, defaults)"
+    - "Strict-mode behavior validated for malformed/ambiguous inputs"
+    - "Fixture parity validated (happy path + failure fixtures)"
+    - "Findings reported with severity and reproduction steps"
     - "Fixtures: container-first, scenario-driven, no PII"
 examples:
   - type: other

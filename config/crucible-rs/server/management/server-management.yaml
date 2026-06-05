@@ -20,9 +20,9 @@ configurations:
       retries: 3
       interval: 1000
     exitBehavior:
-      portInUse: 11 # EXIT_PORT_IN_USE
-      healthCheckFailed: 50 # EXIT_HEALTH_CHECK_FAILED
-      startupTimeout: 52 # EXIT_TIMEOUT
+      portInUse: 11  # EXIT_PORT_IN_USE
+      healthCheckFailed: 50  # EXIT_HEALTH_CHECK_FAILED
+      startupTimeout: 52  # EXIT_TIMEOUT
     envOverrides:
       - FULMEN_APP_DEV_PORT
       - FULMEN_APP_DEV_RANGE_MIN

@@ -128,7 +128,7 @@ ambiguous_cases:
   cp1252_vs_iso_8859_1:
     description: "Western European text"
     distinguishing_bytes:
-      cp1252_only: [0x80-0x9F] # Smart quotes, em dash, etc.
+      cp1252_only: [0x80-0x9F]  # Smart quotes, em dash, etc.
       iso_8859_1: "No printable chars in 0x80-0x9F range"
     resolution_strategy:
       - "Check for CP1252-specific bytes (0x91-0x94 for quotes)"

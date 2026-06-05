@@ -3,26 +3,26 @@
 # Description: Default runbook config (e.g., global-network prototype); loaded via three-layer.
 # Rationale: Serializes Markdown prototypes (e.g., from .plans/research/); executable in REPL.
 # Version: v1.0.0 (Ties to schema; refs phases/recipe for steps).
-id: global-network # Slug-safe
+id: global-network  # Slug-safe
 title: Global Enterprise Network Setup
-tenantScope: [all] # Or specific publicIds
+tenantScope: [all]  # Or specific publicIds
 description: >-
   Beginnings of the Runbook: Global Enterprise Picture with Tenants. Our runbook will live in the IDE... (from prototypes).
 phases:
-  - id: bootstrap # From infra-phases
+  - id: bootstrap  # From infra-phases
     title: Initial Setup
     description: "Core Components: Provision monitoring first."
     steps:
       - id: vaultwarden-init
         type: script
-        content: "docker run -d --name vaultwarden vaultwarden/server:latest" # Bootstrap secrets
+        content: "docker run -d --name vaultwarden vaultwarden/server:latest"  # Bootstrap secrets
         dependsOn: []
         parallel: false
       - id: prometheus-setup
         type: action
-        ref: prometheus-stack # Ref recipe
+        ref: prometheus-stack  # Ref recipe
         dependsOn: [vaultwarden-init]
-  - id: network # Order 2
+  - id: network  # Order 2
     title: Networking Backbone
     description: "Zero-trust backbone (Cloudflare Gateway); VPC peering for hybrids."
     steps:
@@ -35,10 +35,10 @@ phases:
           | 3 Leaps Sponsored | Internal | Sponsored OSS | Cloudflare (Workers/DNS), Azure (AI), Hetzner (compute) | API tokens, DB creds | Worker deployments, basic storage |
           | 3 Leaps Commercial | External | Client-specific | Client-dictated (AWS/Azure/GCP) | Isolated vaults | Hybrid connectivity, compliance-heavy |
         dependsOn: []
-        parallel: true # Table review parallel with setup
+        parallel: true  # Table review parallel with setup
       - id: vpc-peering-setup
         type: script
-        content: "doctl compute vpc create --name global-vpc" # Create VPC for hybrid peering
+        content: "doctl compute vpc create --name global-vpc"  # Create VPC for hybrid peering
         dependsOn: [tenant-table]
         validate:
           type: custom
