@@ -52,7 +52,7 @@ formats:
     compression: deflate
     container: zip
     features:
-      preserves_permissions: false # Limited on Windows
+      preserves_permissions: false  # Limited on Windows
       preserves_timestamps: true
       supports_symlinks: false
       supports_directories: true

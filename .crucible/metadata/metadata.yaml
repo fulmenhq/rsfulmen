@@ -2,18 +2,18 @@ schema:
   name: goneat.ssot.source-metadata
   version: v1
   url: https://github.com/fulmenhq/goneat/schemas/ssot/source-metadata.v1.1.0.json
-generated_at: 2026-02-19T21:28:37.355697Z
+generated_at: 2026-06-05T15:28:40.573541Z
 sources:
   - name: crucible
     slug: crucible
     method: git_ref
     repo_url: https://github.com/fulmenhq/crucible
-    ref: v0.4.12
-    commit: d45868706fa4b5f1aaa5c461c53127e20e11dfca
+    ref: v0.4.13
+    commit: ffe27b425f6510a5b29e3517c0c20d721e6c784e
     forced_remote: true
     forced_by: flag
     version_file: VERSION
-    version: 0.4.12
+    version: 0.4.13
     version_source: VERSION
     outputs:
       config: config/crucible-rs

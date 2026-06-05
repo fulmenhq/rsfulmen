@@ -5,14 +5,14 @@
 # Version: v1.0.0 (Ties to schema; integrates gofulmen).
 # Example Event Template (auto-populated in REPL)
 eventTemplate:
-  eventType: unlock # From enum
+  eventType: unlock  # From enum
   outcome: success
   metadata:
     sessionId: "sess-default-001"
     userId: "user-anon-123"
     duration: "5s"
     details: {method: totp}
-backend: # Refs policy.audit
+backend:  # Refs policy.audit
   level: structured
   retain: 30d
 # Usage: REPL emits: {id: evt-default-unlock-001, timestamp: now, tenant: tnt-uuid-123-prod-us, ...}

@@ -15,9 +15,7 @@
         "description": "Access tier not yet classified; must be classified before sharing or distribution.",
         "order": 0,
         "is_none": false,
-        "synonyms": [
-          "unclassified"
-        ]
+        "synonyms": ["unclassified"]
       },
       {
         "key": "public",
@@ -25,9 +23,7 @@
         "description": "Unrestricted access; suitable for public distribution.",
         "order": 1,
         "is_none": true,
-        "synonyms": [
-          "open"
-        ]
+        "synonyms": ["open"]
       },
       {
         "key": "internal",
@@ -35,9 +31,7 @@
         "description": "Organization-wide access; authentication required.",
         "order": 2,
         "is_none": false,
-        "synonyms": [
-          "org-wide"
-        ]
+        "synonyms": ["org-wide"]
       },
       {
         "key": "restricted",
@@ -45,9 +39,7 @@
         "description": "Team or project-level access; explicit authorization required.",
         "order": 3,
         "is_none": false,
-        "synonyms": [
-          "team-only"
-        ]
+        "synonyms": ["team-only"]
       },
       {
         "key": "privileged",
@@ -55,9 +47,7 @@
         "description": "Named individuals only; documented business need.",
         "order": 4,
         "is_none": false,
-        "synonyms": [
-          "need-to-know"
-        ]
+        "synonyms": ["need-to-know"]
       },
       {
         "key": "eyes-only",
@@ -65,21 +55,11 @@
         "description": "Executive/legal authorization required; immutable audit trail.",
         "order": 5,
         "is_none": false,
-        "synonyms": [
-          "legal-only",
-          "exec-only"
-        ]
+        "synonyms": ["legal-only", "exec-only"]
       }
     ],
     "index_strategy": {
-      "default_order": [
-        "unknown",
-        "public",
-        "internal",
-        "restricted",
-        "privileged",
-        "eyes-only"
-      ],
+      "default_order": ["unknown", "public", "internal", "restricted", "privileged", "eyes-only"],
       "ordinal_mapping": {
         "unknown": 0,
         "public": 1,
@@ -108,10 +88,7 @@
   },
   "governance": {
     "owner": "3leaps-core",
-    "reviewers": [
-      "security",
-      "compliance"
-    ],
+    "reviewers": ["security", "compliance"],
     "review_cycle": "quarterly",
     "last_updated": "2026-01-22"
   },

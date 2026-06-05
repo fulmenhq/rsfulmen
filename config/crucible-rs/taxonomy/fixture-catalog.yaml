@@ -34,7 +34,7 @@ fixtures:
       ja: "混合認証要件を持つ保護されたバックエンド"
       de: "Geschütztes Backend mit gemischten Auth-Anforderungen"
     aliases:
-      - "gantlet" # Common misspelling
+      - "gantlet"  # Common misspelling
     scenarios:
       - name: "oauth-minimal"
         description: "OAuth2 with basic scopes, no refresh tokens"

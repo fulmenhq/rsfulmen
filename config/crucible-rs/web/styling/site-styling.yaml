@@ -18,14 +18,14 @@ themes:
     caution: "#fb923c"
     # Optional categorical palette for charts/data viz (accessible sequence)
     categorical:
-      - "#3b82f6" # Blue
-      - "#10b981" # Green
-      - "#f59e0b" # Orange
-      - "#8b5cf6" # Purple
-      - "#ef4444" # Red
-      - "#14b8a6" # Teal
-      - "#f97316" # Deep Orange
-      - "#6366f1" # Indigo
+      - "#3b82f6"  # Blue
+      - "#10b981"  # Green
+      - "#f59e0b"  # Orange
+      - "#8b5cf6"  # Purple
+      - "#ef4444"  # Red
+      - "#14b8a6"  # Teal
+      - "#f97316"  # Deep Orange
+      - "#6366f1"  # Indigo
   dark:
     background: "#111827"
     foreground: "#f9fafb"
@@ -40,14 +40,14 @@ themes:
     caution: "#fdba74"
     # Optional categorical palette for charts/data viz (accessible sequence)
     categorical:
-      - "#60a5fa" # Blue
-      - "#34d399" # Green
-      - "#fbbf24" # Orange
-      - "#a78bfa" # Purple
-      - "#f87171" # Red
-      - "#2dd4bf" # Teal
-      - "#fb923c" # Deep Orange
-      - "#818cf8" # Indigo
+      - "#60a5fa"  # Blue
+      - "#34d399"  # Green
+      - "#fbbf24"  # Orange
+      - "#a78bfa"  # Purple
+      - "#f87171"  # Red
+      - "#2dd4bf"  # Teal
+      - "#fb923c"  # Deep Orange
+      - "#818cf8"  # Indigo
 typography:
   fonts:
     body:

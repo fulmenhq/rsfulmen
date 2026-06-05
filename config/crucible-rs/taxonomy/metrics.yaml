@@ -121,7 +121,7 @@ required:
   - version
   - metrics
 additionalProperties: false
-version: "0.4.12"
+version: "0.4.13"
 defaults:
   histogram_buckets:
     ms_metrics:
