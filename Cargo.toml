@@ -72,7 +72,9 @@ full = ["foundry", "config", "crucible", "docscribe", "schema-validation", "simi
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", optional = true }
-serde_yaml = "0.9"
+# serde_yaml (dtolnay) is deprecated/archived; serde_yaml_ng is the maintained,
+# API-compatible continuation fork. Aliased to `serde_yaml` so call sites are unchanged.
+serde_yaml = { package = "serde_yaml_ng", version = "0.10" }
 anyhow = { version = "1.0", optional = true }
 url = { version = "2", optional = true }
 jsonschema = { version = "0.17", default-features = false, features = ["draft202012"], optional = true }
