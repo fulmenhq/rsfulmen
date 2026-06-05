@@ -274,6 +274,7 @@ fn env_override_path() -> Option<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::{AtomicU64, Ordering};
     use std::sync::{Mutex, OnceLock};
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -288,15 +289,23 @@ mod tests {
 
     impl TestDir {
         fn new() -> Self {
+            // Process-global counter guarantees a unique directory per TestDir,
+            // independent of system-clock granularity. Without it, parallel test
+            // threads can read the same `nanos` (the clock's sub-microsecond bits
+            // are often zero) and collide on the same temp dir, so one test reads
+            // or deletes another's `.fulmen/app.yaml`.
+            static COUNTER: AtomicU64 = AtomicU64::new(0);
+            let seq = COUNTER.fetch_add(1, Ordering::Relaxed);
             let mut path = std::env::temp_dir();
             let nanos = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .expect("time should be after epoch")
                 .as_nanos();
             path.push(format!(
-                "rsfulmen-appidentity-{}-{}",
+                "rsfulmen-appidentity-{}-{}-{}",
                 std::process::id(),
-                nanos
+                nanos,
+                seq
             ));
             fs::create_dir_all(&path).expect("failed to create temp dir");
             Self { path }
