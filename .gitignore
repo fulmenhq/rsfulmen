@@ -47,6 +47,11 @@ cobertura.xml
 *.crate
 *.tar.gz
 
+# Never ignore synced Crucible SSOT assets — they are committed source of truth.
+# (Binary fixtures like fulpack's *.tar.gz are otherwise caught by the rule above
+# and would be missing on clean CI checkouts.)
+!config/crucible-rs/**
+
 # Environment files
 .env
 .env.local
