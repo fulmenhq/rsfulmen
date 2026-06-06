@@ -195,7 +195,7 @@ pub struct CreateOptions {
 }
 
 /// Options for archive extraction (schema: `extract-options.schema.json`).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ExtractOptions {
     /// Overwrite policy for existing files.
     #[serde(skip_serializing_if = "Option::is_none", default)]

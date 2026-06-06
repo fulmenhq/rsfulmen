@@ -5,14 +5,16 @@
 //! It provides typed, cross-language-consistent archive operations with a
 //! security-by-default model.
 //!
-//! This release implements the read-only operations:
+//! Implemented operations:
 //!
 //! - [`info`] — archive metadata without listing entries
 //! - [`scan`] — list the table of contents without extraction
+//! - [`extract`] — extract to a destination with the full security model
 //!
 //! `scan` is *discovery* and lists every entry as stored (traversal/absolute/
-//! symlink paths included; absolute paths normalized to relative). Security
-//! *enforcement* lives in the extract/verify operations (added in a later release).
+//! symlink paths included; absolute paths normalized to relative). `extract` is
+//! *enforcing*: it rejects traversal/absolute paths, escaping symlinks, and
+//! decompression bombs. (`create`/`verify` arrive in a later release.)
 //!
 //! ```no_run
 //! use rsfulmen::fulpack;
@@ -27,11 +29,13 @@
 //! ```
 
 mod error;
+mod extract;
 mod format;
 mod read;
 mod types;
 
 pub use error::FulpackError;
+pub use extract::extract;
 pub use format::detect_format;
 pub use read::{info, scan};
 pub use types::{
@@ -250,5 +254,124 @@ mod tests {
         assert_eq!(json["format"], "tar.gz");
         assert!(json.get("entry_count").is_some());
         assert!(json.get("total_size").is_some());
+    }
+
+    /// Build an uncompressed tar from `(path, data)` pairs (used to craft both
+    /// benign and malicious archives in tests).
+    fn build_tar(entries: &[(&str, &[u8])]) -> Vec<u8> {
+        let mut builder = tar::Builder::new(Vec::new());
+        for (path, data) in entries {
+            let mut header = tar::Header::new_gnu();
+            header.set_size(data.len() as u64);
+            header.set_entry_type(tar::EntryType::Regular);
+            header.set_mode(0o644);
+            header.set_cksum();
+            builder
+                .append_data(&mut header, path, &data[..])
+                .expect("append tar entry");
+        }
+        builder.into_inner().expect("finish tar")
+    }
+
+    #[test]
+    fn extract_roundtrip_writes_files() {
+        let tmp = TestDir::new();
+        let archive = tmp.materialize("basic.tar.gz", BASIC_TAR_GZ);
+        let dest = tmp.path.join("out");
+
+        // Pick a real file entry from the archive to assert on (robust to fixture content).
+        let a_file = scan(&archive, None)
+            .unwrap()
+            .into_iter()
+            .find(|e| e.entry_type == EntryType::File)
+            .expect("a file entry");
+
+        let result = extract(&archive, &dest, None).expect("extract");
+        assert!(result.extracted_count > 0);
+        assert!(dest.join(&a_file.path).exists(), "missing {}", a_file.path);
+    }
+
+    #[test]
+    fn extract_pathological_fixture_is_safe_by_construction() {
+        // This canonical fixture simulates attack *shapes* via naming but contains
+        // no real traversal/absolute/escape, so extraction succeeds.
+        let tmp = TestDir::new();
+        let archive = tmp.materialize("pathological.tar.gz", PATHOLOGICAL_TAR_GZ);
+        let dest = tmp.path.join("out");
+        let result = extract(&archive, &dest, None).expect("safe fixture extracts");
+        assert!(result.extracted_count > 0);
+        assert!(dest.join("legitimate.txt").exists());
+    }
+
+    /// Build a zip from `(name, data)` pairs. Unlike the tar builder, the zip
+    /// writer stores names verbatim — including `../` — which lets us craft a
+    /// zip-slip archive to prove extract rejects it.
+    fn build_zip(entries: &[(&str, &[u8])]) -> Vec<u8> {
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        {
+            let mut writer = zip::ZipWriter::new(&mut cursor);
+            let options = zip::write::SimpleFileOptions::default();
+            for (name, data) in entries {
+                writer.start_file(*name, options).expect("start zip entry");
+                writer.write_all(data).expect("write zip entry");
+            }
+            writer.finish().expect("finish zip");
+        }
+        cursor.into_inner()
+    }
+
+    #[test]
+    fn extract_rejects_path_traversal() {
+        let tmp = TestDir::new();
+        let bytes = build_zip(&[("../evil.txt", b"pwned")]);
+        let archive = tmp.materialize("evil.zip", &bytes);
+        let dest = tmp.path.join("out");
+
+        let err = extract(&archive, &dest, None).unwrap_err();
+        assert_eq!(err.code(), "PATH_TRAVERSAL");
+        assert!(!tmp.path.join("evil.txt").exists(), "must not escape dest");
+    }
+
+    #[test]
+    fn extract_enforces_max_entries_bomb_guard() {
+        let tmp = TestDir::new();
+        let bytes = build_tar(&[("a.txt", b"a"), ("b.txt", b"b"), ("c.txt", b"c")]);
+        let archive = tmp.materialize("many.tar", &bytes);
+        let dest = tmp.path.join("out");
+
+        let err = extract(
+            &archive,
+            &dest,
+            Some(&ExtractOptions {
+                max_entries: Some(2),
+                ..Default::default()
+            }),
+        )
+        .unwrap_err();
+        assert_eq!(err.code(), "DECOMPRESSION_BOMB");
+    }
+
+    #[test]
+    fn extract_overwrite_policy() {
+        let tmp = TestDir::new();
+        let archive = tmp.materialize("basic.tar.gz", BASIC_TAR_GZ);
+        let dest = tmp.path.join("out");
+
+        extract(&archive, &dest, None).expect("first extract");
+
+        // Default policy is "error" -> re-extract over existing files fails.
+        assert!(extract(&archive, &dest, None).is_err());
+
+        // "skip" policy succeeds, skipping existing files.
+        let result = extract(
+            &archive,
+            &dest,
+            Some(&ExtractOptions {
+                overwrite: Some(OverwriteMode::Skip),
+                ..Default::default()
+            }),
+        )
+        .expect("skip extract");
+        assert!(result.skipped_count > 0);
     }
 }
