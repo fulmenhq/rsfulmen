@@ -306,6 +306,102 @@ let events = metrics.flush().unwrap();
 assert!(!events.is_empty());
 ```
 
+### App Identity (`appidentity`)
+
+_Use case: Discover your application's identity (`name`, `org`, `version`) from `.fulmen/app.yaml` with upward directory search._
+
+```rust
+use rsfulmen::appidentity;
+
+let id = appidentity::load().unwrap();   // searches cwd upward; honors FULMEN_APP_IDENTITY_FILE
+println!("{}", id.name);
+```
+
+### Logging (`logging`)
+
+_Use case: Structured logging with human-readable (`Simple`) or JSON (`Structured`) profiles matching the Crucible observability standard._
+
+```rust
+use rsfulmen::logging::{self, Severity};
+
+let log = logging::new_cli("myapp", Severity::Info);
+log.info("service started", &[("port", "8080")]);
+```
+
+### Hashing (`fulhash`)
+
+_Use case: Canonical content hashing (xxh3-128 default, SHA-256) with a portable `algo:hex` digest format shared across gofulmen/pyfulmen/tsfulmen._
+
+```rust
+use rsfulmen::fulhash;
+
+let digest = fulhash::hash_string("hello", None).unwrap();
+assert!(fulhash::verify(b"hello", &digest));
+```
+
+### Pathfinder (`pathfinder`)
+
+_Use case: Safe filesystem discovery with glob patterns, symlink boundary checks, and repository-root detection._
+
+```rust
+use rsfulmen::pathfinder;
+use std::path::Path;
+
+let root = pathfinder::find_repository_root(Path::new("."));
+```
+
+### ASCII & Terminal (`ascii`)
+
+_Use case: Grapheme-aware display width, box drawing, and safe truncation/padding for terminal output._
+
+```rust
+use rsfulmen::ascii;
+
+let width = ascii::string_width("café");   // grapheme-cluster aware
+let padded = ascii::pad_to_width("hi", 6);
+```
+
+### Similarity (`similarity`)
+
+_Use case: Fuzzy string matching and "did you mean?" suggestions (Levenshtein, Damerau-OSA, Jaro-Winkler)._
+
+```rust
+use rsfulmen::similarity;
+
+let score = similarity::jaro_winkler("color", "colour");   // 0.0..=1.0
+```
+
+### Schema Validation (`schema-validation`)
+
+_Use case: Validate JSON/YAML payloads against embedded JSON Schemas (Draft 2020-12) offline._
+
+```rust
+use rsfulmen::schema_validation;
+
+let schemas = schema_validation::list_schemas(None);   // discover embedded schemas
+```
+
+### Role Catalog (`crucible::roles`)
+
+_Use case: Load agentic role definitions as typed `RolePrompt` structs from embedded Crucible YAML._
+
+```rust
+use rsfulmen::crucible::roles;
+
+let role = roles::load_role("devlead");   // Option<&'static RolePrompt>
+let slugs = roles::list_role_slugs();
+```
+
+### Docscribe (`docscribe`)
+
+_Use case: Parse Markdown YAML frontmatter and document metadata._
+
+```rust
+use rsfulmen::docscribe;
+
+let (frontmatter, body) = docscribe::parse_frontmatter("---\ntitle: Hi\n---\nbody").unwrap();
+```
+
 ## Installation
 
 Add to your `Cargo.toml`:
@@ -350,12 +446,20 @@ rsfulmen = { version = "0.1", default-features = false, features = ["schema-vali
 | `foundry-correlation` | UUIDv7 correlation IDs                        | Adds `uuid`                                  |
 | `foundry`             | All foundry submodules                        | Convenience flag                             |
 | `fulencode`           | encode/decode/detect/normalize/BOM            | Adds `base64` + `unicode-normalization`      |
+| `config`              | `rsfulmen::config` (XDG paths)                | Adds `dirs`                                  |
+| `appidentity`         | `rsfulmen::appidentity`                       | `.fulmen/app.yaml` discovery (adds `serde_json`) |
+| `logging`             | `rsfulmen::logging`                           | Simple/Structured profiles (adds `serde_json`) |
+| `fulhash`             | `rsfulmen::fulhash`                           | xxh3-128 + SHA-256 (adds `xxhash-rust`/`sha2`/`hex`) |
+| `pathfinder`          | `rsfulmen::pathfinder`                        | Safe FS discovery (adds `walkdir`/`glob`)    |
+| `ascii`               | `rsfulmen::ascii`                             | Terminal/Unicode width (adds `unicode-width`) |
 | `similarity`          | `rsfulmen::similarity` (+ foundry re-export)  | Heavy deps (strsim/unicode)                  |
 | `schema-validation`   | `rsfulmen::schema_validation`                 | Heavy deps (jsonschema/url)                  |
 | `error-handling`      | `rsfulmen::error_handling`                    | Canonical error envelope (adds `serde_json`) |
 | `telemetry-metrics`   | `rsfulmen::telemetry_metrics`                 | Metrics export (schema-valid JSON events)    |
 | `crucible`            | `rsfulmen::crucible` + typed role catalog     | Embedded SSOT access                         |
 | `docscribe`           | `rsfulmen::docscribe`                         | Doc access + frontmatter parsing             |
+| `three-layer-config`  | three-layer config loader                     | Requires `config` + `crucible`               |
+| `schema-id`           | schema id tagging + resolution                | Requires `crucible`                          |
 
 ## Development
 
