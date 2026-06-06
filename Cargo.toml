@@ -19,7 +19,7 @@ path = "src/lib.rs"
 
 [features]
 # Keep default behavior for existing users.
-default = ["foundry", "config", "crucible", "docscribe", "three-layer-config", "schema-id", "schema-validation", "similarity", "error-handling", "telemetry-metrics", "appidentity", "logging", "fulhash", "pathfinder", "ascii", "fulencode"]
+default = ["foundry", "config", "crucible", "docscribe", "three-layer-config", "schema-id", "schema-validation", "similarity", "error-handling", "telemetry-metrics", "appidentity", "logging", "fulhash", "pathfinder", "ascii", "fulencode", "fulpack"]
 
 # Foundry feature groups (aligned to Crucible foundry-catalogs v1.1.0).
 foundry-core = []
@@ -40,6 +40,9 @@ fulhash = ["dep:xxhash-rust", "dep:sha2", "dep:hex"]
 
 # Safe filesystem discovery with glob patterns.
 pathfinder = ["dep:walkdir", "dep:sha2", "dep:hex", "dep:glob"]
+
+# Canonical archive operations (tar/tar.gz/zip/gzip). Requires pathfinder + fulhash per the standard.
+fulpack = ["dep:tar", "dep:flate2", "dep:zip", "dep:serde_json", "fulhash", "pathfinder", "error-handling"]
 
 # Encoding/decoding + normalization helpers.
 fulencode = ["dep:base64", "dep:hex", "dep:unicode-normalization"]
@@ -66,7 +69,7 @@ error-handling = ["dep:serde_json"]
 telemetry-metrics = ["dep:serde_json"]
 
 # Everything.
-full = ["foundry", "config", "crucible", "docscribe", "schema-validation", "similarity", "error-handling", "telemetry-metrics", "appidentity", "logging", "fulhash", "pathfinder", "ascii", "fulencode"]
+full = ["foundry", "config", "crucible", "docscribe", "schema-validation", "similarity", "error-handling", "telemetry-metrics", "appidentity", "logging", "fulhash", "pathfinder", "ascii", "fulencode", "fulpack"]
 
 [dependencies]
 # Serialization
@@ -104,6 +107,11 @@ uuid = { version = "1", features = ["v7"], optional = true }
 
 # Filesystem discovery (for pathfinder module)
 walkdir = { version = "2", optional = true }
+
+# Archive operations (for fulpack module)
+tar = { version = "0.4", optional = true }
+flate2 = { version = "1", optional = true }
+zip = { version = "2", default-features = false, features = ["deflate"], optional = true }
 
 # Unicode text handling (for ascii module)
 unicode-width = { version = "0.1", optional = true }

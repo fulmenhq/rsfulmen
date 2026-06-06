@@ -132,6 +132,7 @@ This module supports offline validation using embedded meta-schemas (Draft 2020-
 | `schema-validation`  | jsonschema, url    | ~1MB                  |
 | `error-handling`     | serde_json         | ~200KB                |
 | `telemetry-metrics`  | serde_json         | ~200KB                |
+| `fulpack`            | tar, flate2, zip   | ~600KB                |
 
 _Binary sizes are approximate and depend on optimization settings._
 

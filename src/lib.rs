@@ -87,6 +87,11 @@ pub mod fulhash;
 #[cfg_attr(docsrs, doc(cfg(feature = "pathfinder")))]
 pub mod pathfinder;
 
+/// Canonical archive operations (tar, tar.gz, zip, gzip).
+#[cfg(feature = "fulpack")]
+#[cfg_attr(docsrs, doc(cfg(feature = "fulpack")))]
+pub mod fulpack;
+
 /// Terminal utilities and Unicode-aware string handling.
 ///
 /// Provides box drawing, display width calculation, string analysis,
