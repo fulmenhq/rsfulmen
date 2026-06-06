@@ -402,6 +402,24 @@ use rsfulmen::docscribe;
 let (frontmatter, body) = docscribe::parse_frontmatter("---\ntitle: Hi\n---\nbody").unwrap();
 ```
 
+### Archive Operations (`fulpack`)
+
+_Use case: Inspect and list tar/tar.gz/zip/gzip archives without extraction, with cross-language-consistent metadata._
+
+Implements the Crucible fulpack standard. Read operations (`info`, `scan`) are available now; `create`/`extract`/`verify` with the full security model follow in subsequent releases. `scan` is discovery — it lists every entry as stored (absolute paths normalized to relative); security enforcement belongs to extract/verify.
+
+```rust
+use rsfulmen::fulpack;
+use std::path::Path;
+
+let meta = fulpack::info(Path::new("release.tar.gz")).unwrap();
+println!("{} entries, ratio {:?}", meta.entry_count, meta.compression_ratio);
+
+for entry in fulpack::scan(Path::new("release.tar.gz"), None).unwrap() {
+    println!("{} ({} bytes)", entry.path, entry.size);
+}
+```
+
 ## Installation
 
 Add to your `Cargo.toml`:
@@ -451,6 +469,7 @@ rsfulmen = { version = "0.1", default-features = false, features = ["schema-vali
 | `logging`             | `rsfulmen::logging`                           | Simple/Structured profiles (adds `serde_json`) |
 | `fulhash`             | `rsfulmen::fulhash`                           | xxh3-128 + SHA-256 (adds `xxhash-rust`/`sha2`/`hex`) |
 | `pathfinder`          | `rsfulmen::pathfinder`                        | Safe FS discovery (adds `walkdir`/`glob`)    |
+| `fulpack`             | `rsfulmen::fulpack`                           | Archive read ops info/scan (adds `tar`/`flate2`/`zip`) |
 | `ascii`               | `rsfulmen::ascii`                             | Terminal/Unicode width (adds `unicode-width`) |
 | `similarity`          | `rsfulmen::similarity` (+ foundry re-export)  | Heavy deps (strsim/unicode)                  |
 | `schema-validation`   | `rsfulmen::schema_validation`                 | Heavy deps (jsonschema/url)                  |

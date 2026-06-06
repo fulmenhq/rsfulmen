@@ -70,6 +70,7 @@ jobs:
           - "fulhash"
           - "pathfinder"
           - "ascii"
+          - "fulpack"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
