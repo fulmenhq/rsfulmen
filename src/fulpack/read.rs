@@ -155,10 +155,10 @@ fn read_zip<R: Read + std::io::Seek>(
         let file = zip.by_index(i).map_err(|e| corrupt(archive, e))?;
 
         let unix_mode = file.unix_mode();
+        // The fulpack archive-formats taxonomy declares `zip: supports_symlinks: false`,
+        // so ZIP entries are classified as file/directory only (cross-language parity).
         let entry_type = if file.is_dir() {
             EntryType::Directory
-        } else if unix_mode.is_some_and(|m| m & 0o170000 == 0o120000) {
-            EntryType::Symlink
         } else {
             EntryType::File
         };
@@ -201,21 +201,45 @@ fn read_gzip(file: File, archive: &Path) -> Result<Vec<ArchiveEntry>, FulpackErr
         .unwrap_or_else(|| strip_gzip_suffix(archive));
 
     // A single-file gzip has no TOC; the uncompressed size requires inflating.
-    let mut buf = Vec::new();
-    decoder
-        .read_to_end(&mut buf)
-        .map_err(|e| corrupt(archive, e))?;
+    // Stream-count with a fixed buffer (bounded memory) and a hard cap so a
+    // read-only `info`/`scan` can't be turned into a decompression bomb.
+    let size = count_inflated(&mut decoder, archive, GZIP_MAX_INFLATE_BYTES)?;
 
     Ok(vec![ArchiveEntry {
         path,
         entry_type: EntryType::File,
-        size: buf.len() as u64,
+        size,
         compressed_size: None,
         modified: None,
         checksum: None,
         mode: None,
         symlink_target: None,
     }])
+}
+
+/// Read-path inflation guard for single-file gzip: 10 GiB matches the standard's
+/// max-total-size decompression-bomb limit. Inspecting metadata must not exceed it.
+const GZIP_MAX_INFLATE_BYTES: u64 = 10 * 1024 * 1024 * 1024;
+
+/// Count the bytes produced by `reader` using a fixed-size buffer (constant
+/// memory), failing with [`FulpackError::DecompressionBomb`] if the running total
+/// exceeds `cap`. Bytes are discarded, not retained.
+fn count_inflated<R: Read>(reader: &mut R, archive: &Path, cap: u64) -> Result<u64, FulpackError> {
+    let mut buf = [0u8; 8192];
+    let mut total: u64 = 0;
+    loop {
+        let n = reader.read(&mut buf).map_err(|e| corrupt(archive, e))?;
+        if n == 0 {
+            break;
+        }
+        total += n as u64;
+        if total > cap {
+            return Err(FulpackError::DecompressionBomb {
+                message: format!("gzip inflates beyond the read-path limit of {cap} bytes"),
+            });
+        }
+    }
+    Ok(total)
 }
 
 // ---------------------------------------------------------------------------
@@ -366,4 +390,32 @@ fn epoch_secs_to_rfc3339(secs: u64) -> String {
         "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
         y, m, d, hour, minute, second
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+
+    #[test]
+    fn count_inflated_trips_on_cap() {
+        let err =
+            count_inflated(&mut Cursor::new(vec![0u8; 5000]), Path::new("x.gz"), 1000).unwrap_err();
+        assert_eq!(err.code(), "DECOMPRESSION_BOMB");
+    }
+
+    #[test]
+    fn count_inflated_counts_under_cap() {
+        let n = count_inflated(&mut Cursor::new(vec![7u8; 500]), Path::new("x.gz"), 1000).unwrap();
+        assert_eq!(n, 500);
+    }
+
+    #[test]
+    fn normalize_scan_path_strips_absolute_keeps_traversal() {
+        assert_eq!(normalize_scan_path("/etc/passwd"), "etc/passwd");
+        assert_eq!(normalize_scan_path("./a/./b"), "a/b");
+        assert_eq!(normalize_scan_path("../../etc/passwd"), "../../etc/passwd");
+        assert_eq!(normalize_scan_path("C:\\Users\\x"), "Users/x");
+        assert_eq!(normalize_scan_path("/"), ".");
+    }
 }
