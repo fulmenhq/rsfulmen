@@ -128,6 +128,14 @@ pub struct ArchiveInfo {
     /// Archive creation time (RFC 3339), when available.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub created: Option<String>,
+    /// Archive-level checksums by algorithm name, populated by [`crate::fulpack::create`].
+    ///
+    /// Note: the v1.0.0 `archive-info` schema does not yet declare this field (it
+    /// is `additionalProperties: false`), but the fulpack standard's prose and the
+    /// other language libraries return checksums here. Absent (skipped) for
+    /// `info`/`scan`, so their output stays schema-valid.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub checksums: Option<std::collections::BTreeMap<String, String>>,
 }
 
 fn default_true() -> bool {
@@ -172,7 +180,7 @@ impl Default for ScanOptions {
 // ---------------------------------------------------------------------------
 
 /// Options for archive creation (schema: `create-options.schema.json`).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CreateOptions {
     /// Compression level 1-9 (ignored for uncompressed tar).
     #[serde(skip_serializing_if = "Option::is_none", default)]

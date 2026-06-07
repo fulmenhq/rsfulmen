@@ -44,6 +44,7 @@ pub fn info(archive: &Path) -> Result<ArchiveInfo, FulpackError> {
         has_checksums: Some(false),
         checksum_algorithm: None,
         created: None,
+        checksums: None,
     })
 }
 
@@ -367,7 +368,7 @@ fn zip_datetime_rfc3339(dt: zip::DateTime) -> Option<String> {
 ///
 /// Civil-calendar algorithm adapted from Howard Hinnant's `civil_from_days`
 /// (same approach used by `pathfinder`), avoiding a datetime crate dependency.
-fn epoch_secs_to_rfc3339(secs: u64) -> String {
+pub(super) fn epoch_secs_to_rfc3339(secs: u64) -> String {
     let days = (secs / 86400) as i64;
     let time_of_day = secs % 86400;
 
