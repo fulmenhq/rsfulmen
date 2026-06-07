@@ -246,7 +246,7 @@ fn count_inflated<R: Read>(reader: &mut R, archive: &Path, cap: u64) -> Result<u
 // Internal: helpers
 // ---------------------------------------------------------------------------
 
-fn open(archive: &Path) -> Result<File, FulpackError> {
+pub(super) fn open(archive: &Path) -> Result<File, FulpackError> {
     File::open(archive).map_err(|source| {
         if source.kind() == std::io::ErrorKind::NotFound {
             FulpackError::NotFound {
@@ -277,7 +277,7 @@ fn file_len(archive: &Path) -> Result<u64, FulpackError> {
     Ok(meta.len())
 }
 
-fn corrupt<E: std::fmt::Display>(archive: &Path, err: E) -> FulpackError {
+pub(super) fn corrupt<E: std::fmt::Display>(archive: &Path, err: E) -> FulpackError {
     FulpackError::Corrupt {
         path: archive.to_path_buf(),
         message: err.to_string(),
