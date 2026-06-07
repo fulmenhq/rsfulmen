@@ -217,7 +217,7 @@ fn extract_tar<R: Read>(
         }
 
         if kind.is_dir() {
-            fs::create_dir_all(&target).map_err(|e| io_at(&target, e))?;
+            safe_create_dir(ctx.dest, &target)?;
             ctx.extracted += 1;
         } else if kind.is_symlink() {
             let link = entry
@@ -230,7 +230,8 @@ fn extract_tar<R: Read>(
                     target: link,
                 });
             }
-            create_symlink(&link, &target, ctx)?;
+            let dest = ctx.dest;
+            create_symlink(dest, &link, &target, ctx)?;
         } else {
             let size = header.size().unwrap_or(0);
             ctx.add_bytes(size)?;
@@ -260,7 +261,7 @@ fn extract_zip<R: Read + std::io::Seek>(
 
         if file.is_dir() {
             if ctx.included(raw.trim_end_matches('/')) {
-                fs::create_dir_all(&target).map_err(|e| io_at(&target, e))?;
+                safe_create_dir(ctx.dest, &target)?;
                 ctx.extracted += 1;
             }
             continue;
@@ -294,6 +295,13 @@ fn extract_gzip(archive: &Path, ctx: &mut ExtractCtx<'_>) -> Result<(), FulpackE
                 .unwrap_or("output")
                 .to_string()
         });
+
+    // gzip is a single-entry archive; honor the same options as multi-entry formats.
+    ctx.count_entry(0)?;
+    if !ctx.included(&name) {
+        ctx.skipped += 1;
+        return Ok(());
+    }
     let target = safe_join(ctx.dest, &name)?;
     if !prepare_file(&target, ctx)? {
         ctx.skipped += 1;
@@ -319,37 +327,105 @@ fn extract_gzip(archive: &Path, ctx: &mut ExtractCtx<'_>) -> Result<(), FulpackE
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Ensure the parent dir exists and apply the overwrite policy. Returns `false`
-/// if the entry should be skipped (exists + `skip` policy).
+/// Reject if any existing path component between `dest` and `target` (excluding
+/// `target` itself) is a symlink. Prevents writing *through* a pre-existing
+/// symlink to escape the destination even when the archive path is lexically
+/// safe (no `..`/absolute) — the filesystem would otherwise follow the link.
+fn ensure_safe_ancestors(dest: &Path, target: &Path) -> Result<(), FulpackError> {
+    let Ok(rel) = target.strip_prefix(dest) else {
+        return Ok(());
+    };
+    let mut current = dest.to_path_buf();
+    let comps: Vec<Component<'_>> = rel.components().collect();
+    let ancestor_count = comps.len().saturating_sub(1);
+    for comp in comps.into_iter().take(ancestor_count) {
+        if let Component::Normal(seg) = comp {
+            current.push(seg);
+            if let Ok(meta) = fs::symlink_metadata(&current) {
+                if meta.file_type().is_symlink() {
+                    return Err(FulpackError::SymlinkEscape {
+                        path: rel.to_string_lossy().into_owned(),
+                        target: current.to_string_lossy().into_owned(),
+                    });
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Create a directory entry, rejecting symlinked ancestors and a symlink at the
+/// final path (so we never create *through* a symlink).
+fn safe_create_dir(dest: &Path, target: &Path) -> Result<(), FulpackError> {
+    ensure_safe_ancestors(dest, target)?;
+    if let Ok(meta) = fs::symlink_metadata(target) {
+        if meta.file_type().is_symlink() {
+            return Err(FulpackError::SymlinkEscape {
+                path: target.to_string_lossy().into_owned(),
+                target: target.to_string_lossy().into_owned(),
+            });
+        }
+    }
+    fs::create_dir_all(target).map_err(|e| io_at(target, e))
+}
+
+fn already_exists(target: &Path) -> FulpackError {
+    FulpackError::Io {
+        path: target.to_path_buf(),
+        source: std::io::Error::new(
+            std::io::ErrorKind::AlreadyExists,
+            "destination exists (overwrite policy is 'error')",
+        ),
+    }
+}
+
+/// Ensure the parent dir exists (no symlinked ancestors) and apply the overwrite
+/// policy. Returns `false` if the entry should be skipped (`skip` policy). On
+/// `overwrite`, an existing entry is removed *without following* symlinks.
 fn prepare_file(target: &Path, ctx: &mut ExtractCtx<'_>) -> Result<bool, FulpackError> {
+    ensure_safe_ancestors(ctx.dest, target)?;
     if let Some(parent) = target.parent() {
         fs::create_dir_all(parent).map_err(|e| io_at(parent, e))?;
     }
-    if target.exists() {
+    if let Ok(meta) = fs::symlink_metadata(target) {
         match ctx.overwrite {
-            OverwriteMode::Error => {
-                return Err(FulpackError::Io {
-                    path: target.to_path_buf(),
-                    source: std::io::Error::new(
-                        std::io::ErrorKind::AlreadyExists,
-                        "destination exists (overwrite policy is 'error')",
-                    ),
-                })
-            }
+            OverwriteMode::Error => return Err(already_exists(target)),
             OverwriteMode::Skip => return Ok(false),
-            OverwriteMode::Overwrite => {}
+            OverwriteMode::Overwrite => {
+                if meta.file_type().is_dir() {
+                    fs::remove_dir_all(target).map_err(|e| io_at(target, e))?;
+                } else {
+                    // Removes the symlink/file itself, never the symlink's target.
+                    fs::remove_file(target).map_err(|e| io_at(target, e))?;
+                }
+            }
         }
     }
     Ok(true)
 }
 
 #[cfg(unix)]
-fn create_symlink(link: &str, target: &Path, ctx: &mut ExtractCtx<'_>) -> Result<(), FulpackError> {
+fn create_symlink(
+    dest: &Path,
+    link: &str,
+    target: &Path,
+    ctx: &mut ExtractCtx<'_>,
+) -> Result<(), FulpackError> {
+    ensure_safe_ancestors(dest, target)?;
     if let Some(parent) = target.parent() {
         fs::create_dir_all(parent).map_err(|e| io_at(parent, e))?;
     }
-    if target.exists() {
-        let _ = fs::remove_file(target);
+    if fs::symlink_metadata(target).is_ok() {
+        match ctx.overwrite {
+            OverwriteMode::Error => return Err(already_exists(target)),
+            OverwriteMode::Skip => {
+                ctx.skipped += 1;
+                return Ok(());
+            }
+            OverwriteMode::Overwrite => {
+                fs::remove_file(target).map_err(|e| io_at(target, e))?;
+            }
+        }
     }
     std::os::unix::fs::symlink(link, target).map_err(|e| io_at(target, e))?;
     ctx.extracted += 1;
@@ -358,6 +434,7 @@ fn create_symlink(link: &str, target: &Path, ctx: &mut ExtractCtx<'_>) -> Result
 
 #[cfg(not(unix))]
 fn create_symlink(
+    _dest: &Path,
     _link: &str,
     target: &Path,
     ctx: &mut ExtractCtx<'_>,

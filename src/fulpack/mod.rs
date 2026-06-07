@@ -374,4 +374,104 @@ mod tests {
         .expect("skip extract");
         assert!(result.skipped_count > 0);
     }
+
+    /// Build a tar containing a single symlink entry.
+    fn build_tar_symlink(link_path: &str, target: &str) -> Vec<u8> {
+        let mut builder = tar::Builder::new(Vec::new());
+        let mut header = tar::Header::new_gnu();
+        header.set_entry_type(tar::EntryType::Symlink);
+        header.set_size(0);
+        header.set_mode(0o777);
+        builder
+            .append_link(&mut header, link_path, target)
+            .expect("append symlink");
+        builder.into_inner().expect("finish tar")
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn extract_rejects_write_through_preexisting_symlink() {
+        // P1: a lexically-safe archive path that traverses a pre-existing symlinked
+        // directory under the destination must be rejected (no escape).
+        let tmp = TestDir::new();
+        let outside = tmp.path.join("outside");
+        fs::create_dir_all(&outside).unwrap();
+        let dest = tmp.path.join("dest");
+        fs::create_dir_all(&dest).unwrap();
+        std::os::unix::fs::symlink(&outside, dest.join("link")).unwrap();
+
+        let bytes = build_zip(&[("link/payload.txt", b"pwned")]);
+        let archive = tmp.materialize("eviltree.zip", &bytes);
+
+        let err = extract(&archive, &dest, None).unwrap_err();
+        assert_eq!(err.code(), "SYMLINK_ESCAPE");
+        assert!(
+            !outside.join("payload.txt").exists(),
+            "must not write through the symlinked directory"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn extract_symlink_respects_overwrite_policy() {
+        // P2a: symlink entries must honor the overwrite policy like files do.
+        let tmp = TestDir::new();
+        let archive = tmp.materialize("link.tar", &build_tar_symlink("mylink", "target.txt"));
+        let dest = tmp.path.join("out");
+
+        extract(&archive, &dest, None).expect("first extract");
+        assert!(fs::symlink_metadata(dest.join("mylink"))
+            .unwrap()
+            .file_type()
+            .is_symlink());
+
+        // Default 'error' policy must not silently overwrite.
+        assert!(extract(&archive, &dest, None).is_err());
+
+        // 'skip' leaves it and reports skipped.
+        let result = extract(
+            &archive,
+            &dest,
+            Some(&ExtractOptions {
+                overwrite: Some(OverwriteMode::Skip),
+                ..Default::default()
+            }),
+        )
+        .expect("skip extract");
+        assert!(result.skipped_count >= 1);
+    }
+
+    #[test]
+    fn extract_gzip_honors_options() {
+        // P2b: gzip extraction applies max_entries and include_patterns.
+        let tmp = TestDir::new();
+        let mut enc = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+        enc.write_all(&b"data".repeat(4)).unwrap();
+        let gz = enc.finish().unwrap();
+        let archive = tmp.materialize("data.txt.gz", &gz);
+        let dest = tmp.path.join("out");
+
+        let err = extract(
+            &archive,
+            &dest,
+            Some(&ExtractOptions {
+                max_entries: Some(0),
+                ..Default::default()
+            }),
+        )
+        .unwrap_err();
+        assert_eq!(err.code(), "DECOMPRESSION_BOMB");
+
+        let result = extract(
+            &archive,
+            &dest,
+            Some(&ExtractOptions {
+                include_patterns: Some(vec!["*.csv".to_string()]),
+                ..Default::default()
+            }),
+        )
+        .expect("non-matching include skips");
+        assert_eq!(result.extracted_count, 0);
+        assert!(result.skipped_count >= 1);
+    }
 }
