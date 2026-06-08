@@ -622,6 +622,55 @@ mod tests {
     }
 
     #[test]
+    fn create_rejects_unsupported_checksum_algorithm() {
+        let tmp = TestDir::new();
+        let file = tmp.materialize("x.txt", b"x");
+        let out = tmp.path.join("a.tar");
+        let err = create(
+            &[file.as_path()],
+            &out,
+            ArchiveFormat::Tar,
+            Some(&CreateOptions {
+                checksum_algorithm: Some(ChecksumAlgorithm::Sha512),
+                ..Default::default()
+            }),
+        )
+        .unwrap_err();
+        assert_eq!(err.code(), "INVALID_OPTIONS");
+    }
+
+    #[test]
+    fn create_gzip_ignores_compression_level() {
+        // The standard says gzip uses default level 6 regardless of the option,
+        // so different requested levels must produce identical output.
+        let tmp = TestDir::new();
+        let file = tmp.materialize("data.txt", &b"compressible ".repeat(64));
+        let out1 = tmp.path.join("a1.gz");
+        let out9 = tmp.path.join("a9.gz");
+        create(
+            &[file.as_path()],
+            &out1,
+            ArchiveFormat::Gzip,
+            Some(&CreateOptions {
+                compression_level: Some(1),
+                ..Default::default()
+            }),
+        )
+        .unwrap();
+        create(
+            &[file.as_path()],
+            &out9,
+            ArchiveFormat::Gzip,
+            Some(&CreateOptions {
+                compression_level: Some(9),
+                ..Default::default()
+            }),
+        )
+        .unwrap();
+        assert_eq!(fs::read(&out1).unwrap(), fs::read(&out9).unwrap());
+    }
+
+    #[test]
     fn verify_allows_in_bounds_relative_symlink() {
         let tmp = TestDir::new();
         // `dir/link -> ../sibling.txt` resolves to the root level — safe.
