@@ -44,7 +44,7 @@ pub fn create(
         ArchiveFormat::Tar => write_tar(&files, output, None, preserve)?,
         ArchiveFormat::TarGz => write_tar(&files, output, Some(level), preserve)?,
         ArchiveFormat::Zip => write_zip(&files, output, level)?,
-        ArchiveFormat::Gzip => write_gzip(sources, output, level)?,
+        ArchiveFormat::Gzip => write_gzip(&files, output, level)?,
     }
 
     // Re-read the written archive for canonical metadata, then attach checksum + created.
@@ -69,6 +69,23 @@ pub fn create(
 struct Entry {
     fs_path: PathBuf,
     archive_path: String,
+    /// `Some(target)` for a symlink that must NOT be followed — archived as a
+    /// symlink entry (tar/tar.gz) rather than by reading the target's bytes.
+    link_target: Option<String>,
+}
+
+/// If `path` is a symlink and `follow` is false, return its raw target (the entry
+/// must be archived as a symlink, never by reading the target).
+fn link_target_if_unfollowed(path: &Path, follow: bool) -> Option<String> {
+    if follow {
+        return None;
+    }
+    match std::fs::symlink_metadata(path) {
+        Ok(meta) if meta.file_type().is_symlink() => std::fs::read_link(path)
+            .ok()
+            .map(|t| t.to_string_lossy().into_owned()),
+        _ => None,
+    }
 }
 
 fn discover(sources: &[&Path], opts: &CreateOptions) -> Result<Vec<Entry>, FulpackError> {
@@ -112,9 +129,11 @@ fn discover(sources: &[&Path], opts: &CreateOptions) -> Result<Vec<Entry>, Fulpa
                     format!("{base}/{rel}")
                 };
                 if seen.insert(archive_path.clone()) {
+                    let link_target = link_target_if_unfollowed(&file.source_path, follow);
                     out.push(Entry {
                         fs_path: file.source_path,
                         archive_path,
+                        link_target,
                     });
                 }
             }
@@ -127,9 +146,11 @@ fn discover(sources: &[&Path], opts: &CreateOptions) -> Result<Vec<Entry>, Fulpa
                 && !matches_any(&excludes, &name)
                 && seen.insert(name.clone())
             {
+                let link_target = link_target_if_unfollowed(source, follow);
                 out.push(Entry {
                     fs_path: source.to_path_buf(),
                     archive_path: name,
+                    link_target,
                 });
             }
         }
@@ -175,6 +196,20 @@ fn append_tar_entries<W: Write>(
     preserve: bool,
 ) -> Result<(), FulpackError> {
     for entry in files {
+        // Un-followed symlink: store as a symlink entry, never the target bytes.
+        if let Some(target) = &entry.link_target {
+            let mut header = tar::Header::new_gnu();
+            header.set_entry_type(tar::EntryType::Symlink);
+            header.set_size(0);
+            header.set_mode(0o777);
+            builder
+                .append_link(&mut header, &entry.archive_path, target)
+                .map_err(|e| FulpackError::Io {
+                    path: output.to_path_buf(),
+                    source: e,
+                })?;
+            continue;
+        }
         let data = std::fs::read(&entry.fs_path).map_err(|e| FulpackError::Io {
             path: entry.fs_path.clone(),
             source: e,
@@ -206,6 +241,10 @@ fn write_zip(files: &[Entry], output: &Path, level: u32) -> Result<(), FulpackEr
         .compression_method(zip::CompressionMethod::Deflated)
         .compression_level(Some(level as i64));
     for entry in files {
+        // ZIP does not support symlinks (taxonomy); skip un-followed symlinks.
+        if entry.link_target.is_some() {
+            continue;
+        }
         let data = std::fs::read(&entry.fs_path).map_err(|e| FulpackError::Io {
             path: entry.fs_path.clone(),
             source: e,
@@ -222,26 +261,21 @@ fn write_zip(files: &[Entry], output: &Path, level: u32) -> Result<(), FulpackEr
     Ok(())
 }
 
-fn write_gzip(sources: &[&Path], output: &Path, level: u32) -> Result<(), FulpackError> {
-    // gzip is single-file only.
-    if sources.len() != 1 || sources[0].is_dir() {
+fn write_gzip(files: &[Entry], output: &Path, level: u32) -> Result<(), FulpackError> {
+    // gzip is single-file only, over the *discovered* (filtered) set, and cannot
+    // store a symlink (no following) — reject anything else.
+    if files.len() != 1 || files[0].link_target.is_some() {
         return Err(FulpackError::InvalidFormat {
             path: output.to_path_buf(),
         });
     }
-    let input = sources[0];
-    let data = std::fs::read(input).map_err(|e| FulpackError::Io {
-        path: input.to_path_buf(),
+    let entry = &files[0];
+    let data = std::fs::read(&entry.fs_path).map_err(|e| FulpackError::Io {
+        path: entry.fs_path.clone(),
         source: e,
     })?;
     let mut encoder = flate2::GzBuilder::new()
-        .filename(
-            input
-                .file_name()
-                .map(|n| n.to_string_lossy().into_owned())
-                .unwrap_or_default()
-                .into_bytes(),
-        )
+        .filename(entry.archive_path.clone().into_bytes())
         .write(create_output(output)?, flate2::Compression::new(level));
     encoder.write_all(&data).map_err(|e| FulpackError::Io {
         path: output.to_path_buf(),

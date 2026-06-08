@@ -549,4 +549,90 @@ mod tests {
         assert!(!result.valid);
         assert!(result.errors.iter().any(|e| e.contains("traversal")));
     }
+
+    #[test]
+    fn archive_info_checksums_contained_to_create() {
+        // info()/scan() output stays schema-valid (no `checksums`); only create() adds it.
+        let tmp = TestDir::new();
+        let archive = tmp.materialize("basic.tar.gz", BASIC_TAR_GZ);
+        let info_json = serde_json::to_value(info(&archive).unwrap()).unwrap();
+        assert!(
+            info_json.get("checksums").is_none(),
+            "info() must not emit checksums"
+        );
+
+        let file = tmp.materialize("only.txt", b"hi");
+        let out = tmp.path.join("a.tar");
+        let created = create(&[file.as_path()], &out, ArchiveFormat::Tar, None).unwrap();
+        let created_json = serde_json::to_value(created).unwrap();
+        assert!(created_json.get("checksums").is_some());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn create_does_not_follow_direct_symlink_source() {
+        let tmp = TestDir::new();
+        fs::write(tmp.path.join("real.txt"), b"secret").unwrap();
+        let link = tmp.path.join("link.txt");
+        std::os::unix::fs::symlink("real.txt", &link).unwrap();
+        let out = tmp.path.join("a.tar");
+
+        create(&[link.as_path()], &out, ArchiveFormat::Tar, None).expect("create");
+        let entries = scan(&out, None).unwrap();
+        let entry = entries
+            .iter()
+            .find(|e| e.path == "link.txt")
+            .expect("link entry archived");
+        assert_eq!(entry.entry_type, EntryType::Symlink);
+        assert_eq!(entry.symlink_target.as_deref(), Some("real.txt"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn create_gzip_rejects_symlink_source() {
+        let tmp = TestDir::new();
+        fs::write(tmp.path.join("real.txt"), b"x").unwrap();
+        let link = tmp.path.join("link.txt");
+        std::os::unix::fs::symlink("real.txt", &link).unwrap();
+        let out = tmp.path.join("a.gz");
+        assert_eq!(
+            create(&[link.as_path()], &out, ArchiveFormat::Gzip, None)
+                .unwrap_err()
+                .code(),
+            "INVALID_ARCHIVE_FORMAT"
+        );
+    }
+
+    #[test]
+    fn create_gzip_rejects_filtered_out_source() {
+        let tmp = TestDir::new();
+        let file = tmp.materialize("data.txt", b"x");
+        let out = tmp.path.join("a.gz");
+        let err = create(
+            &[file.as_path()],
+            &out,
+            ArchiveFormat::Gzip,
+            Some(&CreateOptions {
+                include_patterns: Some(vec!["*.csv".to_string()]),
+                ..Default::default()
+            }),
+        )
+        .unwrap_err();
+        assert_eq!(err.code(), "INVALID_ARCHIVE_FORMAT");
+    }
+
+    #[test]
+    fn verify_allows_in_bounds_relative_symlink() {
+        let tmp = TestDir::new();
+        // `dir/link -> ../sibling.txt` resolves to the root level — safe.
+        let safe = tmp.materialize("safe.tar", &build_tar_symlink("dir/link", "../sibling.txt"));
+        assert!(verify(&safe).expect("verify safe").valid);
+
+        // `link -> ../../etc/passwd` climbs above the root — flagged.
+        let escaping =
+            tmp.materialize("escape.tar", &build_tar_symlink("link", "../../etc/passwd"));
+        let result = verify(&escaping).expect("verify escape");
+        assert!(!result.valid);
+        assert!(result.errors.iter().any(|e| e.contains("symlink")));
+    }
 }

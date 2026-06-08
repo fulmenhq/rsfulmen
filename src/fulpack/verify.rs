@@ -69,7 +69,9 @@ pub fn verify(archive: &Path) -> Result<ValidationResult, FulpackError> {
         }
         if entry.is_symlink {
             if let Some(target) = &entry.link_target {
-                if Path::new(target).is_absolute() || has_parent_component(target) {
+                // Use the same in-bounds lexical check as extract: a relative target
+                // that stays within the root (e.g. `../sibling.txt`) is safe.
+                if super::extract::symlink_escapes(entry.path.trim_start_matches("./"), target) {
                     errors.push(format!("symlink escape: {} -> {}", entry.path, target));
                 }
             }
@@ -116,12 +118,6 @@ fn classify(raw: &str) -> PathClass {
         }
     }
     PathClass::Safe
-}
-
-fn has_parent_component(raw: &str) -> bool {
-    Path::new(raw)
-        .components()
-        .any(|c| matches!(c, Component::ParentDir))
 }
 
 fn collect_raw(archive: &Path, format: ArchiveFormat) -> Result<Vec<RawEntry>, FulpackError> {

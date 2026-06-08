@@ -132,8 +132,9 @@ pub struct ArchiveInfo {
     ///
     /// Note: the v1.0.0 `archive-info` schema does not yet declare this field (it
     /// is `additionalProperties: false`), but the fulpack standard's prose and the
-    /// other language libraries return checksums here. Absent (skipped) for
-    /// `info`/`scan`, so their output stays schema-valid.
+    /// other language libraries return checksums here. The schema fix is escalated
+    /// upstream to Crucible. Absent (skipped) for `info`/`scan`, so their output
+    /// stays schema-valid — only `create` populates it.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub checksums: Option<std::collections::BTreeMap<String, String>>,
 }
