@@ -5,16 +5,18 @@
 //! It provides typed, cross-language-consistent archive operations with a
 //! security-by-default model.
 //!
-//! Implemented operations:
+//! Operations (all five canonical fulpack operations):
 //!
 //! - [`info`] — archive metadata without listing entries
 //! - [`scan`] — list the table of contents without extraction
+//! - [`create`] — build an archive from files/directories, with checksums
 //! - [`extract`] — extract to a destination with the full security model
+//! - [`verify`] — report structural/security validity (never rejects)
 //!
-//! `scan` is *discovery* and lists every entry as stored (traversal/absolute/
-//! symlink paths included; absolute paths normalized to relative). `extract` is
-//! *enforcing*: it rejects traversal/absolute paths, escaping symlinks, and
-//! decompression bombs. (`create`/`verify` arrive in a later release.)
+//! `scan`/`verify` are *reporting*: they list/flag entries as stored (absolute
+//! paths normalized to relative in `scan`). `extract` is *enforcing*: it rejects
+//! traversal/absolute paths, escaping symlinks (incl. pre-existing symlinked
+//! ancestors), and decompression bombs.
 //!
 //! ```no_run
 //! use rsfulmen::fulpack;
@@ -28,12 +30,15 @@
 //! }
 //! ```
 
+mod create;
 mod error;
 mod extract;
 mod format;
 mod read;
 mod types;
+mod verify;
 
+pub use create::create;
 pub use error::FulpackError;
 pub use extract::extract;
 pub use format::detect_format;
@@ -43,6 +48,7 @@ pub use types::{
     CreateOptions, EntryType, ExtractOptions, ExtractResult, OverwriteMode, ScanOptions,
     ValidationResult,
 };
+pub use verify::verify;
 
 #[cfg(test)]
 mod tests {
@@ -473,5 +479,160 @@ mod tests {
         .expect("non-matching include skips");
         assert_eq!(result.extracted_count, 0);
         assert!(result.skipped_count >= 1);
+    }
+
+    #[test]
+    fn create_then_extract_roundtrip() {
+        let tmp = TestDir::new();
+        let src = tmp.path.join("src");
+        fs::create_dir_all(src.join("sub")).unwrap();
+        fs::write(src.join("a.txt"), b"alpha").unwrap();
+        fs::write(src.join("sub/b.txt"), b"beta").unwrap();
+        let out = tmp.path.join("archive.tar.gz");
+
+        let meta = create(&[src.as_path()], &out, ArchiveFormat::TarGz, None).expect("create");
+        assert!(meta.entry_count >= 2);
+        assert_eq!(meta.has_checksums, Some(true));
+        assert!(meta.checksums.as_ref().unwrap().contains_key("sha256"));
+        assert!(meta.created.is_some());
+
+        let dest = tmp.path.join("out");
+        extract(&out, &dest, None).expect("extract");
+        assert_eq!(fs::read(dest.join("src/a.txt")).unwrap(), b"alpha");
+        assert_eq!(fs::read(dest.join("src/sub/b.txt")).unwrap(), b"beta");
+    }
+
+    #[test]
+    fn create_honors_checksum_algorithm() {
+        let tmp = TestDir::new();
+        let file = tmp.materialize("only.txt", b"hello");
+        let out = tmp.path.join("a.zip");
+        let meta = create(
+            &[file.as_path()],
+            &out,
+            ArchiveFormat::Zip,
+            Some(&CreateOptions {
+                checksum_algorithm: Some(ChecksumAlgorithm::Xxh3_128),
+                ..Default::default()
+            }),
+        )
+        .expect("create zip");
+        assert_eq!(meta.checksum_algorithm, Some(ChecksumAlgorithm::Xxh3_128));
+        assert!(meta.checksums.unwrap().contains_key("xxh3-128"));
+    }
+
+    #[test]
+    fn create_gzip_rejects_multiple_sources() {
+        let tmp = TestDir::new();
+        let a = tmp.materialize("a.txt", b"a");
+        let b = tmp.materialize("b.txt", b"b");
+        let out = tmp.path.join("x.gz");
+        let err = create(&[a.as_path(), b.as_path()], &out, ArchiveFormat::Gzip, None).unwrap_err();
+        assert_eq!(err.code(), "INVALID_ARCHIVE_FORMAT");
+    }
+
+    #[test]
+    fn verify_reports_clean_archives_valid() {
+        let tmp = TestDir::new();
+        let clean = tmp.materialize("basic.tar.gz", BASIC_TAR_GZ);
+        assert!(verify(&clean).expect("verify clean").valid);
+        // The pathological fixture is safe-by-construction, so it verifies valid.
+        let path = tmp.materialize("pathological.tar.gz", PATHOLOGICAL_TAR_GZ);
+        assert!(verify(&path).expect("verify pathological").valid);
+    }
+
+    #[test]
+    fn verify_flags_zip_slip_invalid() {
+        let tmp = TestDir::new();
+        let archive = tmp.materialize("evil.zip", &build_zip(&[("../evil.txt", b"x")]));
+        let result = verify(&archive).expect("verify");
+        assert!(!result.valid);
+        assert!(result.errors.iter().any(|e| e.contains("traversal")));
+    }
+
+    #[test]
+    fn archive_info_checksums_contained_to_create() {
+        // info()/scan() output stays schema-valid (no `checksums`); only create() adds it.
+        let tmp = TestDir::new();
+        let archive = tmp.materialize("basic.tar.gz", BASIC_TAR_GZ);
+        let info_json = serde_json::to_value(info(&archive).unwrap()).unwrap();
+        assert!(
+            info_json.get("checksums").is_none(),
+            "info() must not emit checksums"
+        );
+
+        let file = tmp.materialize("only.txt", b"hi");
+        let out = tmp.path.join("a.tar");
+        let created = create(&[file.as_path()], &out, ArchiveFormat::Tar, None).unwrap();
+        let created_json = serde_json::to_value(created).unwrap();
+        assert!(created_json.get("checksums").is_some());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn create_does_not_follow_direct_symlink_source() {
+        let tmp = TestDir::new();
+        fs::write(tmp.path.join("real.txt"), b"secret").unwrap();
+        let link = tmp.path.join("link.txt");
+        std::os::unix::fs::symlink("real.txt", &link).unwrap();
+        let out = tmp.path.join("a.tar");
+
+        create(&[link.as_path()], &out, ArchiveFormat::Tar, None).expect("create");
+        let entries = scan(&out, None).unwrap();
+        let entry = entries
+            .iter()
+            .find(|e| e.path == "link.txt")
+            .expect("link entry archived");
+        assert_eq!(entry.entry_type, EntryType::Symlink);
+        assert_eq!(entry.symlink_target.as_deref(), Some("real.txt"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn create_gzip_rejects_symlink_source() {
+        let tmp = TestDir::new();
+        fs::write(tmp.path.join("real.txt"), b"x").unwrap();
+        let link = tmp.path.join("link.txt");
+        std::os::unix::fs::symlink("real.txt", &link).unwrap();
+        let out = tmp.path.join("a.gz");
+        assert_eq!(
+            create(&[link.as_path()], &out, ArchiveFormat::Gzip, None)
+                .unwrap_err()
+                .code(),
+            "INVALID_ARCHIVE_FORMAT"
+        );
+    }
+
+    #[test]
+    fn create_gzip_rejects_filtered_out_source() {
+        let tmp = TestDir::new();
+        let file = tmp.materialize("data.txt", b"x");
+        let out = tmp.path.join("a.gz");
+        let err = create(
+            &[file.as_path()],
+            &out,
+            ArchiveFormat::Gzip,
+            Some(&CreateOptions {
+                include_patterns: Some(vec!["*.csv".to_string()]),
+                ..Default::default()
+            }),
+        )
+        .unwrap_err();
+        assert_eq!(err.code(), "INVALID_ARCHIVE_FORMAT");
+    }
+
+    #[test]
+    fn verify_allows_in_bounds_relative_symlink() {
+        let tmp = TestDir::new();
+        // `dir/link -> ../sibling.txt` resolves to the root level — safe.
+        let safe = tmp.materialize("safe.tar", &build_tar_symlink("dir/link", "../sibling.txt"));
+        assert!(verify(&safe).expect("verify safe").valid);
+
+        // `link -> ../../etc/passwd` climbs above the root — flagged.
+        let escaping =
+            tmp.materialize("escape.tar", &build_tar_symlink("link", "../../etc/passwd"));
+        let result = verify(&escaping).expect("verify escape");
+        assert!(!result.valid);
+        assert!(result.errors.iter().any(|e| e.contains("symlink")));
     }
 }

@@ -167,7 +167,8 @@ fn safe_join(dest: &Path, entry_path: &str) -> Result<PathBuf, FulpackError> {
 
 /// True if a symlink stored at `entry_rel` pointing at `target` would resolve
 /// outside the destination root (absolute target, or `..` escaping the root).
-fn symlink_escapes(entry_rel: &str, target: &str) -> bool {
+/// Shared with `verify` so both use the same in-bounds lexical check.
+pub(super) fn symlink_escapes(entry_rel: &str, target: &str) -> bool {
     if Path::new(target).is_absolute() {
         return true;
     }

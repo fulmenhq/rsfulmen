@@ -406,7 +406,7 @@ let (frontmatter, body) = docscribe::parse_frontmatter("---\ntitle: Hi\n---\nbod
 
 _Use case: Inspect and list tar/tar.gz/zip/gzip archives without extraction, with cross-language-consistent metadata._
 
-Implements the Crucible fulpack standard. `info`, `scan`, and `extract` (with the full security model) are available; `create`/`verify` follow in a subsequent release. `scan` is discovery — it lists every entry as stored (absolute paths normalized to relative); `extract` enforces security, rejecting traversal/absolute paths, escaping symlinks, and decompression bombs.
+Implements the Crucible fulpack standard — all five operations: `info`, `scan`, `create`, `extract`, `verify`. `scan`/`verify` report (list/flag entries; `verify` returns `valid=false` rather than erroring); `extract` enforces security, rejecting traversal/absolute paths, escaping symlinks (incl. pre-existing symlinked ancestors), and decompression bombs; `create` discovers files via pathfinder globs and records a fulhash checksum.
 
 ```rust
 use rsfulmen::fulpack;
@@ -469,7 +469,7 @@ rsfulmen = { version = "0.1", default-features = false, features = ["schema-vali
 | `logging`             | `rsfulmen::logging`                           | Simple/Structured profiles (adds `serde_json`) |
 | `fulhash`             | `rsfulmen::fulhash`                           | xxh3-128 + SHA-256 (adds `xxhash-rust`/`sha2`/`hex`) |
 | `pathfinder`          | `rsfulmen::pathfinder`                        | Safe FS discovery (adds `walkdir`/`glob`)    |
-| `fulpack`             | `rsfulmen::fulpack`                           | Archive ops info/scan/extract (adds `tar`/`flate2`/`zip`) |
+| `fulpack`             | `rsfulmen::fulpack`                           | Archive ops info/scan/create/extract/verify (adds `tar`/`flate2`/`zip`) |
 | `ascii`               | `rsfulmen::ascii`                             | Terminal/Unicode width (adds `unicode-width`) |
 | `similarity`          | `rsfulmen::similarity` (+ foundry re-export)  | Heavy deps (strsim/unicode)                  |
 | `schema-validation`   | `rsfulmen::schema_validation`                 | Heavy deps (jsonschema/url)                  |
