@@ -6,8 +6,9 @@ use super::{
 };
 use jsonschema::{JSONSchema, SchemaResolver, SchemaResolverError};
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use url::Url;
@@ -67,11 +68,23 @@ impl FileBackedResolver {
         for root in &allowed_roots {
             collect_schema_files(root, &mut files)?;
         }
+        files.sort();
+        files.dedup();
         for file in &files {
             if let Ok(value) = load_value(file) {
                 if let Some(id) = value.get("$id").and_then(|v| v.as_str()) {
                     let id = strip_fragment(id).to_string();
-                    id_index.insert(id, file.clone());
+                    if let Some(prev) = id_index.insert(id.clone(), file.clone()) {
+                        if prev != *file {
+                            return Err(SchemaValidationError::SchemaCompileFailed {
+                                path: file.display().to_string(),
+                                message: format!(
+                                    "duplicate schema $id {id} in catalog (also {})",
+                                    prev.display()
+                                ),
+                            });
+                        }
+                    }
                 }
             }
         }
@@ -88,8 +101,56 @@ impl FileBackedResolver {
     fn load_contained(&self, path: &Path) -> Result<Arc<Value>, SchemaResolverError> {
         let contained =
             contained_canonical(path, &self.allowed_roots).map_err(|e| anyhow::anyhow!(e))?;
-        let value = load_value(&contained).map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        let value = load_value_stable(&contained).map_err(|e| anyhow::anyhow!(e.to_string()))?;
         Ok(Arc::new(value))
+    }
+
+    fn preflight(&self, schema: &Value, base: &Url) -> Result<(), SchemaValidationError> {
+        let mut visited = HashSet::new();
+        self.preflight_walk(schema, base, &mut visited)
+    }
+
+    fn preflight_walk(
+        &self,
+        schema: &Value,
+        base: &Url,
+        visited: &mut HashSet<String>,
+    ) -> Result<(), SchemaValidationError> {
+        let mut refs = Vec::new();
+        collect_refs(schema, &mut refs);
+        for original in refs {
+            let stripped = strip_fragment(&original);
+            if stripped.is_empty() {
+                continue;
+            }
+            let url = match Url::parse(stripped) {
+                Ok(url) => url,
+                Err(_) => {
+                    base.join(stripped)
+                        .map_err(|e| SchemaValidationError::SchemaCompileFailed {
+                            path: original.clone(),
+                            message: format!("invalid relative $ref {original}: {e}"),
+                        })?
+                }
+            };
+            let key = strip_fragment(url.as_str()).to_string();
+            if !visited.insert(key) {
+                continue;
+            }
+            let resolved = SchemaResolver::resolve(self, schema, &url, &original).map_err(|e| {
+                SchemaValidationError::SchemaCompileFailed {
+                    path: original.clone(),
+                    message: e.to_string(),
+                }
+            })?;
+            let next_base = resolved
+                .get("$id")
+                .and_then(|v| v.as_str())
+                .and_then(|s| Url::parse(strip_fragment(s)).ok())
+                .unwrap_or(url);
+            self.preflight_walk(&resolved, &next_base, visited)?;
+        }
+        Ok(())
     }
 
     fn lookup_id(&self, url: &Url) -> Option<PathBuf> {
@@ -234,6 +295,16 @@ fn compile_and_validate(
     resolver: FileBackedResolver,
     schema_label: &str,
 ) -> Result<Vec<ValidationIssue>, SchemaValidationError> {
+    let base = schema
+        .get("$id")
+        .and_then(|v| v.as_str())
+        .and_then(|s| Url::parse(strip_fragment(s)).ok())
+        .unwrap_or_else(|| {
+            Url::from_directory_path(&resolver.schema_dir)
+                .unwrap_or_else(|_| Url::parse("file:///").expect("static file URL"))
+        });
+    resolver.preflight(schema, &base)?;
+
     let compiled = JSONSchema::options()
         .with_draft(select_draft(schema))
         .with_resolver(resolver)
@@ -291,11 +362,63 @@ fn ensure_file_id(schema: &mut Value, schema_path: &Path) -> Result<(), SchemaVa
 }
 
 fn load_value(path: &Path) -> Result<Value, SchemaValidationError> {
-    let bytes = fs::read(path).map_err(|e| SchemaValidationError::InvalidSchemaJson {
+    load_value_stable(path)
+}
+
+fn load_value_stable(path: &Path) -> Result<Value, SchemaValidationError> {
+    let bytes = read_stable(path).map_err(|e| SchemaValidationError::InvalidSchemaJson {
         path: path.display().to_string(),
         message: e.to_string(),
     })?;
     parse_schema_bytes(&path.display().to_string(), &bytes)
+}
+
+fn read_stable(path: &Path) -> std::io::Result<Vec<u8>> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        let mut opts = fs::OpenOptions::new();
+        opts.read(true);
+        // O_NOFOLLOW: Linux 0o400000, Darwin/BSD 0x100. Closes the
+        // canonicalize-then-open symlink swap on the final path.
+        #[cfg(any(target_os = "linux", target_os = "android"))]
+        opts.custom_flags(0o400000);
+        #[cfg(any(
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "freebsd",
+            target_os = "netbsd",
+            target_os = "openbsd"
+        ))]
+        opts.custom_flags(0x0000_0100);
+        let mut file = opts.open(path)?;
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf)?;
+        Ok(buf)
+    }
+    #[cfg(not(unix))]
+    {
+        fs::read(path)
+    }
+}
+
+fn collect_refs(value: &Value, out: &mut Vec<String>) {
+    match value {
+        Value::Object(map) => {
+            if let Some(Value::String(r)) = map.get("$ref") {
+                out.push(r.clone());
+            }
+            for v in map.values() {
+                collect_refs(v, out);
+            }
+        }
+        Value::Array(items) => {
+            for v in items {
+                collect_refs(v, out);
+            }
+        }
+        _ => {}
+    }
 }
 
 fn collect_schema_files(root: &Path, out: &mut Vec<PathBuf>) -> Result<(), SchemaValidationError> {
@@ -599,5 +722,204 @@ mod tests {
             }
             other => panic!("expected compile failure, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn omitted_optional_traversal_ref_is_compile_failure() {
+        let dir = scratch_dir();
+        let outside_name = format!("rsfulmen-opt-outside-{}.schema.json", std::process::id());
+        fs::write(
+            dir.join("optional-escape.schema.json"),
+            format!(
+                r#"{{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {{
+    "x": {{ "$ref": "../{outside_name}" }}
+  }}
+}}
+"#
+            ),
+        )
+        .unwrap();
+        let outside = dir.parent().unwrap().join(&outside_name);
+        fs::write(&outside, r#"{"type":"string"}"#).unwrap();
+        let err = validate_instance_with_schema_file(
+            &dir.join("optional-escape.schema.json"),
+            &json!({}),
+            opts(&dir),
+        )
+        .unwrap_err();
+        let _ = fs::remove_file(&outside);
+        match err {
+            SchemaValidationError::SchemaCompileFailed { message, .. } => {
+                assert!(
+                    message.contains("not contained") || message.contains("canonicalize"),
+                    "{message}"
+                );
+            }
+            other => panic!("expected compile failure, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn omitted_optional_bad_ref_is_compile_failure() {
+        let dir = scratch_dir();
+        fs::write(
+            dir.join("optional-ftp.schema.json"),
+            r#"{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "x": { "$ref": "ftp://example.test/x.schema.json" }
+  }
+}
+"#,
+        )
+        .unwrap();
+        let err = validate_instance_with_schema_file(
+            &dir.join("optional-ftp.schema.json"),
+            &json!({}),
+            opts(&dir),
+        )
+        .unwrap_err();
+        match err {
+            SchemaValidationError::SchemaCompileFailed { message, .. } => {
+                assert!(
+                    message.contains("unsupported schema URI scheme") || message.contains("ftp"),
+                    "{message}"
+                );
+            }
+            other => panic!("expected compile failure, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn local_file_ref_succeeds() {
+        let dir = scratch_dir();
+        write_catalog(&dir);
+        let widget = fs::canonicalize(dir.join("widget.schema.json")).unwrap();
+        let file_url = Url::from_file_path(&widget).unwrap();
+        fs::write(
+            dir.join("file-ref.schema.json"),
+            format!(
+                r#"{{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["widget"],
+  "properties": {{
+    "widget": {{ "$ref": "{file_url}" }}
+  }}
+}}
+"#
+            ),
+        )
+        .unwrap();
+        let issues = validate_instance_with_schema_file(
+            &dir.join("file-ref.schema.json"),
+            &json!({"widget": {"kind": "ok"}}),
+            opts(&dir),
+        )
+        .unwrap();
+        assert!(issues.is_empty(), "{issues:?}");
+    }
+
+    #[test]
+    fn non_local_file_host_is_compile_failure() {
+        let dir = scratch_dir();
+        fs::write(
+            dir.join("remote-file.schema.json"),
+            r#"{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "x": { "$ref": "file://example.test/tmp/x.schema.json" }
+  }
+}
+"#,
+        )
+        .unwrap();
+        let err = validate_instance_with_schema_file(
+            &dir.join("remote-file.schema.json"),
+            &json!({}),
+            opts(&dir),
+        )
+        .unwrap_err();
+        match err {
+            SchemaValidationError::SchemaCompileFailed { message, .. } => {
+                assert!(
+                    message.contains("non-local file") || message.contains("unsupported"),
+                    "{message}"
+                );
+            }
+            other => panic!("expected compile failure, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn path_only_resolves_by_suffix() {
+        let dir = scratch_dir();
+        write_catalog(&dir);
+        let issues = validate_instance_with_schema_file(
+            &dir.join("root.schema.json"),
+            &good_instance(),
+            FileSchemaOptions {
+                ref_dirs: vec![dir.to_path_buf()],
+                resolution: FileSchemaResolution::PathOnly,
+            },
+        )
+        .unwrap();
+        assert!(issues.is_empty(), "{issues:?}");
+    }
+
+    #[test]
+    fn duplicate_id_is_compile_failure() {
+        let dir = scratch_dir();
+        write_catalog(&dir);
+        fs::write(
+            dir.join("dup.schema.json"),
+            r#"{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.example.test/catalog/widget.schema.json",
+  "type": "string"
+}
+"#,
+        )
+        .unwrap();
+        let err = validate_instance_with_schema_file(
+            &dir.join("root.schema.json"),
+            &good_instance(),
+            opts(&dir),
+        )
+        .unwrap_err();
+        match err {
+            SchemaValidationError::SchemaCompileFailed { message, .. } => {
+                assert!(message.contains("duplicate schema $id"), "{message}");
+            }
+            other => panic!("expected compile failure, got {other:?}"),
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn nofollow_read_rejects_symlink_swap() {
+        let dir = scratch_dir();
+        let inside = dir.join("inside.schema.json");
+        fs::write(&inside, r#"{"type":"string"}"#).unwrap();
+        let canon = fs::canonicalize(&inside).unwrap();
+        let outside = dir.parent().unwrap().join(format!(
+            "rsfulmen-nofollow-outside-{}.schema.json",
+            std::process::id()
+        ));
+        fs::write(&outside, r#"{"type":"number"}"#).unwrap();
+        fs::remove_file(&inside).unwrap();
+        std::os::unix::fs::symlink(&outside, &inside).unwrap();
+        let err = read_stable(&canon);
+        let _ = fs::remove_file(&outside);
+        assert!(
+            err.is_err(),
+            "expected O_NOFOLLOW to reject swapped symlink"
+        );
     }
 }
