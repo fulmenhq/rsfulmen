@@ -551,7 +551,7 @@ fn openat_nofollow(root: &Path, rel: &Path) -> Result<fs::File, String> {
     let root_fd = unsafe {
         libc::open(
             root_c.as_ptr(),
-            libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC,
+            libc::O_RDONLY | libc::O_DIRECTORY | libc::O_NOFOLLOW | libc::O_CLOEXEC,
         )
     };
     if root_fd < 0 {
@@ -1005,6 +1005,44 @@ mod tests {
         match err {
             SchemaValidationError::SchemaCompileFailed { message, .. } => {
                 assert!(message.contains("duplicate schema $id"), "{message}");
+            }
+            other => panic!("expected compile failure, got {other:?}"),
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn catalog_root_symlink_swap_is_compile_failure() {
+        let dir = scratch_dir();
+        write_catalog(&dir);
+        let schema_path = dir.join("root.schema.json");
+        let resolver = FileBackedResolver::from_schema_file(&schema_path, &opts(&dir)).unwrap();
+        let schema: Value = serde_json::from_slice(&fs::read(&schema_path).unwrap()).unwrap();
+        let canon = fs::canonicalize(&dir).unwrap();
+        let backup = canon.with_file_name(format!(
+            "{}-bak",
+            canon.file_name().unwrap().to_string_lossy()
+        ));
+        let outside = dir
+            .parent()
+            .unwrap()
+            .join(format!("rsfulmen-root-swap-{}-out", std::process::id()));
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(outside.join("widget.schema.json"), r#"{"type":"number"}"#).unwrap();
+        fs::rename(&canon, &backup).unwrap();
+        std::os::unix::fs::symlink(&outside, &canon).unwrap();
+        let err = validate_instance(&schema, &json!({}), resolver).unwrap_err();
+        let _ = fs::remove_file(&canon);
+        let _ = fs::rename(&backup, &canon);
+        let _ = fs::remove_dir_all(&outside);
+        match err {
+            SchemaValidationError::SchemaCompileFailed { message, .. } => {
+                assert!(
+                    message.contains("nofollow")
+                        || message.contains("not contained")
+                        || message.contains("cannot open catalog root"),
+                    "{message}"
+                );
             }
             other => panic!("expected compile failure, got {other:?}"),
         }
