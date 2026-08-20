@@ -120,12 +120,14 @@ fn decode_utf16_as_string(data: &[u8], little_endian: bool) -> Result<String, Fu
         ));
     }
 
-    let mut units = Vec::with_capacity(data.len() / 2);
-    for chunk in data.chunks_exact(2) {
+    let (chunks, rest) = data.as_chunks::<2>();
+    debug_assert!(rest.is_empty());
+    let mut units = Vec::with_capacity(chunks.len());
+    for chunk in chunks {
         let unit = if little_endian {
-            u16::from_le_bytes([chunk[0], chunk[1]])
+            u16::from_le_bytes(*chunk)
         } else {
-            u16::from_be_bytes([chunk[0], chunk[1]])
+            u16::from_be_bytes(*chunk)
         };
         units.push(unit);
     }

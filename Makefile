@@ -205,8 +205,9 @@ sync-ssot: ## Sync assets from Crucible SSOT
 	@echo "✅ Sync completed"
 
 # Quality targets
-lint: ## Run linting checks (clippy)
-	@echo "Running clippy..."
+lint: ## Run linting checks (clippy; rust-toolchain.toml, same as CI Test)
+	@echo "Running clippy (toolchain from rust-toolchain.toml)..."
+	@rustc --version
 	@cargo clippy --all-targets --all-features -- -D warnings
 	@echo "✅ Linting passed"
 

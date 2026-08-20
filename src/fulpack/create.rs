@@ -44,13 +44,13 @@ pub fn create(
         ArchiveFormat::Tar => write_tar(&files, output, None, preserve)?,
         ArchiveFormat::TarGz => write_tar(&files, output, Some(level), preserve)?,
         ArchiveFormat::Zip => write_zip(&files, output, level)?,
-        ArchiveFormat::Gzip => write_gzip(&files, output, level)?,
+        ArchiveFormat::Gzip => write_gzip(&files, output)?,
     }
 
     // Re-read the written archive for canonical metadata, then attach checksum + created.
     let mut archive_info = info(output)?;
     let algo = opts.checksum_algorithm.unwrap_or(ChecksumAlgorithm::Sha256);
-    let (fulhash_algo, label) = map_algorithm(algo);
+    let (fulhash_algo, label) = map_algorithm(algo)?;
     let digest = fulhash::hash_file(output, Some(fulhash_algo)).map_err(|e| FulpackError::Io {
         path: output.to_path_buf(),
         source: std::io::Error::other(e.to_string()),
@@ -59,7 +59,7 @@ pub fn create(
     checksums.insert(label.to_string(), fulhash::format_digest(&digest));
 
     archive_info.has_checksums = Some(true);
-    archive_info.checksum_algorithm = Some(algo_from_label(label));
+    archive_info.checksum_algorithm = Some(algo);
     archive_info.checksums = Some(checksums);
     archive_info.created = Some(now_rfc3339());
     Ok(archive_info)
@@ -261,7 +261,7 @@ fn write_zip(files: &[Entry], output: &Path, level: u32) -> Result<(), FulpackEr
     Ok(())
 }
 
-fn write_gzip(files: &[Entry], output: &Path, level: u32) -> Result<(), FulpackError> {
+fn write_gzip(files: &[Entry], output: &Path) -> Result<(), FulpackError> {
     // gzip is single-file only, over the *discovered* (filtered) set, and cannot
     // store a symlink (no following) — reject anything else.
     if files.len() != 1 || files[0].link_target.is_some() {
@@ -274,9 +274,10 @@ fn write_gzip(files: &[Entry], output: &Path, level: u32) -> Result<(), FulpackE
         path: entry.fs_path.clone(),
         source: e,
     })?;
+    // The standard specifies gzip ignores `compression_level` and uses default 6.
     let mut encoder = flate2::GzBuilder::new()
         .filename(entry.archive_path.clone().into_bytes())
-        .write(create_output(output)?, flate2::Compression::new(level));
+        .write(create_output(output)?, flate2::Compression::new(6));
     encoder.write_all(&data).map_err(|e| FulpackError::Io {
         path: output.to_path_buf(),
         source: e,
@@ -330,17 +331,18 @@ fn now_rfc3339() -> String {
 }
 
 /// Map a [`ChecksumAlgorithm`] to a [`fulhash::Algorithm`] and its canonical
-/// label. Algorithms beyond the two fulhash supports fall back to SHA-256.
-fn map_algorithm(algo: ChecksumAlgorithm) -> (fulhash::Algorithm, &'static str) {
+/// label. Only the two algorithms fulhash supports are accepted; requesting
+/// `sha512`/`sha1`/`md5` is an error rather than a silent SHA-256 substitution.
+fn map_algorithm(
+    algo: ChecksumAlgorithm,
+) -> Result<(fulhash::Algorithm, &'static str), FulpackError> {
     match algo {
-        ChecksumAlgorithm::Xxh3_128 => (fulhash::Algorithm::Xxh3_128, "xxh3-128"),
-        _ => (fulhash::Algorithm::Sha256, "sha256"),
-    }
-}
-
-fn algo_from_label(label: &str) -> ChecksumAlgorithm {
-    match label {
-        "xxh3-128" => ChecksumAlgorithm::Xxh3_128,
-        _ => ChecksumAlgorithm::Sha256,
+        ChecksumAlgorithm::Xxh3_128 => Ok((fulhash::Algorithm::Xxh3_128, "xxh3-128")),
+        ChecksumAlgorithm::Sha256 => Ok((fulhash::Algorithm::Sha256, "sha256")),
+        other => Err(FulpackError::InvalidOptions {
+            message: format!(
+                "unsupported checksum algorithm {other:?}; supported: sha256, xxh3-128"
+            ),
+        }),
     }
 }

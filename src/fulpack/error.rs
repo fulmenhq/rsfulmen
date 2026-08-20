@@ -16,6 +16,13 @@ pub enum FulpackError {
         path: PathBuf,
     },
 
+    /// Invalid or unsupported options were supplied to an operation.
+    #[error("invalid options: {message}")]
+    InvalidOptions {
+        /// Detail of the invalid option.
+        message: String,
+    },
+
     /// Archive file does not exist.
     #[error("archive not found: {path}")]
     NotFound {
@@ -91,6 +98,7 @@ impl FulpackError {
     pub fn code(&self) -> &'static str {
         match self {
             FulpackError::InvalidFormat { .. } => "INVALID_ARCHIVE_FORMAT",
+            FulpackError::InvalidOptions { .. } => "INVALID_OPTIONS",
             FulpackError::NotFound { .. } => "ARCHIVE_NOT_FOUND",
             FulpackError::Corrupt { .. } => "ARCHIVE_CORRUPT",
             FulpackError::PathTraversal { .. } => "PATH_TRAVERSAL",

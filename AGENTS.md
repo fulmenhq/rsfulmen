@@ -43,7 +43,7 @@ Built on patterns established by [gofulmen](https://github.com/fulmenhq/gofulmen
 | Task           | Command          |
 | -------------- | ---------------- |
 | Bootstrap      | `make bootstrap` |
-| Quality checks | `make check-all` |
+| Quality checks | `make check-all` (fmt + clippy `-D warnings` + tests; clippy uses `rust-toolchain.toml`, same pin as CI Test) |
 | Tests          | `make test`      |
 | Build          | `make build`     |
 | Format         | `make fmt`       |
