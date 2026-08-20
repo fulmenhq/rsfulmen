@@ -1,0 +1,7 @@
+# Pin the working toolchain (fmt/clippy/test) so local hooks and CI Test
+# deny the same clippy set. Do not use floating `stable` here: GitHub
+# @stable can move between PRs and fail lints that local rustup missed.
+# MSRV remains 1.88 via the dedicated CI job (RUSTUP_TOOLCHAIN=1.88.0).
+[toolchain]
+channel = "1.98.0"
+components = ["rustfmt", "clippy"]
