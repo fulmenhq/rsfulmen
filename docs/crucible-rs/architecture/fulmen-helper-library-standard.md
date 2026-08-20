@@ -3,7 +3,7 @@ title: "Fulmen Helper Library Standard"
 description: "Standard structure and capabilities for gofulmen, tsfulmen, and future language helpers"
 author: "Schema Cartographer"
 date: "2025-10-02"
-last_updated: "2025-11-11"
+last_updated: "2026-08-20"
 status: "draft"
 tags: ["architecture", "helper-library", "multi-language", "local-development"]
 ---
@@ -17,7 +17,7 @@ consult that table before proposing new foundations or changing lifecycle state.
 
 ## Scope
 
-Applies to language-specific Fulmen helper libraries (gofulmen, tsfulmen, pyfulmen, csfulmen, rufulmen, etc.). Excludes SSOT repos (Crucible, Cosmography) and application/tool repos (Fulward, goneat).
+Applies to language-specific Fulmen helper libraries (gofulmen, tsfulmen, pyfulmen, rsfulmen, csfulmen, etc.). Excludes SSOT repos (Crucible, Cosmography) and application/tool repos (Fulward, goneat).
 
 ## Canonical Façade Principle
 
@@ -34,16 +34,19 @@ The Fulmen ecosystem prioritizes **cross-language interface consistency** over i
 2. **Implementation Details Are Separate**: Whether a module wraps `stdlib`, uses third-party dependencies, or provides custom logic is documented in the `implementation` field of the module registry—it does NOT determine tier assignment.
 
 3. **Tier Assignment Is About Use Case**: A module's tier (Core, Common, Specialized) reflects:
+
    - **Universality**: How many applications need this capability
    - **Dependency footprint**: External dependencies beyond stdlib
    - **Adoption patterns**: Expected usage across the ecosystem
 
 4. **stdlib Wrapping Is Common**: If stdlib provides baseline functionality that most applications need, wrapping it in a Common tier module with a consistent façade is the CORRECT pattern. Examples:
+
    - `config`: Wraps `os`, `path/filepath` (Go), `os`, `pathlib` (Python), `fs`, `path` (Node.js)
    - `fulpack`: Wraps `archive/tar`, `archive/zip` (Go), `tarfile`, `zipfile` (Python), `tar-stream`, `archiver` (TypeScript)
    - `logging`: Wraps `log/slog` (Go), `logging` (Python), `console` with structured output (TypeScript)
 
 5. **Cross-Language Orchestration**: The power of façades emerges when:
+
    - Python developers call `pyfulmen.fulpack.create_tar_gz()`
    - Go developers call `gofulmen.fulpack.CreateTarGz()`
    - TypeScript developers call `@fulmenhq/tsfulmen/fulpack.createTarGz()`
@@ -116,12 +119,14 @@ Examples:
 ## Mandatory Capabilities
 
 1. **Goneat Bootstrap Pattern**
+
    - Follow the [Goneat Bootstrap Guide](../guides/bootstrap-goneat.md) so contributors and CI can install the CLI via package manager or `go install github.com/fulmenhq/goneat/cmd/goneat@latest`.
    - Provide a `make bootstrap` target (or equivalent script) that verifies goneat is available and documents the fallback steps in `docs/`.
    - Keep `.goneat/tools.yaml` and `.goneat/tools.local.yaml.example` templates for teams that still need download-based bootstraps; ensure `.goneat/tools.local.yaml` remains gitignored.
    - Once goneat is installed, use `goneat ssot sync` with a repository-specific `.goneat/ssot-consumer.yaml` (see below) to pull Crucible assets. Avoid bundling legacy FulDX binaries.
 
 2. **SSOT Synchronization**
+
    - Include `.goneat/ssot-consumer.yaml` describing the Crucible assets your library consumes. Recommended shape:
      ```yaml
      version: "2025.10.2"
@@ -149,39 +154,47 @@ Examples:
    - Refer to the [SSOT Sync Standard](../standards/library/modules/ssot-sync.md) for command surface and testing guidance.
 
 3. **Crucible Shim**
+
    - Provide idiomatic access to Crucible assets (docs, schemas, config defaults).
    - Re-export version constants so consumers can log/report underlying Crucible snapshot.
    - Discover available categories (`ListAvailableDocs()`, `ListAvailableSchemas()`) via embedded metadata or generated index.
    - Refer to the [Crucible Shim Standard](../standards/library/modules/crucible-shim.md).
 
 4. **Config Path API**
+
    - Implement `GetAppConfigDir`, `GetAppDataDir`, `GetAppCacheDir`, `GetAppConfigPaths`, and `GetXDGBaseDirs` (naming per language).
    - Expose Fulmen-specific helpers (`GetFulmenConfigDir`, etc.) aligned with [Fulmen Config Path Standard](../standards/config/fulmen-config-paths.md).
    - Respect platform defaults (Linux/macOS/Windows) and environment overrides.
    - Refer to the [Config Path API Standard](../standards/library/modules/config-path-api.md).
 
 5. **Three-Layer Config Loading**
+
    - Layer 1: Embed Crucible defaults from `config/{category}/vX.Y.Z/*-defaults.yaml`.
    - Layer 2: Merge user overrides from `GetFulmenConfigDir()`.
    - Layer 3: Allow application-provided config (BYOC) with explicit API hooks.
    - Refer to the [Three-Layer Configuration Standard](../standards/library/modules/enterprise-three-layer-config.md).
 
 6. **Schema Validation Utilities**
-   - Provide helpers to load, parse, and validate schemas shipped in Crucible.
-   - Optional but recommended: integrate with language-native validation libraries.
+
+   - Provide helpers to load, parse, and validate schemas shipped in Crucible (embedded catalog, keyed by logical id).
+   - Provide file-backed instance validation against caller-supplied schema directories (offline `$ref`, no network). Application schema families MUST NOT be vendored into the helper embed.
+   - Use a language-native JSON Schema engine. Goneat remains a CLI/CI tool; helpers MUST NOT require it at runtime for instance checks.
    - Refer to the [Schema Validation Helper Standard](../standards/library/modules/schema-validation.md).
 
 7. **Docscribe Module**
+
    - Provide APIs for accessing Crucible documentation assets, including frontmatter extraction and clean content reads.
    - Integrate with Crucible Shim for asset discovery and Schema Validation for config processing.
    - Refer to the [Docscribe Module Standard](../standards/library/modules/docscribe.md).
 
 8. **Error Handling Propagation**
+
    - Implement the canonical error contract as a schema-backed data model per [ADR-0006](decisions/ADR-0006-error-data-models.md).
    - Expose helpers (`wrap`, `validate`, `exitWithError`) that operate on the shared data shape, allowing language-native wrappers as optional extras.
    - Refer to the [Error Handling & Propagation Standard](../standards/library/modules/error-handling-propagation.md).
 
 9. **Telemetry & Metrics Export**
+
    - Provide counter, gauge, and histogram helpers aligned with the metrics taxonomy.
    - Use the default millisecond histogram buckets defined in [ADR-0007](decisions/ADR-0007-telemetry-default-histogram-buckets.md) unless overridden explicitly.
    - Refer to the [Telemetry & Metrics Standard](../standards/library/modules/telemetry-metrics.md).
@@ -233,7 +246,7 @@ doc_content = crucible.get_documentation('standards/observability/logging')
 schema = crucible.load_schema('observability', 'logging', 'v1.0.0', 'logger-config')
 
 # Streaming for large content
-with crucible.open_asset('docs/architecture/fulmen-technical-manifesto.md') as stream:
+with crucible.open_asset('docs/architecture/fulmen-ecosystem-guide.md') as stream:
     for chunk in stream:
         process(chunk)
 ```
@@ -377,12 +390,14 @@ When implementing a new module or capability that requires telemetry, follow thi
 **Before Implementation**:
 
 1. **Draft Metrics List**
+
    - Identify all metrics your module will emit
    - Follow naming conventions: `module_operation_unit` (e.g., `pathfinder_find_ms`, `config_load_errors`)
    - Use standard units: `count`, `ms`, `bytes`, `percent`
    - Use semantic suffixes: `_ms` (duration), `_errors` (failures), `_warnings` (non-fatal), `_count` (totals)
 
 2. **Submit Taxonomy Update Request**
+
    - Create memo in Crucible's `.plans/active/libraries/` directory
    - Format: `YYYYMMDD-<module>-metrics-request.md`
    - Include:
@@ -392,16 +407,19 @@ When implementing a new module or capability that requires telemetry, follow thi
      - Impact on other language libraries
 
 3. **Await Crucible Approval**
+
    - Schema Cartographer reviews request
    - All library teams provide feedback (24-48 hour window)
    - Metrics added to `config/taxonomy/metrics.yaml`
    - Crucible syncs to all lang wrappers
 
 4. **Sync Updated Taxonomy**
+
    - Pull latest Crucible: `make sync` (or `goneat ssot sync`)
    - Verify new metrics appear in `docs/crucible-<lang>/config/taxonomy/metrics.yaml`
 
 5. **Implement Module**
+
    - Use approved metric names (exact match required)
    - Emit metrics via library's telemetry module
    - Schema validation will pass on first try
@@ -473,7 +491,7 @@ When implementing a new module or capability that requires telemetry, follow thi
   **Where to Learn More:**
 
   - [Crucible Repository](https://github.com/fulmenhq/crucible) - SSOT schemas, docs, and configs
-  - [Fulmen Technical Manifesto](../crucible-<lang>/architecture/fulmen-technical-manifesto.md) - Philosophy and design principles
+  - [Fulmen Ecosystem Guide](../crucible-<lang>/architecture/fulmen-ecosystem-guide.md) - Layer cake and ecosystem design
   - [SSOT Sync Standard](../crucible-<lang>/standards/library/modules/ssot-sync.md) - How libraries stay synchronized
 
   ## Module Catalog
@@ -518,6 +536,7 @@ When implementing a new module or capability that requires telemetry, follow thi
   ```
 
   `docs/development/operations.md` MUST cover:
+
   1. Development workflow (primary `make` targets, lint/typecheck commands)
   2. Release process (versioning strategy, changelog expectations, required checks)
   3. Testing strategy (coverage targets from the module manifest, tooling)

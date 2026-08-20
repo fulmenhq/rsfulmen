@@ -55,11 +55,13 @@ This document defines the requirements and standards for `missive` category repo
 ### MAY
 
 1. **Use light CSS framework via CDN**: When consistent styling is desired without custom CSS:
+
    - **Pico.css** or **Water.css** — Classless semantic styling
    - **Bootstrap 5** — When more components needed
    - Link via CDN in `<head>`; no build required.
 
 2. **Use minimal SSG**: Only when partials/reuse are justified:
+
    - **Astro** (single-file components)
    - **Eleventy** (nunjucks templates)
    - Build to static HTML.

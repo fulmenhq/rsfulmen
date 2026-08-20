@@ -1,15 +1,15 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.fulmenhq.dev/crucible/observability/logging/severity-filter-v1.0.0.json",
+  "$id": "https://schemas.fulmenhq.dev/crucible/observability/logging/v1.0.0/severity-filter.schema.json",
   "title": "SeverityFilter",
   "description": "Severity-based filtering with comparison operators for log event processing",
   "type": "object",
   "properties": {
     "operator": {
-      "$ref": "definitions.schema.json#/$defs/comparisonOperator"
+      "$ref": "https://schemas.fulmenhq.dev/crucible/observability/logging/v1.0.0/definitions.schema.json#/$defs/comparisonOperator"
     },
     "level": {
-      "$ref": "definitions.schema.json#/$defs/severityName"
+      "$ref": "https://schemas.fulmenhq.dev/crucible/observability/logging/v1.0.0/definitions.schema.json#/$defs/severityName"
     }
   },
   "required": [

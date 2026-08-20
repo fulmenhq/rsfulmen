@@ -288,6 +288,12 @@ func init() {
 }
 ```
 
+**Version identity:** the bare `version` subcommand prints name + version; the
+**extended** `version --extended` / `-e` contract and the Makefile ldflags recipe in this
+file are defined authoritatively by the
+[Host Binary Identity Standard](../host-binary-identity.md) — see it for the full field
+contract, dirty semantics, SDK/SSOT pins, and cross-language recipes.
+
 ### 4. Process Command (internal/cmd/process.go)
 
 ```go

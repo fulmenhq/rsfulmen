@@ -44,19 +44,23 @@ During PyFulmen Phase 6, inconsistent casing caused data to fall through valid
 Each helper library MUST implement a consistent mapping strategy from camelCase schema keys to language conventions:
 
 1. **Explicit Mapping Layer**
+
    - Python: Pydantic models define `model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)` and expose snake_case attributes.
    - Go: Structs use `json:"camelCase"` tags and helper constructors to normalize user-provided maps.
    - TypeScript: Normalizers convert camelCase schema keys to idiomatic property names, while DTOs maintain camelCase for serialization.
 
 2. **Bidirectional Support**
+
    - Accept both schema aliases and language-native names when deserializing user overrides (e.g., YAML authored by humans).
    - Emit camelCase when writing back to SSOT-aligned formats (JSON/YAML) to stay consistent with Crucible.
 
 3. **Centralized Utility Functions**
+
    - Provide shared helpers (`to_camel`, `to_snake`) to avoid bespoke conversions scattered across code.
    - Enforce usage via linting/tests where feasible.
 
 4. **Documentation & Templates**
+
    - Update language coding standards with rules and examples.
    - Bake casing conventions into templates (`docs/architecture/decisions/template.md`, Pydantic base classes, Go struct definitions).
 
@@ -145,15 +149,18 @@ Each helper library MUST implement a consistent mapping strategy from camelCase 
 ## Implementation
 
 1. **Update Base Models/Structs**
+
    - Python: Provide `FulmenBaseModel` with alias generator and reuse everywhere.
    - Go: Enforce struct tags and helper functions in shared packages.
    - TypeScript: Export `toCamel`/`toSnake` utilities within shared config module.
 
 2. **Add Tests**
+
    - Round-trip tests ensuring both camelCase and native casing inputs load properly.
    - Snapshot tests verifying emitted JSON/YAML uses camelCase.
 
 3. **Documentation**
+
    - Link this ADR from coding standards (`docs/standards/coding/*.md`).
    - Add examples in README/API docs showing casing expectations.
 

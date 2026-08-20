@@ -9,11 +9,12 @@ tags: ["guides", "consumers", "schemas", "provenance", "dual-hosting"]
 
 # Consuming Crucible Assets
 
-Crucible is the SSOT for FulmenHQ schemas, configs, and generated bindings. Helper libraries (`gofulmen`, `pyfulmen`, `tsfulmen`, …) surface those assets so templates and applications can integrate without duplicating logic. This guide explains:
+Crucible is the SSOT for FulmenHQ schemas, configs, and generated bindings. Helper libraries (`gofulmen`, `pyfulmen`, `tsfulmen`, `rsfulmen`, …) surface those assets so templates and applications can integrate without duplicating logic. This guide explains:
 
 1. How to consume assets directly through helper-library APIs.
 2. When and how to **dual-host** schemas/configs inside your own repo while preserving provenance.
 3. Recommended checks to detect drift when Crucible versions advance.
+4. How to validate **application** schema trees that are not Crucible embeds (file-backed catalogs).
 
 > **Audience**: Template repositories (e.g., forge-codex-pulsar) and applications that depend on Fulmen helper libraries.
 
@@ -64,6 +65,14 @@ When possible:
 - Use the helper’s validation utilities (AJV harness in TypeScript, `goneat` in Python, etc.) to enforce SSOT compliance in your build pipeline.
 
 **Advantages**: No repo-level maintenance; automatic updates when you bump the helper library version; provenance recorded by the module.
+
+### Application schema catalogs (not Crucible)
+
+If the payload contract lives in **your** repo (or a sibling schema repo) and is not a Fulmen Crucible embed, use the helper’s **file-backed** instance APIs. Point them at the on-disk tree (`RefDirs`, offline `$ref`). Do not copy those files into the helper library, and do not stand up a second jsonschema/AJV instance in the application.
+
+Dual-hosting below is only for **Crucible** assets you also keep locally. Application catalogs skip that path.
+
+Contract: [Schema Validation Helper Standard](../standards/library/modules/schema-validation.md).
 
 ---
 

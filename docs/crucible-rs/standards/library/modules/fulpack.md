@@ -469,14 +469,17 @@ fmt.Printf("Format: %s, Entries: %d, Compression: %.1fx\n",
 **No schema migrations required** when adding streaming in v0.2.11:
 
 1. **Operation schemas remain unchanged**: Streaming variants use same option/result schemas
+
    - `CreateOptions` works for both `create()` and `create_stream()`
    - `ExtractResult` works for both `extract()` and `extract_stream()`
 
 2. **New method names**: Streaming uses distinct names (`*_stream`)
+
    - No conflicts with existing methods
    - Both APIs can coexist in same module
 
 3. **Resource cleanup**: Schemas don't dictate cleanup patterns
+
    - Python: Add context manager protocol to stream objects
    - Go: Add `Close()` method to stream types
    - TypeScript: Add `finally()` to promise chains
@@ -815,11 +818,13 @@ Fulpack implementations MUST pass tests in restricted environments (no network, 
 **Three canonical fixtures**:
 
 1. **basic.tar.gz** - Normal archive structure
+
    - 10 files in simple directory tree
    - All formats supported (tar.gz, zip versions)
    - Used for basic operation testing
 
 2. **nested.zip** - 3-level directory nesting
+
    - Tests deep directory traversal
    - Tests path normalization
    - Tests scan with `max_depth` option
@@ -835,10 +840,12 @@ Fulpack implementations MUST pass tests in restricted environments (no network, 
 **Adding New Fixtures**:
 
 1. **Naming Convention**: `{category}-{description}.{format}`
+
    - Categories: `basic`, `nested`, `pathological`, `utf8`, `symlink`, `large`, `corrupt`
    - Examples: `pathological-traversal.tar.gz`, `utf8-invalid-paths.zip`, `large-10k-entries.tar.gz`
 
 2. **Approval Process**:
+
    - Create fixture locally and test in your library
    - Document fixture purpose and expected behavior in PR description
    - Add fixture to `config/library/fulpack/fixtures/`
@@ -846,12 +853,14 @@ Fulpack implementations MUST pass tests in restricted environments (no network, 
    - Request review from Schema Cartographer before merging to Crucible
 
 3. **Documentation**: Each fixture should have an accompanying `.txt` or `.md` file describing:
+
    - Purpose (what it tests)
    - Expected behavior (pass/fail conditions)
    - Contents summary (number of files, structure)
    - Special characteristics (invalid UTF-8, symlinks, etc.)
 
 4. **Size Limits**:
+
    - Basic fixtures: <10KB
    - Pathological fixtures: <50KB
    - Large fixtures (if needed): <1MB, must justify in PR
@@ -1152,19 +1161,23 @@ Alert threshold: temp_files.count > 0 after operation completion
 **ALL implementations MUST**:
 
 1. **Instrument at operation entry/exit**:
+
    - Record operation start timestamp
    - Record operation end timestamp and compute duration
    - Increment operation counter with status label
 
 2. **Record security events**:
+
    - Increment security violation counter on detection
    - Log security violations with full context (archive path, entry path, violation type)
 
 3. **Track resource metrics**:
+
    - Sample memory usage during long-running operations
    - Report bytes processed and entry counts
 
 4. **Use consistent labels**:
+
    - Format: Use canonical format enum values (`tar`, `tar.gz`, `zip`, `gzip`)
    - Operation: Use canonical operation names (lowercase)
    - Status: Use `success`, `error`, or `skipped` (consistent with other modules)

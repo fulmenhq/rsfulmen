@@ -1,0 +1,17 @@
+# Valid application identity exercising metadata.typescript (npm packaging)
+app:
+  binary_name: tsfulmen
+  vendor: fulmenhq
+  env_prefix: TSFULMEN_
+  config_name: tsfulmen
+  description: TypeScript Fulmen SDK with developer CLIs
+metadata:
+  license: MIT
+  repository_category: sdk
+  typescript:
+    package_name: "@fulmenhq/tsfulmen"
+    console_scripts:
+      - name: tsfulmen-schema
+        entry_point: ./dist/bin/schema-cli.js
+      - name: tsfulmen-signals
+        entry_point: ./dist/bin/signals-cli.js

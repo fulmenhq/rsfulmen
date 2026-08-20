@@ -181,7 +181,7 @@ mod tests {
 
     #[test]
     fn test_open_known_doc() {
-        let content = open_doc_str("architecture/fulmen-technical-manifesto.md").unwrap();
+        let content = open_doc_str("architecture/fulmen-ecosystem-guide.md").unwrap();
         assert!(content.contains("Fulmen"));
     }
 

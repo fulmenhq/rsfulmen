@@ -1,6 +1,6 @@
 # Classifiers Catalog
 
-**Canonical URL**: `https://crucible.3leaps.dev/catalog/classifiers`
+**Canonical URL** (hosted site planned — v0.1.15): `https://crucible.3leaps.dev/catalog/classifiers`
 
 Index of Crucible classifier dimensions and their canonical sources.
 

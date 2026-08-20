@@ -54,6 +54,7 @@ All FulmenHQ repositories MUST include these files in the repository root:
    ```
 
 2. **Badges** (optional but recommended)
+
    - Release version
    - License
    - CI/CD status
@@ -65,35 +66,42 @@ All FulmenHQ repositories MUST include these files in the repository root:
    ```
 
 3. **Quick Start / TL;DR**
+
    - Installation in 3-5 steps
    - Basic usage example
    - Link to detailed docs
 
 4. **Overview / What is X?**
+
    - Problem being solved
    - How this project solves it
    - Key features and benefits
 
 5. **Installation**
+
    - Multiple installation methods
    - Prerequisites
    - Verification steps
 
 6. **Usage**
+
    - Basic examples
    - Common use cases
    - Links to detailed documentation
 
 7. **Documentation**
+
    - Link to full documentation
    - Architecture overview
    - API reference
 
 8. **Contributing**
+
    - Link to CONTRIBUTING.md
    - Quick contribution guidelines
 
 9. **License**
+
    - Link to LICENSE file
    - Brief license summary
 
@@ -166,11 +174,13 @@ Tagline
 **FulmenHQ License Options:**
 
 1. **MIT License** (most common)
+
    - Standard permissive license
    - Use for libraries, tools, applications
    - Simple, well-understood
 
 2. **Apache 2.0 License**
+
    - Permissive with patent grant
    - Use for projects with patent concerns
    - Includes contributor license agreement
@@ -200,27 +210,32 @@ Tagline
 **Required sections:**
 
 1. **How to Contribute**
+
    - Reporting issues
    - Submitting changes
    - Pull request process
 
 2. **Versioning**
+
    - Chosen strategy (SemVer or CalVer)
    - Link to Repository Versioning Standard
    - Version management commands
 
 3. **Development Setup**
+
    - Prerequisites
    - Installation steps
    - Running tests
    - Building the project
 
 4. **Code Standards**
+
    - Link to coding standards
    - Linting and formatting requirements
    - Testing requirements
 
 5. **Commit Convention**
+
    - Conventional Commits format
    - Commit message examples
 

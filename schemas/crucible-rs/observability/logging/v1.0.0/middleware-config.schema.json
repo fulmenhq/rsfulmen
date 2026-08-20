@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.fulmenhq.dev/crucible/observability/logging/middleware-config-v1.0.0.json",
+  "$id": "https://schemas.fulmenhq.dev/crucible/observability/logging/v1.0.0/middleware-config.schema.json",
   "title": "MiddlewareConfig",
   "description": "Configuration for log event middleware (redaction, filtering, augmentation)",
   "type": "object",
@@ -83,7 +83,7 @@
           "description": "Filter out events below this level (deprecated: use severityFilter for operator-based filtering)"
         },
         "severityFilter": {
-          "$ref": "severity-filter.schema.json",
+          "$ref": "https://schemas.fulmenhq.dev/crucible/observability/logging/v1.0.0/severity-filter.schema.json",
           "description": "Advanced severity filtering with comparison operators"
         },
         "exclude": {

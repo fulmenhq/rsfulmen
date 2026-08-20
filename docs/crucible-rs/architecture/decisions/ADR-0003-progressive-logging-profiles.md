@@ -49,21 +49,26 @@ All helper libraries MUST implement the following profiles with equivalent behav
 ### Required Behaviours
 
 1. **Profile-to-Configuration Mapping**
+
    - Provide constructors/factories that accept a profile enum and hydrate default sinks, middleware, and throttling options.
    - Allow callers to override defaults while preserving schema validity.
 
 2. **Middleware Registry**
+
    - Expose a registry API that resolves middleware by name (`redact-secrets`, `throttle`, `annotate-trace`, etc.) using strongly typed configs.
    - Ensure order and enabled flags match schema definitions.
 
 3. **Policy Enforcement**
+
    - Evaluate optional policy files (`logging-policy.yaml`) during hydration.
    - Honour `enforceStrictMode` by failing fast when configuration violates policy (no silent fallbacks).
 
 4. **Schema Validation**
+
    - Validate both hydrated configuration and emitted events against Crucible schemas (`logger-config`, `log-event`) during tests and optionally at runtime.
 
 5. **Golden Event Fixtures**
+
    - Maintain shared fixtures per profile so all languages emit structurally identical events for audit scenarios.
 
 6. **Observability Metadata**

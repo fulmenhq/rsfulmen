@@ -30,7 +30,7 @@ Establish clear naming patterns for FulmenHQ repositories to enable:
 - `gofulmen` - Go helper library
 - `pyfulmen` - Python helper library
 - `tsfulmen` - TypeScript helper library
-- `rsfulmen` - Rust helper library (future)
+- `rsfulmen` - Rust helper library
 
 **Binaries**: No binaries (library-only)
 

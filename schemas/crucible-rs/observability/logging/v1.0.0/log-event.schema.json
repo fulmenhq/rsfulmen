@@ -1,31 +1,31 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.fulmenhq.dev/crucible/observability/logging/log-event-v1.0.0.json",
+  "$id": "https://schemas.fulmenhq.dev/crucible/observability/logging/v1.0.0/log-event.schema.json",
   "title": "LogEvent",
   "description": "Structured log event envelope for consistent telemetry across Fulmen libraries",
   "type": "object",
   "properties": {
     "timestamp": {
-      "$ref": "definitions.schema.json#/$defs/rfc3339Nano"
+      "$ref": "https://schemas.fulmenhq.dev/crucible/observability/logging/v1.0.0/definitions.schema.json#/$defs/rfc3339Nano"
     },
     "severity": {
-      "$ref": "definitions.schema.json#/$defs/severityName"
+      "$ref": "https://schemas.fulmenhq.dev/crucible/observability/logging/v1.0.0/definitions.schema.json#/$defs/severityName"
     },
     "severityLevel": {
-      "$ref": "definitions.schema.json#/$defs/severityLevel",
+      "$ref": "https://schemas.fulmenhq.dev/crucible/observability/logging/v1.0.0/definitions.schema.json#/$defs/severityLevel",
       "description": "Numeric severity for sorting/filtering (optional but recommended for runtime events)"
     },
     "message": {
-      "$ref": "definitions.schema.json#/$defs/logMessage"
+      "$ref": "https://schemas.fulmenhq.dev/crucible/observability/logging/v1.0.0/definitions.schema.json#/$defs/logMessage"
     },
     "service": {
-      "$ref": "definitions.schema.json#/$defs/serviceName"
+      "$ref": "https://schemas.fulmenhq.dev/crucible/observability/logging/v1.0.0/definitions.schema.json#/$defs/serviceName"
     },
     "component": {
-      "$ref": "definitions.schema.json#/$defs/componentName"
+      "$ref": "https://schemas.fulmenhq.dev/crucible/observability/logging/v1.0.0/definitions.schema.json#/$defs/componentName"
     },
     "logger": {
-      "$ref": "definitions.schema.json#/$defs/loggerName"
+      "$ref": "https://schemas.fulmenhq.dev/crucible/observability/logging/v1.0.0/definitions.schema.json#/$defs/loggerName"
     },
     "environment": {
       "type": "string",
@@ -34,18 +34,18 @@
       "description": "Deployment environment (e.g., 'dev', 'staging', 'production')"
     },
     "context": {
-      "$ref": "definitions.schema.json#/$defs/context"
+      "$ref": "https://schemas.fulmenhq.dev/crucible/observability/logging/v1.0.0/definitions.schema.json#/$defs/context"
     },
     "contextId": {
-      "$ref": "definitions.schema.json#/$defs/contextId",
+      "$ref": "https://schemas.fulmenhq.dev/crucible/observability/logging/v1.0.0/definitions.schema.json#/$defs/contextId",
       "description": "Identifier for the broader execution context (workflow, job, batch, etc.)"
     },
     "requestId": {
-      "$ref": "definitions.schema.json#/$defs/requestId",
+      "$ref": "https://schemas.fulmenhq.dev/crucible/observability/logging/v1.0.0/definitions.schema.json#/$defs/requestId",
       "description": "Request identifier (HTTP X-Request-ID or CLI operation UUID)"
     },
     "correlationId": {
-      "$ref": "definitions.schema.json#/$defs/uuidV7",
+      "$ref": "https://schemas.fulmenhq.dev/crucible/observability/logging/v1.0.0/definitions.schema.json#/$defs/uuidV7",
       "description": "Cross-service correlation identifier (UUIDv7 propagated across boundaries)"
     },
     "error": {
@@ -92,7 +92,7 @@
       "description": "Parent span identifier for nested operations"
     },
     "tags": {
-      "$ref": "definitions.schema.json#/$defs/tags"
+      "$ref": "https://schemas.fulmenhq.dev/crucible/observability/logging/v1.0.0/definitions.schema.json#/$defs/tags"
     },
     "eventId": {
       "type": "string",

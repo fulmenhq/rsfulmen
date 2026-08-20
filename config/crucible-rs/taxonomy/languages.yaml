@@ -23,8 +23,8 @@ languages:
     name: Rust
     libraryName: rsfulmen
     status: active
-    minimumRuntime: "1.70"
-    notes: "Foundation enabled in v0.2.21; consumes generated codegen artifacts"
+    minimumRuntime: "1.88"
+    notes: "Matches rsfulmen crate rust-version; consumes generated codegen artifacts"
   - key: csharp
     name: C#
     libraryName: csfulmen

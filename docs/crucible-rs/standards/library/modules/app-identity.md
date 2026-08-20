@@ -15,6 +15,10 @@ tags: ["app-identity", "modules", "configuration", "standards"]
 
 Provide a single source of truth for application identity metadata across the Fulmen ecosystem. Every project—from helper libraries to production forges—derives binary names, vendor namespaces, environment-variable prefixes, and config directories from `.fulmen/app.yaml`.
 
+> **Scope note:** this module defines **runtime** application identity (which app you are).
+> For **build** host identity (what build of a binary is on disk — version, commit, build
+> date, dirty, SDK/SSOT pins), see the [Host Binary Identity Standard](../../repository-structure/host-binary-identity.md).
+
 ## Background
 
 Fulmen templates (groningen, percheron, future breeds) historically embedded binary names and vendor prefixes throughout code, docs, and tooling, requiring manual search-and-replace during CDRL refits. This led to:
@@ -71,16 +75,17 @@ The App Identity module solves this by providing a canonical metadata file that 
 
 **Optional Fields** (`metadata` object):
 
-| Field                 | Type   | Description                                                                           |
-| --------------------- | ------ | ------------------------------------------------------------------------------------- |
-| `project_url`         | URI    | Primary project URL (repository, docs)                                                |
-| `support_email`       | email  | Support/contact email                                                                 |
-| `license`             | string | SPDX license identifier (MIT, Apache-2.0, etc.)                                       |
-| `repository_category` | enum   | From Fulmen taxonomy: cli, workhorse, service, library, pipeline, codex, sdk          |
-| `telemetry_namespace` | string | Namespace for metrics/logging (defaults to binary_name)                               |
-| `registry_id`         | UUID   | Optional UUIDv7 for future registry (experimental)                                    |
-| `python`              | object | Python-specific packaging metadata (distribution_name, package_name, console_scripts) |
-| _(custom)_            | any    | Additional properties allowed for extensibility                                       |
+| Field                 | Type   | Description                                                                            |
+| --------------------- | ------ | -------------------------------------------------------------------------------------- |
+| `project_url`         | URI    | Primary project URL (repository, docs)                                                 |
+| `support_email`       | email  | Support/contact email                                                                  |
+| `license`             | string | SPDX license identifier (MIT, Apache-2.0, etc.)                                        |
+| `repository_category` | enum   | From Fulmen taxonomy: cli, workhorse, service, library, pipeline, codex, sdk           |
+| `telemetry_namespace` | string | Namespace for metrics/logging (defaults to binary_name)                                |
+| `registry_id`         | UUID   | Optional UUIDv7 for future registry (experimental)                                     |
+| `python`              | object | Python-specific packaging metadata (distribution_name, package_name, console_scripts)  |
+| `typescript`          | object | TypeScript/npm packaging metadata (package_name, console_scripts → package.json `bin`) |
+| _(custom)_            | any    | Additional properties allowed for extensibility                                        |
 
 **Full schema**: See `schemas/config/repository/app-identity/v1.0.0/app-identity.schema.json`
 
@@ -126,16 +131,19 @@ pyfulmen/
 Helper libraries MUST follow this discovery order:
 
 1. **Explicit path parameter**: `LoadFrom(path)` / `load_identity(path=...)` / `loadFrom(path)`
+
    - Highest priority: Caller explicitly specifies path
    - Use case: Tests, multi-binary explicit selection
    - Behavior: Error if file doesn't exist
 
 2. **Environment variable override**: `FULMEN_APP_IDENTITY_PATH`
+
    - Second priority: Environment explicitly specifies path
    - Use case: CI/CD, containers, deployment overrides
    - Behavior: Error if file doesn't exist
 
 3. **Filesystem discovery**: Walk upward from CWD
+
    - Third priority: Search from `os.Getcwd()` / `process.cwd()` upward
    - Stop at first `.fulmen/app.yaml` found
    - Walk to filesystem root (or max 20 levels)
@@ -143,6 +151,7 @@ Helper libraries MUST follow this discovery order:
    - Optional: Implementations MAY include an executable-directory fallback as part of filesystem discovery, but it MUST run after the CWD ancestor walk.
 
 4. **Embedded identity fallback** (REQUIRED for distributed artifacts)
+
    - Used only when explicit path/env var are not set and filesystem discovery fails
    - Ensures standalone binaries/packages know their identity outside the repo
 
@@ -445,6 +454,31 @@ metadata:
         entry_point: pyfulmen.cli:main
 ```
 
+### With TypeScript/npm Packaging
+
+```yaml
+app:
+  binary_name: tsfulmen
+  vendor: fulmenhq
+  env_prefix: TSFULMEN_
+  config_name: tsfulmen
+  description: TypeScript Fulmen SDK with developer CLIs
+
+metadata:
+  license: MIT
+  repository_category: sdk
+  typescript:
+    # npm package name (scoped or unscoped)
+    package_name: "@fulmenhq/tsfulmen"
+    # Executable bin entries — map to package.json `bin`
+    # (entry_point is the path to the built executable, not a module:function)
+    console_scripts:
+      - name: tsfulmen-schema
+        entry_point: ./dist/bin/schema-cli.js
+      - name: tsfulmen-signals
+        entry_point: ./dist/bin/signals-cli.js
+```
+
 ## Error Handling
 
 ### Common Errors
@@ -528,7 +562,7 @@ The `vendor` field is **NOT** used for:
 
 - Go package names (use `binary_name` or module path)
 - Python import identifiers (use `metadata.python.package_name`)
-- TypeScript/npm package names (use separate package.json configuration)
+- TypeScript/npm package names (use `metadata.typescript.package_name`, or package.json)
 
 ### Language-Specific Analysis
 

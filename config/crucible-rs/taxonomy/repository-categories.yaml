@@ -31,7 +31,7 @@ categories:
     languages:
       - "Go (preferred for binary size and ecosystem)"
       - "TypeScript/Bun (compiled to binary)"
-      - "Rust (when rsfulmen stable)"
+      - "Rust"
     notes: "Microtools enforce architectural discipline through narrow scope and helper library dependency. One-way dependency flow (microtool → helper → SSOT) prevents circular dependencies. CDRL templates follow naming: forge-microtool-{instrument} where {instrument} uses hand tools/precision instruments with first letter matching language (grinder/gauge/gouge for Go, tongs/tap/trammel for TypeScript, rasp/reamer/router for Rust) - distinguishes from workhorse (horse breeds)."
     examples:
       - "fulmen-fixtures (fixture deployment and generation)"

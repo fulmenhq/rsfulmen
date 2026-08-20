@@ -162,7 +162,7 @@ pub mod schema_id;
 #[cfg_attr(docsrs, doc(cfg(feature = "similarity")))]
 pub mod similarity;
 
-/// Schema validation utilities backed by embedded Crucible schemas.
+/// Schema validation utilities (embedded Crucible catalogs and file-backed trees).
 #[cfg(feature = "schema-validation")]
 #[cfg_attr(docsrs, doc(cfg(feature = "schema-validation")))]
 pub mod schema_validation;
@@ -183,7 +183,7 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Crucible SSOT version this library was synced from.
 ///
 /// Updated automatically by `make sync-ssot`.
-pub const CRUCIBLE_VERSION: &str = "v0.4.13";
+pub const CRUCIBLE_VERSION: &str = "v0.4.19";
 
 #[cfg(test)]
 mod tests {

@@ -255,7 +255,7 @@ ADRs can have the following statuses:
 
 ### Architecture
 
-- [Fulmen Technical Manifesto](../fulmen-technical-manifesto.md) - Core principles informing ADRs
+- [This ADR index](README.md) and [ADR-0001: Two-Tier ADR System](ADR-0001-two-tier-adr-system.md) - Principles informing ADRs
 - [Architecture README](../README.md) - Overview of all architecture docs
 - [ADR Template](template.md) - Starting point for new ADRs
 

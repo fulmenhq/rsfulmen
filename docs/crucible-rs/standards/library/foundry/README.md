@@ -107,11 +107,13 @@ Nine semantic categories organize 60+ exit codes:
 Helper libraries MUST:
 
 1. **Load catalog** from synced `config/library/foundry/exit-codes.yaml`
+
    - Cache parsed results lazily (avoid disk I/O during module import for short-lived CLIs)
    - Fail fast with structured error if catalog missing/invalid (include remediation in message)
    - Expose `getExitCodesVersion()` accessor returning catalog `version` field for telemetry
 
 2. **Expose language-native constants**:
+
    - **Go**: `const` in `pkg/foundry` (e.g., `ExitPortInUse`)
    - **Python**: `IntEnum` in `pyfulmen.foundry.exit_codes` (e.g., `ExitCode.PORT_IN_USE`)
    - **TypeScript**: `as const` object + type unions (e.g., `exitCodes.PORT_IN_USE`)
@@ -120,10 +122,12 @@ Helper libraries MUST:
    - Generate via code generation templates (maintained in Crucible) to prevent drift
 
 3. **Provide metadata accessor**:
+
    - `getExitCodeInfo(code: int)` returns: code, name, description, context, category, retry_hint, bsd_equivalent
    - Enable structured logging with exit metadata for observability
 
 4. **Implement simplified mode mapping**:
+
    - `mapToSimplified(code: int, mode: SimplifiedMode)` for novice-friendly tools
    - Support `basic` (0/1/2) and `severity` (0-7) modes
    - Workhorses SHOULD expose `exit_codes.simplified_mode` configuration toggle
@@ -233,20 +237,24 @@ Six standard behaviors with defined phase sequences:
 Helper libraries MUST:
 
 1. **Load catalog** from synced `config/library/foundry/signals.yaml`
+
    - Build indexes for efficient lookup (by name, by ID, by number)
    - Cache parsed results lazily
 
 2. **Expose strict lookup functions**:
+
    - `lookupSignal(name)` - exact catalog name match only
    - `getSignalNumber(name)` - return unix_number for signal
    - `getSignalNumberForPlatform(name, platform)` - platform-aware number lookup
 
 3. **Expose resolution functions** (ergonomic CLI input):
+
    - `resolveSignal(name)` - normalize and lookup (see Resolution Algorithm below)
    - `listSignalNames()` - return all signal names for CLI completion
    - `matchSignalNames(pattern)` - glob matching for CLI discovery
 
 4. **Build efficient indexes** during catalog load:
+
    - `signalsByName` - map signal name → entry (e.g., `"SIGTERM"` → entry)
    - `signalsByID` - map signal ID → entry (e.g., `"term"` → entry)
    - `signalsByNumber` - map unix_number → entry (e.g., `15` → entry)

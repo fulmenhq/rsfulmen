@@ -262,16 +262,19 @@ static CONFIG: Dir = include_dir!("$CARGO_MANIFEST_DIR/config");
 ### v0.2.21 Implementation
 
 1. **Create `lang/rust/` scaffold** (W1)
+
    - `Cargo.toml` with serde, thiserror dependencies
    - `rust-toolchain.toml` pinning MSRV 1.70
    - `src/lib.rs` with module structure
    - `.gitignore` for `target/`
 
 2. **Update sync script** (W1)
+
    - Add `syncToRust()` function to `scripts/sync-to-lang.ts`
    - Include Rust in sync pipeline
 
 3. **Add codegen templates** (W2)
+
    - Rust EJS templates for exit-codes, fulpack, fulencode, fulhash
    - Generated files output to `lang/rust/src/foundry/`
 

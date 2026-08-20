@@ -10,20 +10,6 @@ This directory contains the authoritative architecture documentation for Crucibl
 
 ### Ecosystem Foundation
 
-#### [Fulmen Technical Manifesto](fulmen-technical-manifesto.md)
-
-Core principles and tenets guiding all Fulmen development.
-
-**Key Principles**:
-
-- Start Fast, Thrive on Scale
-- Be Persnickety About Code
-- Build for Clarity
-- Fail Fast, Recover Faster
-- Documentation as Code
-
-**When to read**: Understanding the "why" behind Fulmen architectural decisions.
-
 #### [Fulmen Ecosystem Guide](fulmen-ecosystem-guide.md)
 
 Complete overview of the Fulmen layer cake and how components interact.
@@ -142,9 +128,9 @@ Standards for specific library modules (Config Path API, Crucible Shim, Docscrib
 
 **Understanding the Ecosystem**:
 
-1. [Fulmen Technical Manifesto](fulmen-technical-manifesto.md) - Core principles
-2. [Fulmen Ecosystem Guide](fulmen-ecosystem-guide.md) - Layer cake overview
-3. [Pseudo-Monorepo](pseudo-monorepo.md) - Repository structure
+1. [Fulmen Ecosystem Guide](fulmen-ecosystem-guide.md) - Layer cake overview
+2. [Pseudo-Monorepo](pseudo-monorepo.md) - Repository structure
+3. [decisions/README.md](decisions/README.md) - ADR index
 
 **Building Libraries**:
 
@@ -171,13 +157,13 @@ Standards for specific library modules (Config Path API, Crucible Shim, Docscrib
 **Application Developer**:
 
 - [Fulmen Ecosystem Guide](fulmen-ecosystem-guide.md)
-- [Fulmen Technical Manifesto](fulmen-technical-manifesto.md)
+- [Coding Standards](../standards/coding/README.md)
 
 **New to Fulmen**:
 
-1. [Fulmen Technical Manifesto](fulmen-technical-manifesto.md)
-2. [Fulmen Ecosystem Guide](fulmen-ecosystem-guide.md)
-3. Browse [decisions/README.md](decisions/README.md)
+1. [Fulmen Ecosystem Guide](fulmen-ecosystem-guide.md)
+2. Browse [decisions/README.md](decisions/README.md)
+3. [Coding Standards](../standards/coding/README.md)
 
 ## Related Documentation
 

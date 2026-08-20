@@ -375,19 +375,23 @@ doctor: ## Validate CDRL refit completeness
 **Doctor Script Requirements** (language-agnostic checks):
 
 1. **App Identity Validation**:
+
    - File exists at `.fulmen/app.yaml`
    - YAML parses correctly
    - Required fields present: `vendor`, `binary_name`, `env_prefix`, `config_name`
 
 2. **Environment Variable Consistency**:
+
    - All env vars in `.env` use prefix from App Identity
    - No stray template env vars (e.g., `GRONINGEN_*` when breed changed)
 
 3. **Configuration Path Validation**:
+
    - Config files renamed to match `config_name`
    - Config directory structure consistent
 
 4. **Module Path Validation** (language-specific):
+
    - Go: `go.mod` module path updated from template
    - Python: `pyproject.toml` name field updated
    - TypeScript: `package.json` name field updated

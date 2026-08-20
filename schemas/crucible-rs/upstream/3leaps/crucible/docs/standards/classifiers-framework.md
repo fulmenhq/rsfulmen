@@ -138,7 +138,7 @@ See `docs/standards/velocity-mode-classification.md` for the relationship table 
 
 ## Stability and Versioning
 
-During Crucible’s alpha phase:
+While the classifier schemas are at `v0/`:
 
 - Dimension definitions and docs may be marked `status: stable` to indicate the team’s intent that the meaning is not expected to churn.
 - Schemas live under `schemas/**/v0/` which signals the interface may still change.

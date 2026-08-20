@@ -328,6 +328,7 @@ function inspectDocument(content: string): DocumentInfo;
 ### Core Test Cases
 
 1. **Multi-Document Scenarios**
+
    - YAML streams with multiple documents
    - Concatenated markdown with `---` separators
    - Mixed: markdown with frontmatter + YAML stream
@@ -335,11 +336,13 @@ function inspectDocument(content: string): DocumentInfo;
    - Edge: `---` in code blocks (should not split)
 
 2. **Document Inspection**
+
    - Various document types and structures
    - Performance: <1ms for typical documents
    - Accuracy of section estimation
 
 3. **Frontmatter Variations**
+
    - Valid YAML frontmatter
    - Empty frontmatter block
    - No frontmatter

@@ -3,7 +3,7 @@ title: "Fulmen Ecosystem Guide"
 description: "How the Fulmen ecosystem fits together—from schemas and tooling to libraries, forges, and operational standards"
 author: "Schema Cartographer"
 date: "2025-10-10"
-last_updated: "2026-01-06"
+last_updated: "2026-08-20"
 status: "draft"
 tags: ["fulmen", "architecture", "ecosystem", "v0.4.2"]
 ---
@@ -18,10 +18,11 @@ Fulmen empowers teams to build enterprise systems that start fast and scale effo
 
 0. **Crucible (Infoarch SSOT)**: Foundational layer for datamodels/schemas, processes/SOPs, and specs/standards. Authoritative contracts, policies, docs, coding rules (e.g., TS barrel exports, logging adapters), and devsecops (pre-commit gates, security scans)—ensuring persnickety excellence and zero silos. Refines practices through rigorous validation, powering the entire cake.
 
-1. **Helper Libraries (\*fulmen)**: Idiomatic implementations of core data and utilities wrapping Crucible assets. Solves cross-project pains like config paths, schema validation, observability, and Foundry catalogs (countries, HTTP statuses, patterns). Current: `gofulmen`, `pyfulmen`, `tsfulmen`; planned: `rsfulmen` (Rust), `csfulmen` (C#) as ecosystem needs evolve.
+1. **Helper Libraries (\*fulmen)**: Idiomatic implementations of core data and utilities wrapping Crucible assets. Solves cross-project pains like config paths, schema validation, observability, and Foundry catalogs (countries, HTTP statuses, patterns). Current: `gofulmen`, `pyfulmen`, `tsfulmen`, `rsfulmen` (Rust); planned: `csfulmen` (C#) as ecosystem needs evolve.
 
 2. **Templates (Fulmens)**: Proven, production-ready starters embodying CRDL (Clone → Degit → Refit → Launch). Five specialized template types for different use cases:
-   - **Workhorse**: General-purpose applications (servers, workers, long-running processes) - Examples: `forge-workhorse-groningen` (Go backend), `forge-workhorse-percheron` (Python backend)
+
+   - **Workhorse**: General-purpose applications (servers, workers, long-running processes) - Examples: `forge-workhorse-groningen` (Go / gofulmen), `forge-workhorse-percheron` (Python / pyfulmen), `forge-workhorse-roan` (Rust / rsfulmen), `forge-workhorse-tuvan` (TypeScript / tsfulmen)
    - **Codex**: Human-first documentation sites and knowledge hubs - Examples: `forge-codex-pulsar` (Astro-based documentation portal)
    - **Microtool**: Ultra-narrow, single-purpose CLI tools - Examples: `forge-microtool-anvil` (fixture deployment), `forge-microtool-chisel` (config synchronization)
    - **Spec-Host**: Machine-first static hosting for specification artifacts (JSON Schema, OpenAPI, AsyncAPI) with canonical URL resolution - Examples: (planned) `forge-spec-host-crucible`
@@ -29,6 +30,7 @@ Fulmen empowers teams to build enterprise systems that start fast and scale effo
      Gymnasiums (e.g., TUI experiments) modularize for future integration.
 
 3. **DX/Dev Tools**: Automation layer for governance and productivity. CLI-driven validation, formatting, sync, approvals, and orchestration. Key tools:
+
    - `goneat`: Quality enforcement (linting, schema validation, hooks; v0.3+ stricter assessments).
    - `fulward`: Protection and approval workflows (successor to guardian; centralizes commit/release policies).
    - `sumpter`: Build and CLI orchestration (emerging for streamlined compilation/packaging across layers).
@@ -113,7 +115,7 @@ graph TD
 
 ### 1. Helper Libraries (\*fulmen)
 
-- **Repositories**: `gofulmen`, `pyfulmen`, `tsfulmen`; planned: `rsfulmen` (Rust), `csfulmen` (C#) as needs evolve.
+- **Repositories**: `gofulmen`, `pyfulmen`, `tsfulmen`, `rsfulmen`; planned: `csfulmen` (C#) as needs evolve.
 
 - **Core Modules**: Config path API, three-layer config, schema validation, Crucible shim, SSOT sync, observability logging, Foundry catalogs (patterns, HTTP statuses, countries, MIME types).
 
@@ -126,23 +128,27 @@ graph TD
 Six specialized template categories, each optimized for different use cases:
 
 - **Workhorse Templates**: General-purpose applications (servers, workers, long-running processes)
+
   - **Current**: `forge-workhorse-groningen` (Go backend), `forge-workhorse-percheron` (Python backend)
   - **Binary naming**: Uses horse breed names (groningen, percheron, clydesdale)
   - **Use cases**: APIs, workers, services requiring reliable tooling out-of-the-box
 
 - **Codex Templates**: Human-first documentation sites and knowledge hubs
+
   - **Current**: `forge-codex-pulsar` (TypeScript/Astro documentation portal)
   - **Use cases**: API docs, developer hubs, knowledge portals, browsable spec viewers
   - **Features**: Multi-version support, schema ingestion, i18n-ready, lighthouse benchmarks
   - **Note**: Codex may layer browsable UI over a spec-host corpus for human consumption
 
 - **Microtool Templates**: Ultra-narrow, single-purpose CLI tools
+
   - **Current**: `forge-microtool-anvil` (fixture deployment), `forge-microtool-chisel` (config sync)
   - **Binary naming**: Uses tool/instrument names (anvil, chisel, grinder)
   - **Use cases**: Fixture deployment, config synchronization, asset management
   - **Philosophy**: One-way dependency flow (microtool → helper → SSOT, prevents circular dependencies)
 
 - **Spec-Host Templates**: Machine-first static hosting for specification artifacts
+
   - **Planned**: `forge-spec-host-crucible` (Crucible schema hosting)
   - **Use cases**: JSON Schema hosting, OpenAPI spec distribution, AsyncAPI catalogs
   - **Philosophy**: Canonical URL resolution as primary invariant; no build, CDN-first
@@ -150,12 +156,14 @@ Six specialized template categories, each optimized for different use cases:
   - **See also**: [Spec Publishing Standard](../standards/publishing/spec-publishing.md)
 
 - **Missive Templates**: Single-page promotional/CTA sites with minimal dependencies
+
   - **Planned**: `forge-missive-*` templates
   - **Use cases**: Event announcements, charity fundraisers, product launches
   - **Philosophy**: Vanilla HTML/CSS first; escalate to SSG only when justified
   - **Escalation**: Migrate to Codex when multi-page, search, or content collections needed
 
 - **Fixture Templates**: Test infrastructure with real-but-test-purpose implementations
+
   - **Naming**: `fixture-<mode>-<category>-<name>-<variant>` (e.g., `fixture-server-proving-gauntlet-001`)
   - **Modes**: `server`, `client`, `datastore`, `identity` (identity planned v0.4.3)
   - **Use cases**: Integration testing, AAA validation, resilience testing
@@ -171,7 +179,7 @@ Six specialized template categories, each optimized for different use cases:
 
 - **Roadmap**: Vertical expansions (automation, gateways, ingestion); default Crucible/goneat integration. Tie to `config/taxonomy/repository-categories.yaml` for role advertisement.
 
-- **Docs**: Align forge READMEs with this guide/manifesto for consistency.
+- **Docs**: Align forge READMEs with this guide for consistency.
 
 ### 4. Apps/Services (Operational & Production)
 
@@ -206,13 +214,24 @@ The flywheel: Layer 0 refines → Layer 1 embeds → Layer 2 scaffolds → Layer
 3. **Update forges** → incorporate new library releases, add instructions for clone →
    degit → refit flows.
 4. **Validate automation** → ensure goneat tasks and Fulward policies support the new patterns.
-5. **Communicate** → document in ecosystem guide/manifesto, publish release notes, loop
+5. **Communicate** → document in this ecosystem guide, publish release notes, loop
    in AI agents for maintenance.
 
 ## Where This Content Lives
 
-- `docs/architecture/fulmen-technical-manifesto.md` – Deep dive on philosophy, design
-  principles, and implementation examples.
+- Layer cake / CRDL: this guide; helper and forge contracts in
+  [fulmen-helper-library-standard.md](fulmen-helper-library-standard.md),
+  [fulmen-forge-workhorse-standard.md](fulmen-forge-workhorse-standard.md), and
+  [fulmen-forge-codex-standard.md](fulmen-forge-codex-standard.md).
+- [Schema Normalization](../standards/schema-normalization.md),
+  [ADR-0010](decisions/ADR-0010-semantic-versioning-adoption.md), and
+  [ADR-0012](decisions/ADR-0012-schema-ref-ids.md).
+- [Coding](../standards/coding/README.md) and [testing](../standards/testing/README.md)
+  standards; [repository safety framework](../standards/repository-safety-framework.md).
+- Observability ADRs
+  [0003](decisions/ADR-0003-progressive-logging-profiles.md),
+  [0007](decisions/ADR-0007-telemetry-default-histogram-buckets.md), and
+  [0008](decisions/ADR-0008-helper-library-instrumentation-patterns.md).
 - `docs/guides/` – Task-oriented docs (bootstrap guides, sync instructions).
 - `docs/standards/` – Normative requirements (logging, library modules, repository
   safety).

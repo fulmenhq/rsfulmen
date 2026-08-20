@@ -3,7 +3,7 @@ id: "ADR-0012"
 title: "Use Absolute $id URLs for Cross-Schema $ref References"
 status: "approved"
 date: "2025-11-16"
-last_updated: "2025-11-16"
+last_updated: "2026-06-22"
 deciders:
   - "@3leapsdave"
   - "@schema-cartographer"
@@ -24,12 +24,16 @@ For cross-file references in Crucible schemas, **use absolute URLs pointing to t
 **Example:**
 
 ```json
-"$ref": "https://schemas.fulmenhq.dev/crucible/observability/logging/middleware-config-v1.0.0.json"
+"$ref": "https://schemas.fulmenhq.dev/crucible/observability/logging/v1.0.0/middleware-config.schema.json"
 ```
 
 ## Status
 
-- **Implemented**: The decision has been fully implemented. All cross-file schema references now use absolute `$id` URLs, and the gofulmen validator has been updated to correctly handle these references.
+- **Implemented (phased)**:
+  - **2025-11-16** — Initial rollout (commit `70fa5be`): converted `logger-config.schema.json` (the case gofulmen v0.1.15 hit) to absolute `$id` references; gofulmen validator updated to handle these references.
+  - **2026-06-22** — Completion sweep (PR #8): the initial rollout missed the remaining sibling logging schemas (`log-event`, `severity-filter`, `middleware-config`) and an off-by-one relative `$ref` in `library/module-manifest`. These retained relative cross-file `$ref`s and failed to resolve in memory-based validators (reproduced from tsfulmen and gofulmen). All cross-file `$ref`s in those schemas are now absolute `$id` URLs. In the same change, the `observability/logging/v1.0.0/*` `$id`s were migrated from the deprecated version-in-filename form to the canonical version-in-path form per the [Canonical URI Resolution Standard](../../standards/publishing/canonical-uri-resolution.md).
+
+> **Note**: Other schemas in the corpus still use the deprecated version-in-filename `$id` form (e.g. `pathfinder/*`, `ascii/*`, `schema-validation/*`, `taxonomy/library/fulencode/*`). These resolve correctly today (their cross-file refs, where present, are already absolute) and should migrate to version-in-path at their next version bump, not eagerly.
 
 ## Consequences
 
@@ -40,4 +44,4 @@ For cross-file references in Crucible schemas, **use absolute URLs pointing to t
 
 1. Update gofulmen validators to preload schemas by `$id` or allow HTTP resolution if needed.
 2. When adding or modifying schemas, use absolute `$id` references for cross-schema `$ref`.
-3. Optionally add a lint check to catch relative cross-file `$ref` uses in future changes.
+3. Add a lint check to catch relative cross-file `$ref` uses (and version-in-filename `$id`s) in future changes. **Recommended** — the 2026-06-22 completion sweep showed the 2025-11-16 rollout silently missed several schemas; a CI check would have caught the gap. (`make validate-schemas` should fail on relative cross-file `$ref`s.)

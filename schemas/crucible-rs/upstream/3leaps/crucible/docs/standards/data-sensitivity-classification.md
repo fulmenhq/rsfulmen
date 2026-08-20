@@ -254,6 +254,6 @@ Does the data contain credentials, keys, or authentication tokens?
 
 ## Attribution
 
-This standard is the canonical reference for data sensitivity across 3leaps ecosystems. Downstream consumers (fulmenhq, practicingdata, etc.) should reference or vendor this standard rather than maintaining independent copies.
+This standard is the canonical reference for data sensitivity across 3leaps ecosystems. Downstream consumers (fulmenhq, etc.) should reference or vendor this standard rather than maintaining independent copies.
 
 **Review Cycle**: Quarterly with security and compliance teams.

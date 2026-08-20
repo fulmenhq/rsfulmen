@@ -3,7 +3,7 @@ title: "Fulmen Forge Codex Standard"
 description: "Standard architecture and capabilities for Fulmen Codex forges – documentation-first templates for canonical knowledge bases"
 author: "Fulmen Enterprise Architect (@fulmen-ea-steward)"
 date: "2025-10-31"
-last_updated: "2025-12-20"
+last_updated: "2026-08-20"
 status: "draft"
 tags: ["architecture", "forge", "codex", "template", "v0.2.26"]
 ---
@@ -73,6 +73,7 @@ Codex forges MUST integrate these Fulmen helper library modules to ensure ecosys
 ### Core Identity & Configuration Modules
 
 1. **App Identity Module** (REQUIRED)
+
    - **Purpose**: Standardized application metadata (site name, vendor, content source tracking)
    - **Spec**: [App Identity Module](../standards/library/modules/app-identity.md)
    - **Compliance**: MUST implement `.fulmen/app.yaml` with:
@@ -85,6 +86,7 @@ Codex forges MUST integrate these Fulmen helper library modules to ensure ecosys
    - **Required Make targets**: forges MUST provide `make sync-embedded-identity` and `make verify-embedded-identity` (see [Fulmen Template CDRL Standard](fulmen-template-cdrl-standard.md))
 
 2. **Crucible Shim Module** (REQUIRED)
+
    - **Purpose**: Access Crucible SSOT assets (schemas, standards, documentation, configs, taxonomies) for ingestion pipelines
    - **Spec**: [Crucible Shim](../standards/library/modules/crucible-shim.md)
    - **Compliance**:
@@ -97,6 +99,7 @@ Codex forges MUST integrate these Fulmen helper library modules to ensure ecosys
    - **Documentation ingestion**: Codex forges may ingest Crucible documentation for searchable content, API reference generation, or schema registry displays. See [Crucible Shim - Accessing General Documentation](../standards/library/modules/crucible-shim.md#accessing-general-documentation) for examples.
 
 3. **Enterprise Three-Layer Config Module** (REQUIRED)
+
    - **Purpose**: Layered configuration for build-time settings (deployment targets, analytics, features)
    - **Spec**: [Enterprise Three-Layer Config](../standards/library/modules/enterprise-three-layer-config.md)
    - **Compliance**:
@@ -111,6 +114,7 @@ Codex forges MUST integrate these Fulmen helper library modules to ensure ecosys
    - **Precedence**: Env vars → Local config → Defaults
 
 4. **Config Path API Module** (REQUIRED)
+
    - **Purpose**: Discover config directories for build-time settings
    - **Spec**: [Config Path API](../standards/library/modules/config-path-api.md)
    - **Compliance**: Use `get_app_config_dir()` for local config resolution
@@ -119,8 +123,10 @@ Codex forges MUST integrate these Fulmen helper library modules to ensure ecosys
    - **Purpose**: Runtime validation of ingested schemas, frontmatter, config files
    - **Spec**: [Schema Validation](../standards/library/modules/schema-validation.md)
    - **Compliance**:
+     - Call the language helper. Do not wrap jsonschema/AJV independently.
+     - Embedded catalog IDs for Fulmen contracts (frontmatter, site config).
+     - File-backed catalog APIs for ingested OpenAPI/AsyncAPI/JSON Schema artefacts on disk, including helper `$ref` containment (no open-filesystem resolver).
      - Validate all frontmatter against [Frontmatter Standard](../standards/frontmatter-standard.md)
-     - Validate ingested OpenAPI/AsyncAPI/JSON Schema artefacts
      - Fail builds on validation errors (CI gate)
 
 ### Content & Documentation Modules
@@ -136,6 +142,7 @@ Codex forges MUST integrate these Fulmen helper library modules to ensure ecosys
 ### Data Processing Modules (Conditional)
 
 7. **Foundry Module** (RECOMMENDED for schema registries)
+
    - **Purpose**: Catalogs for HTTP statuses, MIME types, country codes (display in registry)
    - **Spec**: [Foundry Catalogs](../standards/library/foundry/README.md)
    - **Compliance**: Use `foundry.getHTTPStatus()`, `foundry.getMIMEType()` for catalog pages
@@ -290,22 +297,26 @@ Codex forges MUST comply with the [Fulmen Template CDRL Standard](fulmen-templat
 ### Required CDRL Implementation
 
 1. **App Identity Module** (PRIMARY CUSTOMIZATION POINT)
+
    - Implement `.fulmen/app.yaml` as documented in [App Identity Module](../standards/library/modules/app-identity.md)
    - All parameterization points (site name, vendor, canonical URL, analytics IDs) MUST derive from App Identity
    - No hardcoded site names in source code (except `.fulmen/app.yaml` itself)
 
 2. **CDRL Validation Targets** (REQUIRED MAKEFILE TARGETS)
+
    - Implement `make validate-app-identity` per [Makefile Standard Annex B](../standards/makefile-standard.md#annex-b-template-repository-cdrl-targets)
    - Implement `make doctor` (or `make validate-cdrl-ready`) for comprehensive refit validation
    - Both targets MUST be documented in Makefile help output
 
 3. **CDRL Workflow Guide** (REQUIRED DOCUMENTATION)
+
    - Provide `docs/development/fulmen_cdrl_guide.md` with template-specific CDRL instructions
    - Document all parameterization points (site name, URLs, analytics IDs, branding assets)
    - Include verification checklist and troubleshooting guide
    - Link to ecosystem CDRL guide: [CDRL Workflow Guide](../standards/cdrl/workflow-guide.md)
 
 4. **Directory Structure CDRL Readiness**
+
    - `.fulmen/app.yaml` MUST exist with site name as default identity
    - `config/site.yaml` MUST reference App Identity for site_url, site_name
    - Branding assets (favicon, logo, theme) MUST be easily replaceable
@@ -406,7 +417,7 @@ Codex forges also need to follow the shared [Portable Testing Practices](../stan
 - [Repository Category Taxonomy](../../config/taxonomy/repository-categories.yaml)
 - [Ecosystem Brand Summary](../../config/branding/ecosystem.yaml) - For `version --extended` or `about` endpoint
 - [Frontmatter Standard](../standards/frontmatter-standard.md)
-- [Fulmen Technical Manifesto](fulmen-technical-manifesto.md)
+- [Schema Normalization](../standards/schema-normalization.md)
 
 ---
 

@@ -2,10 +2,18 @@
 //!
 //! Provides helpers to discover embedded Crucible schemas and validate JSON/YAML
 //! documents against JSON Schema draft 2020-12 by default (supports draft-07 when
-//! declared by the schema).
+//! declared by the schema). File-backed catalogs (on-disk trees the crate does not
+//! embed) are available via [`validate_instance_with_schema_file`].
 
 use std::fs;
 use std::path::Path;
+
+mod file;
+pub use file::{
+    validate_instance, validate_instance_bytes, validate_instance_file,
+    validate_instance_with_schema_file, FileBackedResolver, FileSchemaOptions,
+    FileSchemaResolution,
+};
 
 use jsonschema::{Draft, JSONSchema, SchemaResolver, SchemaResolverError};
 use serde::Deserialize;
@@ -164,7 +172,7 @@ fn open_schema_bytes(path: &str) -> Result<(String, &'static [u8]), SchemaValida
     Err(SchemaValidationError::SchemaNotFound(path.to_string()))
 }
 
-fn parse_schema_bytes(
+pub(crate) fn parse_schema_bytes(
     path: &str,
     bytes: &[u8],
 ) -> Result<serde_json::Value, SchemaValidationError> {
@@ -245,7 +253,7 @@ pub fn validate_data(
     Ok(issues)
 }
 
-fn select_draft(schema: &serde_json::Value) -> Draft {
+pub(crate) fn select_draft(schema: &serde_json::Value) -> Draft {
     let schema_uri = schema.get("$schema").and_then(|v| v.as_str()).unwrap_or("");
 
     if schema_uri.contains("draft-07") {
@@ -258,7 +266,7 @@ fn select_draft(schema: &serde_json::Value) -> Draft {
     }
 }
 
-fn keyword_from_schema_path(schema_path: &str) -> Option<String> {
+pub(crate) fn keyword_from_schema_path(schema_path: &str) -> Option<String> {
     let keyword = schema_path
         .trim_start_matches('/')
         .split('/')

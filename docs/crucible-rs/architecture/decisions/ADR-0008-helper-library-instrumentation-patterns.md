@@ -50,6 +50,7 @@ workload characteristics; libraries MAY document additional rationale via local 
 patterns.
 
 1. **Standard Pattern (Histogram + Counter)**
+
    - Apply to moderate-frequency operations where latency visibility matters: file/config I/O, network sync, schema
      validation.
    - Implementation: measure elapsed time with the default `_ms` histogram buckets, increment success and error
@@ -57,6 +58,7 @@ patterns.
    - Outcome metrics: `<operation>_ms` histogram, `<operation>_total`, `<operation>_error_total`.
 
 2. **Performance-Sensitive Pattern (Counter Only)**
+
    - Apply to hot loops invoked thousands of times per run: hashing, in-memory catalog lookups, text normalization,
      similarity scoring.
    - Implementation: increment success/error counters only; omit histogram timing to avoid ~50–100 ns overhead per

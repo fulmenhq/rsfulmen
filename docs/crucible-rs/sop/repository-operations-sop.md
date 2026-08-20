@@ -146,9 +146,11 @@ fix: create symlinks instead of copies for type:link in bootstrap
 ### Commit Message Structure
 
 1. **Subject line**: Type prefix + imperative mood summary (≤50 chars)
+
    - Conventional commit types: `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`
 
 2. **Body**: Paragraph format explaining what and why (wrap at 72 chars)
+
    - Focus on user-visible changes and rationale
    - Reference specific files/lines when helpful
    - Include verification notes if applicable
