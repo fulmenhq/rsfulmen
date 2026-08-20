@@ -7,11 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-08-20
+
+File-backed schema catalogs, fulpack create honesty, committed lockfile, and
+host `version --extended`. Additive; MSRV remains 1.88. Crucible embed is
+v0.4.19.
+
 ### Added
 
-- **Host binary identity** (`rsfulmen::buildinfo`) — resolve/format `version` and
-  `version --extended` from app-injected `FULMEN_HOST_*` stamps. Pins
-  (rsfulmen + Crucible) are a separate block and are never the host commit.
+- **File-backed JSON Schema instance validation** — check payloads against
+  on-disk schema trees with offline `$ref`. Existing embed-id APIs are
+  unchanged. Catalog roots reject traversal, symlink components, non-local
+  `file:` hosts, unsupported URI schemes, and duplicate `$id`s at compile
+  time. Unix opens each path component with `openat(2)` and `O_NOFOLLOW`.
+- **Host binary identity** (`rsfulmen::buildinfo`) — resolve and format
+  `version` / `version --extended` from app-injected `FULMEN_HOST_*` stamps.
+  Pins (rsfulmen + Crucible) are a separate block and are never the host
+  commit. Invalid dirty stamps stay unknown (never false-clean).
+- **Crucible v0.4.19** embed (README badge, ecosystem-guide, schema-validation
+  contract). Unix `libc` for catalog containment.
+
+### Changed
+
+- **Fulpack create** — requesting sha512/sha1/md5 returns `INVALID_OPTIONS`
+  instead of substituting sha256. Gzip create always uses compression level 6;
+  `compression_level` is ignored for the gzip format (tar.gz/zip still honor it).
+- **goneat** pin `v0.5.13` → `v0.5.16`.
+- **`Cargo.lock` committed**; CI Test, Feature Matrix, and MSRV use `--locked`.
+- **Clippy toolchain** pinned to **1.98.0** (`rust-toolchain.toml` + CI) so
+  local hooks and GitHub deny the same lints. MSRV job remains 1.88.
+
+### Fixed
+
+- UTF-16 decode uses `as_chunks::<2>()` (clippy `chunks_exact_to_as_chunks`).
+- Generated asset-index loops in `build.rs` iterate map keys (clippy
+  `for_kv_map`).
+
+### Requirements
+
+- **Rust**: 1.88+ (MSRV, unchanged)
+- **Crucible**: v0.4.19 (embedded)
 
 ## [0.1.5] - 2026-06-05
 

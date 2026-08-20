@@ -4,6 +4,50 @@ This document tracks release notes for rsfulmen releases.
 
 > **Convention**: Keep only the latest 3 releases here to prevent file bloat. Older releases are archived in `docs/releases/`.
 
+## [0.1.6] - 2026-08-20
+
+### File-backed catalogs, fulpack create, lockfile, host identity
+
+**Release Type**: Feature Release
+
+#### Overview
+
+Adds on-disk JSON Schema instance validation, host `version --extended`, and
+reproducible CI. Fulpack create no longer substitutes unsupported checksums.
+MSRV remains 1.88. Embedded Crucible is v0.4.19.
+
+#### Highlights
+
+- **File-backed schema catalogs** — validate instances against on-disk schema
+  trees (offline `$ref`) without vendoring those trees into the crate embed.
+  Unix containment uses `openat(2)` + `O_NOFOLLOW`.
+- **Host binary identity** (`buildinfo`) — apps stamp `FULMEN_HOST_*`; the
+  library formats basic/extended/JSON. Pins are a second block, never host
+  `Commit:`.
+- **Fulpack create** — sha512/sha1/md5 → `INVALID_OPTIONS`; gzip always level 6.
+- **Lockfile** — `Cargo.lock` is committed; CI uses `--locked`.
+- **goneat v0.5.16**; clippy toolchain **1.98.0**.
+
+#### Breaking Changes
+
+None for existing embed-id schema APIs or default feature graph. Fulpack
+create now **errors** on unsupported checksum algorithms (previously
+substituted sha256). Callers that passed sha512/sha1/md5 must switch to
+sha256 or xxh3-128.
+
+#### Testing
+
+- `cargo test --locked --all-features` — 438 unit tests, 76 doc tests
+- MSRV 1.88 locked build/test
+- clippy `-D warnings` on 1.98.0
+
+#### Requirements
+
+- **Rust**: 1.88+ (MSRV, unchanged)
+- **Crucible**: v0.4.19 (embedded)
+
+---
+
 ## [0.1.5] - 2026-06-05
 
 ### Branch/PR workflow, Crucible v0.4.13, dependency hygiene
@@ -103,65 +147,3 @@ None. All new modules are additive. Existing APIs unchanged.
 
 ---
 
-## [0.1.3] - 2026-02-08
-
-### Five new modules — closing gofulmen parity
-
-**Release Type**: Feature Release
-
-#### Overview
-
-Adds five feature-gated modules to close parity with gofulmen: app identity discovery, structured logging, canonical hashing, safe filesystem discovery, and terminal utilities. All modules follow Crucible schema conventions and include comprehensive test coverage.
-
-#### Highlights
-
-- **appidentity** (P0) – App identity discovery from `.fulmen/app.yaml` with upward directory search and `FULMEN_APP_IDENTITY_FILE` override
-- **logging** (P0) – Structured logging with SIMPLE/STRUCTURED profiles, leveled severity (Trace–Fatal), component context, and structured fields
-- **fulhash** (P1) – Canonical hashing with xxh3-128 (default) and SHA-256, streaming support, `algo:hex` digest format, strict canonical validation
-- **pathfinder** (P1) – Safe filesystem discovery with glob patterns, Crucible schema alignment, symlink boundary checks, hidden file pruning, and warning collection
-- **ascii** (P1) – Terminal utilities with grapheme-cluster-aware width calculation, box drawing, and safe truncation/padding
-
-#### New Feature Flags
-
-| Feature       | Dependencies                        | Description                          |
-| ------------- | ----------------------------------- | ------------------------------------ |
-| `appidentity` | serde_json                          | App identity from `.fulmen/app.yaml` |
-| `logging`     | serde_json                          | SIMPLE/STRUCTURED logging profiles   |
-| `fulhash`     | xxhash-rust, sha2, hex              | xxh3-128 + SHA-256 hashing           |
-| `pathfinder`  | walkdir, sha2, hex, glob            | Filesystem discovery with checksums  |
-| `ascii`       | unicode-width, unicode-segmentation | Terminal + Unicode utilities         |
-
-All features are included in `default` and `full` feature sets.
-
-#### Breaking Changes
-
-- **MSRV** – Bumped from 1.83 to 1.88
-
-#### Changes
-
-- `src/appidentity/mod.rs` – AppIdentity struct, load/load_from/load_file/validate
-- `src/logging/mod.rs` – Logger, Severity, Config, SIMPLE/STRUCTURED profiles
-- `src/fulhash/mod.rs` – hash/verify/parse_digest/format_digest with canonical validation
-- `src/pathfinder/mod.rs` – FindQuery/FindResult/FindResults with Crucible schema parity
-- `src/ascii/mod.rs` – string_width/analyze/truncate/pad/draw_box with grapheme awareness
-- `Cargo.toml` – New deps and feature flags for all modules
-- `src/lib.rs` – Module declarations with feature gates
-- `.github/workflows/ci.yml` – New features in matrix, MSRV 1.88
-
-#### Testing
-
-- `make check-all` – 286 unit tests, 70 doc tests
-- All modules reviewed via devrev (four-eyes audit)
-- Pathfinder validated against Crucible find-query/path-result schemas
-- Fulhash digest format validated for cross-language interop with gofulmen
-
-#### Requirements
-
-- **Rust**: 1.88+ (MSRV)
-- **Crucible**: v0.4.4 (embedded)
-
----
-
-## Archived Releases
-
-Older release notes are archived under `docs/releases/`.
