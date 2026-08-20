@@ -14,6 +14,23 @@ Every team writes their own HTTP status helpers, exit code enums, and country co
 
 **Lifecycle Phase**: `alpha` | **Version**: 0.1.5
 
+## Host binary identity
+
+Product CLIs that depend on rsfulmen should report **the binary they are**, not
+rsfulmen's git. Stamp `FULMEN_HOST_*` in the **application** `build.rs`, then:
+
+```rust
+let info = rsfulmen::host_identity!();
+println!("{}", info.format_basic("mycli"));
+println!(
+    "{}",
+    info.format_extended("mycli", Some(&rsfulmen::buildinfo::Pins::from_crate()))
+);
+```
+
+See `rsfulmen::buildinfo` and
+[`docs/crucible-rs/standards/repository-structure/host-binary-identity.md`](docs/crucible-rs/standards/repository-structure/host-binary-identity.md).
+
 📖 **[Read the complete rsfulmen overview](docs/rsfulmen-overview.md)** for comprehensive documentation including module catalog and roadmap.
 
 ## Overview
