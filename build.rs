@@ -117,7 +117,7 @@ fn generate_index(
 
     out.push_str("pub fn open_doc(path: &str) -> Option<&'static [u8]> {\n");
     out.push_str("    match path {\n");
-    for (rel, _) in docs_entries.iter() {
+    for rel in docs_entries.keys() {
         out.push_str(&format!(
             "        \"{}\" => Some(include_bytes!(concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/docs/crucible-rs/{}\"))),\n",
             escape(rel),
@@ -130,7 +130,7 @@ fn generate_index(
 
     out.push_str("pub fn open_schema(path: &str) -> Option<&'static [u8]> {\n");
     out.push_str("    match path {\n");
-    for (rel, _) in schemas_entries.iter() {
+    for rel in schemas_entries.keys() {
         out.push_str(&format!(
             "        \"{}\" => Some(include_bytes!(concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/schemas/crucible-rs/{}\"))),\n",
             escape(rel),
@@ -143,7 +143,7 @@ fn generate_index(
 
     out.push_str("pub fn open_config(path: &str) -> Option<&'static [u8]> {\n");
     out.push_str("    match path {\n");
-    for (rel, _) in config_entries.iter() {
+    for rel in config_entries.keys() {
         out.push_str(&format!(
             "        \"{}\" => Some(include_bytes!(concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/config/crucible-rs/{}\"))),\n",
             escape(rel),
