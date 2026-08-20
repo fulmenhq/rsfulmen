@@ -88,7 +88,7 @@ modules:
     tier: core
     weight: heavy
     default_inclusion: false
-    description: Schema validation primitives for JSON Schema validation
+    description: Schema validation primitives for JSON Schema (embedded Crucible catalogs and caller-supplied on-disk schema trees)
     rationale: Foundational validation capability; heavy deps in Rust/Python/TS (jsonschema, ajv)
     evidence:
       has_schema: true

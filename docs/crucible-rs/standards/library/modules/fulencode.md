@@ -866,6 +866,7 @@ interface DetectionCandidate {
 **Detection algorithm** (in order of precedence):
 
 1. **BOM detection** (100% confidence if present)
+
    - UTF-8: `0xEF 0xBB 0xBF`
    - UTF-16LE: `0xFF 0xFE`
    - UTF-16BE: `0xFE 0xFF`
@@ -873,19 +874,23 @@ interface DetectionCandidate {
    - UTF-32BE: `0x00 0x00 0xFE 0xFF`
 
 2. **Multibase prefix detection** (if enabled)
+
    - Single-character prefix indicates encoding (IPFS standard)
 
 3. **NULL byte pattern analysis** (for UTF-16 detection)
+
    - Even-offset NULLs → UTF-16LE (high confidence if consistent)
    - Odd-offset NULLs → UTF-16BE (high confidence if consistent)
 
 4. **UTF-8 validation** (high confidence if all valid)
+
    - All bytes form valid UTF-8 sequences
    - No overlong encodings
    - No surrogate codepoints
    - Common Unicode ranges present (if sample large enough)
 
 5. **Statistical analysis** (medium confidence)
+
    - Byte frequency distribution
    - Common byte patterns for CP1252 vs ISO-8859-1
    - Heuristics for legacy encodings
@@ -1369,14 +1374,17 @@ I'll continue in the next file...
 **No schema migrations required** when adding streaming in v1.1.0:
 
 1. **Operation schemas remain unchanged**: Streaming variants use same option/result schemas
+
    - `EncodeOptions` works for both `encode()` and `encode_stream()`
    - `DecodingResult` works for both `decode()` and `decode_stream()`
 
 2. **New method names**: Streaming uses distinct names (`*_stream`)
+
    - No conflicts with existing methods
    - Both APIs can coexist in same module
 
 3. **Resource cleanup**: Schemas don't dictate cleanup patterns
+
    - Python: Add context manager protocol to stream objects
    - Go: Add `Close()` method to stream types
    - TypeScript: Add `finally()` to promise chains or async iterators
@@ -1675,9 +1683,11 @@ interface FulencodeError {
 **Validation Errors** (invalid input):
 
 - `INVALID_ENCODING` - Input not valid for specified format
+
   - Example: Invalid Base64 character, non-hex digit in hex string
 
 - `UNSUPPORTED_FORMAT` - Format not implemented
+
   - Example: Requesting Base58 without specialized module
 
 - `INVALID_OPTIONS` - Invalid options passed to operation
@@ -1686,6 +1696,7 @@ interface FulencodeError {
 **UTF Validation Errors**:
 
 - `INVALID_UTF8` - UTF-8 validation failed
+
   - Subcodes: `overlong_encoding`, `invalid_continuation`, `surrogate_codepoint`, `out_of_range`, `truncated_sequence`
 
 - `INVALID_UTF16` - UTF-16 validation failed
@@ -1694,12 +1705,15 @@ interface FulencodeError {
 **Security Errors** (protection triggered):
 
 - `BUFFER_OVERFLOW` - Decoded size exceeds limit
+
   - Details include `actual_size`, `max_size`
 
 - `ENCODING_BOMB` - Expansion ratio exceeds threshold
+
   - Details include `expansion_ratio`, `max_ratio`
 
 - `EXCESSIVE_COMBINING_MARKS` - Too many combining marks per base character
+
   - Details include `mark_count`, `max_marks`
 
 - `ZERO_WIDTH_CHARACTER` - Zero-width character detected in strict mode
@@ -1708,6 +1722,7 @@ interface FulencodeError {
 **BOM Errors**:
 
 - `BOM_MISMATCH` - Detected BOM doesn't match declared encoding
+
   - Details include `detected_bom`, `expected_encoding`
 
 - `MULTIPLE_BOMS` - Multiple BOMs detected in text
@@ -1716,6 +1731,7 @@ interface FulencodeError {
 **Detection Errors**:
 
 - `DETECTION_FAILED` - Encoding detection confidence too low
+
   - Details include `confidence`, `min_confidence`, `candidates`
 
 - `AMBIGUOUS_ENCODING` - Multiple encodings equally likely
@@ -2564,10 +2580,12 @@ See `tests/telemetry/` for complete examples and `config/library/fulencode/fixtu
 **Adding new fixtures** (same process as fulpack):
 
 1. **Naming convention**: `{category}-{description}.{ext}`
+
    - Categories: `valid`, `invalid`, `normalization`, `bom`, `pathological`, `detection`
    - Examples: `invalid-utf8-overlong.bin`, `bom-multiple.txt`, `pathological-combining-marks.txt`
 
 2. **Approval process**:
+
    - Create fixture locally and test in your library
    - Document purpose and expected behavior in PR description
    - Add fixture to `config/library/fulencode/fixtures/`
@@ -2591,6 +2609,7 @@ Behavior:
 ```
 
 4. **Size limits**:
+
    - Valid/invalid encodings: <5KB each
    - Normalization fixtures: <5KB each
    - Pathological fixtures: <50KB each (if larger, justify in PR)
@@ -2612,11 +2631,13 @@ Behavior:
 **Explicit paths to taxonomy definitions**:
 
 - `schemas/taxonomy/library/fulencode/encoding-families/v1.0.0/families.yaml`
+
   - Defines all supported encodings with metadata (alphabet size, padding, use cases)
   - Binary-to-text: base64, base64url, base64_raw, base32, base32hex, hex
   - Character encodings: utf-8, utf-16le, utf-16be, iso-8859-1, cp1252, ascii
 
 - `schemas/taxonomy/library/fulencode/normalization-profiles/v1.0.0/profiles.yaml`
+
   - Defines normalization forms (NFC, NFD, NFKC, NFKD)
   - Custom profiles (safe_identifiers, search_optimized)
 
@@ -2629,18 +2650,22 @@ Behavior:
 **Operation input/output schemas**:
 
 - `schemas/library/fulencode/v1.0.0/encode-options.schema.json`
+
   - Options for encode() operation
   - Fields: padding, case, line_length, max_encoded_size, compute_checksum, on_error
 
 - `schemas/library/fulencode/v1.0.0/decode-options.schema.json`
+
   - Options for decode() operation
   - Fields: verify_checksum, max_decoded_size, on_error, fallback_formats, ignore_whitespace
 
 - `schemas/library/fulencode/v1.0.0/detect-options.schema.json`
+
   - Options for detect() operation
   - Fields: candidate_encodings, max_sample_size, min_confidence, check_bom, recognize_multibase
 
 - `schemas/library/fulencode/v1.0.0/normalize-options.schema.json`
+
   - Options for normalize() operation
   - Fields: warn_semantic_change, reject_zero_width, max_combining_marks, custom transformations
 
@@ -2651,18 +2676,22 @@ Behavior:
 **Result schemas**:
 
 - `schemas/library/fulencode/v1.0.0/encoding-result.schema.json`
+
   - Result structure for encode() operation
   - Fields: data, format, input_size, output_size, checksum, warnings
 
 - `schemas/library/fulencode/v1.0.0/decoding-result.schema.json`
+
   - Result structure for decode() operation
   - Fields: data, format, input_size, output_size, checksum_verified, corrections_applied, warnings
 
 - `schemas/library/fulencode/v1.0.0/detection-result.schema.json`
+
   - Result structure for detect() operation
   - Fields: encoding, confidence, confidence_level, bom_detected, candidates, sample_size
 
 - `schemas/library/fulencode/v1.0.0/normalization-result.schema.json`
+
   - Result structure for normalize() operation
   - Fields: text, profile, input_length, output_length, semantic_changes, warnings
 
@@ -2673,14 +2702,17 @@ Behavior:
 **Supporting schemas**:
 
 - `schemas/library/fulencode/v1.0.0/detection-candidate.schema.json`
+
   - Individual detection candidate
   - Fields: encoding, confidence, reason
 
 - `schemas/library/fulencode/v1.0.0/semantic-change.schema.json`
+
   - Semantic change descriptor for normalization
   - Fields: position, original, normalized, reason
 
 - `schemas/library/fulencode/v1.0.0/fulencode-error.schema.json`
+
   - Error envelope structure
   - Fields: code, message, operation, input_format, output_format, details
 
@@ -4026,12 +4058,14 @@ def decode_with_telemetry(data: bytes, format: str, options: dict):
 **Modules**:
 
 1. **fulencode-base58** (Specialized tier)
+
    - **Formats**: Base58 (Bitcoin), Base58Check (Bitcoin checksummed)
    - **Use cases**: Cryptocurrency addresses, IPFS content IDs, short URL encodings
    - **Dependencies**: base58 library (external)
    - **Rationale**: Niche format, external dep, cryptocurrency-specific
 
 2. **fulencode-base85** (Specialized tier)
+
    - **Formats**: Base85 (RFC 1924), Ascii85 (Adobe), Z85 (ZeroMQ)
    - **Use cases**: PDF embedding, ZeroMQ framing, binary-to-text for protocols
    - **Dependencies**: None (algorithmic), but complex implementations
@@ -4051,12 +4085,14 @@ def decode_with_telemetry(data: bytes, format: str, options: dict):
 **Modules**:
 
 4. **fulencode-legacy-cjk** (Specialized tier)
+
    - **Formats**: Shift-JIS (Japanese), GB2312/GBK (Chinese), Big5 (Traditional Chinese), EUC-KR (Korean)
    - **Use cases**: Legacy Asian text data, database migrations
    - **Dependencies**: Language-specific codec libraries
    - **Rationale**: Regional-specific, complex mappings, external deps
 
 5. **fulencode-legacy-mainframe** (Specialized tier)
+
    - **Formats**: EBCDIC variants (IBM mainframe), CP037, CP500
    - **Use cases**: Mainframe data interchange, legacy system integration
    - **Dependencies**: ebcdic codecs (may be stdlib in some languages)
@@ -4075,6 +4111,7 @@ def decode_with_telemetry(data: bytes, format: str, options: dict):
 **Modules**:
 
 7. **fulencode-detect-advanced** (Specialized tier)
+
    - **Capabilities**: Statistical byte frequency analysis, N-gram models, confidence scoring
    - **Algorithms**: Chi-squared test, entropy analysis, language model scoring
    - **Use cases**: Ambiguous text (no BOM, mixed encodings), low-confidence fallback

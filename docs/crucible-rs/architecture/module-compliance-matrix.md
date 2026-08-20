@@ -2,28 +2,28 @@
 
 **Purpose**: Quick reference for module requirements across Workhorse, Codex, and Microtool forges.
 
-**Last Updated**: 2025-11-09
+**Last Updated**: 2026-08-20
 
 ---
 
 ## Module Requirements by Category
 
-| Module                 | Workhorse   | Codex       | Microtool   | Notes                               |
-| ---------------------- | ----------- | ----------- | ----------- | ----------------------------------- |
-| **App Identity**       | REQUIRED    | REQUIRED    | REQUIRED    | All categories need identity        |
-| **Crucible Shim**      | REQUIRED    | REQUIRED    | RECOMMENDED | Microtools: only if using SSOT      |
-| **Three-Layer Config** | REQUIRED    | REQUIRED    | RECOMMENDED | Microtools: only if config-heavy    |
-| **Config Path API**    | REQUIRED    | REQUIRED    | RECOMMENDED | Microtools: only if using config    |
-| **Schema Validation**  | REQUIRED    | REQUIRED    | OPTIONAL    | Microtools: only if reading/writing |
-| **Logging**            | REQUIRED    | OPTIONAL    | REQUIRED    | Codex: build-time only              |
-| **Exit Codes**         | N/A         | N/A         | REQUIRED    | Microtools: critical for CI/CD      |
-| **Signal Handling**    | REQUIRED    | N/A         | REQUIRED    | Codex: static builds don't need     |
-| **Error Handling**     | REQUIRED    | N/A         | REQUIRED    | Codex: uses logging instead         |
-| **Telemetry/Metrics**  | REQUIRED    | N/A         | OPTIONAL    | Microtools: skip for short-lived    |
-| **Server Management**  | REQUIRED    | N/A         | N/A         | Workhorse only (HTTP endpoints)     |
-| **Docscribe**          | REQUIRED    | REQUIRED    | N/A         | Microtools: don't serve docs        |
-| **Foundry Catalogs**   | RECOMMENDED | RECOMMENDED | N/A         | Reference data (HTTP, MIME, etc.)   |
-| **FulHash**            | RECOMMENDED | RECOMMENDED | N/A         | Hashing utilities                   |
+| Module                 | Workhorse   | Codex       | Microtool   | Notes                                                                          |
+| ---------------------- | ----------- | ----------- | ----------- | ------------------------------------------------------------------------------ |
+| **App Identity**       | REQUIRED    | REQUIRED    | REQUIRED    | All categories need identity                                                   |
+| **Crucible Shim**      | REQUIRED    | REQUIRED    | RECOMMENDED | Microtools: only if using SSOT                                                 |
+| **Three-Layer Config** | REQUIRED    | REQUIRED    | RECOMMENDED | Microtools: only if config-heavy                                               |
+| **Config Path API**    | REQUIRED    | REQUIRED    | RECOMMENDED | Microtools: only if using config                                               |
+| **Schema Validation**  | REQUIRED    | REQUIRED    | OPTIONAL    | Helper APIs: embed IDs + on-disk catalogs. Microtools: only if reading/writing |
+| **Logging**            | REQUIRED    | OPTIONAL    | REQUIRED    | Codex: build-time only                                                         |
+| **Exit Codes**         | N/A         | N/A         | REQUIRED    | Microtools: critical for CI/CD                                                 |
+| **Signal Handling**    | REQUIRED    | N/A         | REQUIRED    | Codex: static builds don't need                                                |
+| **Error Handling**     | REQUIRED    | N/A         | REQUIRED    | Codex: uses logging instead                                                    |
+| **Telemetry/Metrics**  | REQUIRED    | N/A         | OPTIONAL    | Microtools: skip for short-lived                                               |
+| **Server Management**  | REQUIRED    | N/A         | N/A         | Workhorse only (HTTP endpoints)                                                |
+| **Docscribe**          | REQUIRED    | REQUIRED    | N/A         | Microtools: don't serve docs                                                   |
+| **Foundry Catalogs**   | RECOMMENDED | RECOMMENDED | N/A         | Reference data (HTTP, MIME, etc.)                                              |
+| **FulHash**            | RECOMMENDED | RECOMMENDED | N/A         | Hashing utilities                                                              |
 
 ---
 

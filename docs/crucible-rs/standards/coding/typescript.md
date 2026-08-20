@@ -508,23 +508,27 @@ describe("ANSI_COLOR_REGEX", () => {
 ## 10. Best Practices Summary
 
 1. **Type Safety**
+
    - Always check source enums and types before implementation
    - Use type guards to narrow types safely
    - Avoid type assertions except in specific, documented cases
    - Leverage const assertions for literal types
 
 2. **Error Handling**
+
    - Handle errors in a structured way with proper type checking
    - Use type guards for error types
    - Include contextual information in error logs
 
 3. **Testing**
+
    - Use table-driven tests for consistency
    - Mock external dependencies consistently
    - Use optional chaining in test assertions
    - Organize tests with clear structure
 
 4. **Code Organization**
+
    - Keep related functionality in dedicated modules
    - Export types and interfaces that other modules depend on
    - Use barrel files (`index.ts`) to simplify imports

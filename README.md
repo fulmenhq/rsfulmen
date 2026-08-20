@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Rust: 1.88+](https://img.shields.io/badge/rust-1.88%2B-orange.svg)](https://www.rust-lang.org/)
-[![Crucible: v0.4.13](https://img.shields.io/badge/crucible-v0.4.13-purple.svg)](https://github.com/fulmenhq/crucible)
+[![Crucible: v0.4.19](https://img.shields.io/badge/crucible-v0.4.19-purple.svg)](https://github.com/fulmenhq/crucible)
 
 **Stop reinventing catalogs. Start shipping.**
 
@@ -51,7 +51,7 @@ Rather than copying Crucible assets into every Rust project, rsfulmen provides i
 **Where to Learn More:**
 
 - [Crucible Repository](https://github.com/fulmenhq/crucible) — SSOT schemas, docs, and configs
-- [Fulmen Technical Manifesto](docs/crucible-rs/architecture/fulmen-technical-manifesto.md) — Philosophy and design principles
+- [Fulmen Ecosystem Guide](docs/crucible-rs/architecture/fulmen-ecosystem-guide.md) — How libraries, forges, and Crucible fit together
 - [gofulmen](https://github.com/fulmenhq/gofulmen) — Go reference implementation
 
 ### Crucible Version
@@ -373,12 +373,18 @@ let score = similarity::jaro_winkler("color", "colour");   // 0.0..=1.0
 
 ### Schema Validation (`schema-validation`)
 
-_Use case: Validate JSON/YAML payloads against embedded JSON Schemas (Draft 2020-12) offline._
+_Use case: Validate JSON/YAML payloads against embedded JSON Schemas (Draft 2020-12) offline, or against an on-disk catalog the crate does not embed._
 
 ```rust
-use rsfulmen::schema_validation;
+use rsfulmen::schema_validation::{self, FileSchemaOptions};
 
 let schemas = schema_validation::list_schemas(None);   // discover embedded schemas
+
+let issues = schema_validation::validate_instance_with_schema_file(
+    std::path::Path::new("schemas/root.schema.json"),
+    &payload,
+    FileSchemaOptions::default(),
+)?;
 ```
 
 ### Role Catalog (`crucible::roles`)

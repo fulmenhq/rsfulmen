@@ -135,6 +135,40 @@
             }
           },
           "description": "Python-specific packaging metadata (optional, for PyPI projects)"
+        },
+        "typescript": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "package_name": {
+              "type": "string",
+              "pattern": "^(?:@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*$",
+              "description": "npm package name (scoped or unscoped, e.g. @fulmenhq/tsfulmen)"
+            },
+            "console_scripts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "entry_point"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Bin command name (maps to a package.json `bin` key)"
+                  },
+                  "entry_point": {
+                    "type": "string",
+                    "description": "Path to the executable entry relative to package root (package.json `bin` value, e.g. ./dist/bin/cli.js)"
+                  }
+                }
+              },
+              "description": "Executable bin entries (maps to package.json `bin`)"
+            }
+          },
+          "description": "TypeScript/npm-specific packaging metadata (optional, for npm projects)"
         }
       },
       "description": "Optional metadata - additional properties allowed for extensibility"

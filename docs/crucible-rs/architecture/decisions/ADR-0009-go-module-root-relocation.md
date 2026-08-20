@@ -159,11 +159,13 @@ The primary or "first-class" language typically occupies the root in multi-langu
    ```
 
 3. **Eliminates Go Sync Overhead**
+
    - Python/TypeScript still sync from root SSOT (they package assets differently)
    - Go accesses root SSOT directly via embed
    - Simpler build process for Go consumers
 
 4. **Industry Standard Pattern**
+
    - Aligns with Go ecosystem conventions
    - Familiar structure for Go developers
    - Better pkg.go.dev documentation generation
@@ -176,6 +178,7 @@ The primary or "first-class" language typically occupies the root in multi-langu
 ### Trade-offs Accepted
 
 1. **Asymmetric Language Structure**
+
    - **Impact**: Contributors may find it surprising initially
    - **Mitigation**:
      - Comprehensive breadcrumb README in `lang/go/`
@@ -183,6 +186,7 @@ The primary or "first-class" language typically occupies the root in multi-langu
      - Industry precedent demonstrates this is acceptable
 
 2. **Root Directory Has More Files**
+
    - **Impact**: Root directory contains Go sources alongside other top-level files
    - **Mitigation**:
      - Go files follow clear naming conventions

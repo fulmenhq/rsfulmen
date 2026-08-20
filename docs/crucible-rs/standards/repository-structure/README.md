@@ -50,6 +50,7 @@ below.
 - Exit codes: `0` success, `1` general failure, `2` usage error, `3` configuration error. Reserve `> 128` for signal exits.
 - Output hygiene: data on STDOUT, diagnostics on STDERR; JSON output must honor the schema published for the command when available.
 - Subcommands MUST include `help` and `version`; additional subcommands follow language standards (e.g., Cobra command factories, Click groups).
+- CLI `version` identity (the `version --extended` / `-e` contract, dirty semantics, and SDK/SSOT pins) follows the [Host Binary Identity Standard](host-binary-identity.md).
 
 ### Workhorse (`workhorse`)
 

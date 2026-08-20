@@ -3,7 +3,7 @@ title: "Fulmen Forge Microtool Standard"
 description: "Standard structure and capabilities for Fulmen Microtool forges - production-ready templates for ultra-narrow, single-purpose CLI deployment tools"
 author: "Schema Cartographer (@schema-cartographer)"
 date: "2025-11-15"
-last_updated: "2025-12-18"
+last_updated: "2026-08-20"
 status: "draft"
 tags: ["architecture", "forge", "microtool", "template", "2025.10.2"]
 ---
@@ -77,6 +77,7 @@ Microtool forges that import the helper library MUST integrate these modules to 
 ### Core Identity & Configuration Modules
 
 1. **App Identity Module** (REQUIRED)
+
    - **Purpose**: Standardized application metadata (binary name, vendor, environment prefix)
    - **Spec**: [App Identity Module](../standards/library/modules/app-identity.md)
    - **Compliance**: MUST implement `.fulmen/app.yaml` with:
@@ -106,6 +107,7 @@ Microtool forges that import the helper library MUST integrate these modules to 
    - **Required Make targets**: forges MUST provide `make sync-embedded-identity` and `make verify-embedded-identity` (see [Fulmen Template CDRL Standard](fulmen-template-cdrl-standard.md))
 
 2. **Crucible Shim Module** (CONDITIONAL)
+
    - **Purpose**: Access Crucible SSOT assets (schemas, standards, documentation, configs, taxonomies) without requiring crucible checkout
    - **Spec**: [Crucible Shim](../standards/library/modules/crucible-shim.md)
    - **REQUIRED if**: Microtool validates schemas, reads taxonomies, accesses standards/docs, or needs any SSOT assets
@@ -147,12 +149,14 @@ Microtool forges that import the helper library MUST integrate these modules to 
    ```
 
    **Sustainability Note**: Always access Crucible assets through the helper library shim rather than filesystem reads. This ensures:
+
    - No requirement for local crucible checkout
    - Version-tracked through helper library dependency
    - Offline access to embedded assets
    - Consistent asset access across all ecosystem tools
 
    **Cross-language pattern**:
+
    - **Go**: `crucible.GetDoc("path/to/doc.md")`
    - **Python**: `crucible.get_doc("path/to/doc.md")`
    - **TypeScript**: `crucible.getDoc("path/to/doc.md")`
@@ -160,6 +164,7 @@ Microtool forges that import the helper library MUST integrate these modules to 
    See [Crucible Shim - Accessing General Documentation](../standards/library/modules/crucible-shim.md#accessing-general-documentation) for comprehensive examples including commit hooks, doc generators, and CI validators.
 
 3. **Simple Config Pattern** (REQUIRED)
+
    - **Purpose**: Two-layer configuration for single-purpose microtools
    - **Pattern**: Defaults → User Overrides (env vars, flags, optional config file)
    - **Microtools DO NOT use Enterprise Three-Layer Config** (see [Enterprise Three-Layer Config](../standards/library/modules/enterprise-three-layer-config.md))
@@ -210,6 +215,7 @@ Microtool forges that import the helper library MUST integrate these modules to 
 ### Observability & Resilience Modules
 
 5. **Logging Module** (REQUIRED)
+
    - **Purpose**: Structured logging with Crucible schema compliance
    - **Spec**: [Observability Logging](../standards/observability/logging.md)
    - **Compliance**:
@@ -240,6 +246,7 @@ Microtool forges that import the helper library MUST integrate these modules to 
      ```
 
 6. **Exit Code Module** (REQUIRED)
+
    - **Purpose**: Standardized exit codes for automation
    - **Spec**: [Exit Code Taxonomy](../standards/exit-codes.md)
    - **Compliance**: Use `foundry.ExitSuccess`, `foundry.ExitFailure`, `foundry.ExitConfigInvalid`, `foundry.ExitInvalidArgument`
@@ -247,6 +254,7 @@ Microtool forges that import the helper library MUST integrate these modules to 
    - **Critical**: Microtools are often invoked by CI/CD - consistent exit codes enable proper error handling
 
 7. **Signal Handling Module** (REQUIRED)
+
    - **Purpose**: Graceful shutdown on SIGTERM/SIGINT
    - **Spec**: [Signal Handling](../standards/library/modules/signals.md)
    - **Compliance**:
@@ -277,6 +285,7 @@ Microtool forges that import the helper library MUST integrate these modules to 
      ```
 
 8. **Error Handling Module** (REQUIRED)
+
    - **Purpose**: Structured error propagation
    - **Spec**: [Error Handling](../standards/library/modules/error-handling.md)
    - **Compliance**: Wrap errors with context, use exit codes appropriately
@@ -299,26 +308,27 @@ Microtool forges that import the helper library MUST integrate these modules to 
 - **Typically skip**: Most microtools are short-lived CLI operations
 
 11. **Schema Validation Module** (OPTIONAL)
-    - **When to use**: If tool reads/writes structured data
+    - **When to use**: If the tool reads/writes structured JSON/YAML
     - **Example**: Fixture manifest validation
+    - **When used**: MUST call the language helper’s embedded and/or file-backed APIs ([schema-validation.md](../standards/library/modules/schema-validation.md)), including file-backed `$ref` containment. MUST NOT ship a parallel jsonschema/AJV wrap, an open-filesystem resolver, or subprocess goneat at runtime for instance checks.
 
 > **Documentation requirement**: Optional integrations (Crucible shim, telemetry, schema validation, etc.) MUST be documented in `docs/development/fulmen_cdrl_guide.md` with clear “keep vs. remove” guidance for teams refitting the template.
 
 ### Module Summary Table
 
-| Module            | Status      | Purpose                            | Typical Use Case                  | Spec Link                                                                                   |
-| ----------------- | ----------- | ---------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------- |
-| App Identity      | REQUIRED    | Binary name, env prefix, metadata  | All microtools                    | [app-identity.md](../standards/library/modules/app-identity.md)                             |
-| Simple Config     | REQUIRED    | Two-layer config (defaults + user) | All microtools                    | See section above                                                                           |
-| Logging           | REQUIRED    | Structured logging                 | All microtools                    | [logging.md](../standards/observability/logging.md)                                         |
-| Exit Code         | REQUIRED    | Standardized exit codes            | All microtools (CI/CD)            | [exit-codes/README.md](../standards/fulmen/exit-codes/README.md)                            |
-| Signal Handling   | REQUIRED    | Graceful shutdown                  | All microtools                    | [signal-handling.md](../standards/library/modules/signal-handling.md)                       |
-| Error Handling    | REQUIRED    | Structured error propagation       | All microtools                    | [error-handling-propagation.md](../standards/library/modules/error-handling-propagation.md) |
-| Pathfinder        | REQUIRED    | Safe discovery & checksum data     | Any filesystem interaction        | [pathfinder.md](../standards/library/extensions/pathfinder.md)                              |
-| Crucible Shim     | CONDITIONAL | SSOT asset access                  | Schema validators, taxonomy tools | [crucible-shim.md](../standards/library/modules/crucible-shim.md)                           |
-| Config Path API   | OPTIONAL    | Config directory discovery         | Tools with optional config files  | [config-path-api.md](../standards/library/modules/config-path-api.md)                       |
-| Schema Validation | OPTIONAL    | Data validation                    | Tools reading/writing YAML/JSON   | [schema-validation.md](../standards/library/modules/schema-validation.md)                   |
-| Telemetry/Metrics | OPTIONAL    | Metrics export                     | Long-running operations (rare)    | [telemetry-metrics.md](../standards/library/modules/telemetry-metrics.md)                   |
+| Module            | Status      | Purpose                                           | Typical Use Case                  | Spec Link                                                                                   |
+| ----------------- | ----------- | ------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------- |
+| App Identity      | REQUIRED    | Binary name, env prefix, metadata                 | All microtools                    | [app-identity.md](../standards/library/modules/app-identity.md)                             |
+| Simple Config     | REQUIRED    | Two-layer config (defaults + user)                | All microtools                    | See section above                                                                           |
+| Logging           | REQUIRED    | Structured logging                                | All microtools                    | [logging.md](../standards/observability/logging.md)                                         |
+| Exit Code         | REQUIRED    | Standardized exit codes                           | All microtools (CI/CD)            | [exit-codes/README.md](../standards/fulmen/exit-codes/README.md)                            |
+| Signal Handling   | REQUIRED    | Graceful shutdown                                 | All microtools                    | [signal-handling.md](../standards/library/modules/signal-handling.md)                       |
+| Error Handling    | REQUIRED    | Structured error propagation                      | All microtools                    | [error-handling-propagation.md](../standards/library/modules/error-handling-propagation.md) |
+| Pathfinder        | REQUIRED    | Safe discovery & checksum data                    | Any filesystem interaction        | [pathfinder.md](../standards/library/extensions/pathfinder.md)                              |
+| Crucible Shim     | CONDITIONAL | SSOT asset access                                 | Schema validators, taxonomy tools | [crucible-shim.md](../standards/library/modules/crucible-shim.md)                           |
+| Config Path API   | OPTIONAL    | Config directory discovery                        | Tools with optional config files  | [config-path-api.md](../standards/library/modules/config-path-api.md)                       |
+| Schema Validation | OPTIONAL    | Data validation (helper embed + on-disk catalogs) | Tools reading/writing YAML/JSON   | [schema-validation.md](../standards/library/modules/schema-validation.md)                   |
+| Telemetry/Metrics | OPTIONAL    | Metrics export                                    | Long-running operations (rare)    | [telemetry-metrics.md](../standards/library/modules/telemetry-metrics.md)                   |
 
 **Key Differences from Workhorse**:
 

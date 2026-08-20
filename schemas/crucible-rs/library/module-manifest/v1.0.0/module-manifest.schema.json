@@ -25,7 +25,7 @@
       ]
     },
     "language": {
-      "$ref": "../../taxonomy/language/v1.0.0/language-key.schema.json"
+      "$ref": "https://schemas.fulmenhq.dev/crucible/taxonomy/language/v1.0.0/language-key.schema.json"
     }
   },
   "properties": {

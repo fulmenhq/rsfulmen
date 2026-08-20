@@ -122,6 +122,8 @@ dirs = { version = "5.0", optional = true }
 [target.'cfg(unix)'.dependencies]
 # Runtime signal handling (for signals module on Unix).
 signal-hook = "0.3"
+# openat(2) + O_NOFOLLOW for file-backed schema catalog containment.
+libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]
 # Runtime Ctrl+C handling fallback (for signals module on Windows).

@@ -33,6 +33,7 @@ tags: ["fulmen", "identity", "application-standards", "process-management"]
 
 - **Exit Codes**: See `docs/standards/fulmen/exit-codes/README.md` for process termination signals
 - **Signal Handling**: See `docs/standards/fulmen/signals/README.md` for graceful shutdown coordination
+- **Host Binary Identity**: runtime application identity (this guide) is distinct from _build_ host identity; see the [Host Binary Identity Standard](../../repository-structure/host-binary-identity.md)
 
 ---
 

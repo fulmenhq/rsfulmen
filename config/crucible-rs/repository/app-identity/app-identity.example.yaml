@@ -37,6 +37,14 @@ metadata:
         entry_point: percheron.cli:main
       - name: percheron-validate
         entry_point: percheron.validation:cli
+  # TypeScript/npm packaging metadata (for npm projects — alternative to python)
+  # typescript:
+  #   # npm package name (scoped or unscoped)
+  #   package_name: "@fulmenhq/tsfulmen"
+  #   # Executable bin entries — map to package.json `bin`
+  #   console_scripts:
+  #     - name: tsfulmen-schema
+  #       entry_point: ./dist/bin/schema-cli.js
 
 # Additional custom fields allowed for extensibility
 # custom_field: value

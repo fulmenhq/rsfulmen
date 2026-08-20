@@ -32,6 +32,7 @@ See [Repository Versioning Standard](../standards/repository-versioning.md) for 
 Every FulmenHQ repository MUST have:
 
 1. **VERSION file** in repository root
+
    - Single source of truth for version
    - Format depends on chosen strategy
    - No `v` prefix, just the version number
@@ -46,6 +47,7 @@ Every FulmenHQ repository MUST have:
    ```
 
 3. **Version management scripts** (recommended pattern):
+
    - `scripts/version.ts` or equivalent
    - Package scripts for version bumps
    - Embedding scripts if needed

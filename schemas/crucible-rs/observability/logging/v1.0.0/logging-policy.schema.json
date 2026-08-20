@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.fulmenhq.dev/crucible/observability/logging/logging-policy-v1.0.0.json",
+  "$id": "https://schemas.fulmenhq.dev/crucible/observability/logging/v1.0.0/logging-policy.schema.json",
   "title": "LoggingPolicy",
   "description": "Organizational logging policy for profile validation and governance",
   "type": "object",

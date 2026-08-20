@@ -7,20 +7,24 @@ schema signatures (e.g., `draft-04`, `draft-06`, `draft-07`, `draft-2019-09`, `d
 ## Contents
 
 - `draft-04/` – canonical Draft-04 meta-schema (`schema.json`).
+
   - Single-file, self-contained meta-schema.
   - Uses `id` instead of `$id` (pre-Draft-06 convention).
   - Common in SchemaStore and legacy tooling.
 
 - `draft-06/` – canonical Draft-06 meta-schema (`schema.json`).
+
   - Single-file, self-contained meta-schema.
   - Introduced `$id`, `const`, `contains`, `propertyNames`.
   - Boolean schemas allowed (`true`/`false` as schemas).
 
 - `draft-07/` – canonical Draft-07 meta-schema (`schema.json`).
+
   - Single-file, self-contained meta-schema.
   - Added `if`/`then`/`else`, `readOnly`, `writeOnly`, `$comment`.
 
 - `draft-2019-09/` – canonical Draft 2019-09 meta-schema plus offline helpers.
+
   - `schema.json` – raw meta-schema with `$ref` to modular vocabularies.
   - `offline.schema.json` – reduced subset for offline validation (no external refs).
   - `meta/` – modular vocabularies (`core.json`, `validation.json`, `applicator.json`, etc.).

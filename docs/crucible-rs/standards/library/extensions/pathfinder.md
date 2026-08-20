@@ -263,6 +263,7 @@ Safety comes not from **whether** we traverse upward, but from **where we stop**
 #### Default Safety Boundaries
 
 1. **User Home Directory Ceiling**
+
    - **Default**: Never traverse above `$HOME` (Linux/macOS) or `%USERPROFILE%` (Windows) unless explicitly overridden
    - **Rationale**: Prevents escaping user-controlled filesystem space into system directories
    - **Example**: Search started in `/home/user/projects/myapp/src` stops at `/home/user`, never checks `/home` or `/`
@@ -273,11 +274,13 @@ Safety comes not from **whether** we traverse upward, but from **where we stop**
    - **Container/CI Edge Case**: If `$HOME` is `/root` or `/`, fall back to current working directory as boundary (don't traverse entire filesystem)
 
 2. **Filesystem Root**
+
    - **Absolute Ceiling**: `/` (Unix) or drive root `C:\` (Windows) or UNC share root (`\\server\share\`)
    - **Implementation**: Use `filepath.VolumeName()` (Go) or equivalent to detect filesystem boundaries
    - **Never traverse above**: Volume roots on any platform
 
 3. **Max Depth Guard**
+
    - **Default**: 10 directories upward from start path
    - **Rationale**: Prevents infinite loops, runaway traversal, or symlink cycles
    - **Example**: Starting from `/a/b/c/d/e/f/g/h/i/j/k` with max_depth=10 stops at `/a`, never checks root
@@ -299,6 +302,7 @@ Safety comes not from **whether** we traverse upward, but from **where we stop**
 3. **User-Owned Paths**: By default (home directory boundary), we only traverse directories the current user owns/controls. Downward traversal can encounter arbitrary file permissions, symlinks to sensitive paths, etc.
 
 4. **Existing Precedent**: Standard tools do this safely:
+
    - `git status` walks up looking for `.git`
    - `npm install` walks up looking for `package.json`
    - Editor integrations (VS Code, JetBrains) walk up finding project roots

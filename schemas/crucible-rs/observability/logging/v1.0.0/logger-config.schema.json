@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.fulmenhq.dev/crucible/observability/logging/logger-config-v1.0.0.json",
+  "$id": "https://schemas.fulmenhq.dev/crucible/observability/logging/v1.0.0/logger-config.schema.json",
   "title": "LoggerConfig",
   "description": "Progressive logger configuration with profile-based complexity and policy enforcement",
   "type": "object",
@@ -48,7 +48,7 @@
     "middleware": {
       "type": "array",
       "items": {
-        "$ref": "https://schemas.fulmenhq.dev/crucible/observability/logging/middleware-config-v1.0.0.json"
+        "$ref": "https://schemas.fulmenhq.dev/crucible/observability/logging/v1.0.0/middleware-config.schema.json"
       },
       "description": "Middleware pipeline applied to log events (required for ENTERPRISE profile)."
     },

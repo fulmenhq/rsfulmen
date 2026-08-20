@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.fulmenhq.dev/crucible/observability/logging/definitions-v1.0.0.json",
+  "$id": "https://schemas.fulmenhq.dev/crucible/observability/logging/v1.0.0/definitions.schema.json",
   "title": "Logging Definitions",
   "description": "Shared type definitions for logging schemas",
   "$comment": "Runtime Contract: Implementations MUST convert severityName to severityLevel for comparison operations. Use severityMapping for the canonical name→level mapping. Config accepts strings, events emit both string and numeric values.",

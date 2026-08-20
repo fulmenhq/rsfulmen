@@ -3,7 +3,7 @@ title: "Fulmen Library Ecosystem"
 description: "Overview of Layer 1 foundations, SSOT integration, and ecosystem dependencies"
 author: "Schema Cartographer"
 date: "2025-10-28"
-last_updated: "2025-10-28"
+last_updated: "2026-08-20"
 status: "active"
 tags: ["architecture", "ecosystem", "libraries", "layer-1", "observability"]
 ---
@@ -22,7 +22,8 @@ Layer 0: SSOT (Crucible, Cosmography) ──┐
                                         │     ├── gofulmen (Go)
                                         │     ├── pyfulmen (Python)
                                         │     ├── tsfulmen (TS/JS)
-                                        │     └── {rsfulmen, csfulmen} (Planned)
+                                        │     ├── rsfulmen (Rust)
+                                        │     └── csfulmen (Planned)
                                         │
                                         └──▶ Layer 2-4: Consumers
                                               ├── Templates (Fulmens: cockpit, runner-forge)
@@ -40,13 +41,13 @@ Layer 0: SSOT (Crucible, Cosmography) ──┐
 
 Layer 1 libraries follow a shared roadmap, aligning with Core Fulmen Principles (e.g., type safety, schemas first). This table lists canonical support for 2025.10.4+.
 
-| Language   | Library Name | Status  | Minimum Runtime    | Notes                                                                 |
-| ---------- | ------------ | ------- | ------------------ | --------------------------------------------------------------------- |
-| Go         | gofulmen     | Active  | Go 1.23+           | Reference for standards; implements config paths, observability.      |
-| Python     | pyfulmen     | Active  | Python 3.12+       | Focus on logging/context; Pydantic for schema validation.             |
-| TypeScript | tsfulmen     | Active  | TS 5.0+ (Bun/Node) | ESM bundles; Zod for runtime types; aligns with web/service patterns. |
-| Rust       | rsfulmen     | Planned | Rust 1.70+         | Post-stabilization; serd/serde for schemas.                           |
-| C#         | csfulmen     | Planned | .NET 8.0+          | For ASP.NET/workers; nullable types for safety.                       |
+| Language   | Library Name | Status  | Minimum Runtime    | Notes                                                                                    |
+| ---------- | ------------ | ------- | ------------------ | ---------------------------------------------------------------------------------------- |
+| Go         | gofulmen     | Active  | Go 1.23+           | Reference for standards; implements config paths, observability.                         |
+| Python     | pyfulmen     | Active  | Python 3.12+       | Focus on logging/context; Pydantic for schema validation.                                |
+| TypeScript | tsfulmen     | Active  | TS 5.0+ (Bun/Node) | ESM bundles; Zod for runtime types; aligns with web/service patterns.                    |
+| Rust       | rsfulmen     | Active  | Rust 1.88+         | Matches `config/taxonomy/languages.yaml` and the rsfulmen crate MSRV; serde for schemas. |
+| C#         | csfulmen     | Planned | .NET 8.0+          | For ASP.NET/workers; nullable types for safety.                                          |
 
 Updates sync from `config/taxonomy/languages.yaml`. New languages require principle-aligned modules (e.g., observability) before standards reference them. See `docs/standards/repository-structure/` for repo expectations.
 
@@ -80,6 +81,12 @@ Updates sync from `config/taxonomy/languages.yaml`. New languages require princi
 - Focus: Context management, observability; aligns with Python typing standards.
 - Principles: "Schemas First" (runtime validation), "Persnickety About Code" (ruff integration via goneat).
 
+### rsfulmen (Rust Foundation, Layer 1)
+
+- Idiomatic Rust APIs for Layer 0 assets (schema validation, config paths, Foundry catalogs).
+- Feature-gated modules; serde for schemas. Canonical workhorse breed: Roan. Crate MSRV 1.88.
+- Aligns with the helper library standard and `languages.yaml` (`status: active`, `minimumRuntime: 1.88`).
+
 ### goneat (Layer 3 Tool, Not Library)
 
 - CLI for quality (format, lint, validation); depends on gofulmen for assets.
@@ -104,7 +111,8 @@ Adopt Option B for clarity: Direct SSOT nesting (e.g., `gofulmen/crucible/loggin
 ## Related Docs
 
 - [Fulmen Layer Cake Guide](fulmen-ecosystem-guide.md)
-- [Technical Manifesto (Principles)](fulmen-technical-manifesto.md)
+- [Schema Normalization](../standards/schema-normalization.md)
+- [Coding Standards](../standards/coding/README.md)
 - [Helper Library Standard](fulmen-helper-library-standard.md)
 - [Config Path Standard](../standards/config/fulmen-config-paths.md)
 - [Makefile Standard](../standards/makefile-standard.md)

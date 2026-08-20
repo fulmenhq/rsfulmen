@@ -88,6 +88,7 @@ All other Crucible schemas and configurations continue to follow standard SemVer
 4. **Restrict consumer adoption**: No FulmenHQ applications other than L'Orage Central should depend on these schemas until the experimental status is removed
 
 5. **Clear termination criteria**:
+
    - **Trigger**: L'Orage Central CLI ships v0.2.0 (after public alpha cycle at v0.1.x)
    - **Action**: Remove `status: experimental` from all affected schemas
    - **Effect**: All subsequent changes follow standard Crucible SemVer rules (additive changes only, deprecation cycles for breaking changes)
@@ -290,21 +291,25 @@ Breaking changes during experimental window:
 When L'Orage Central reaches v0.2.0:
 
 1. **Remove Experimental Markers**:
+
    - Delete `status: experimental` from all schema frontmatter
    - Remove ADR-0011 references from comments
    - Update READMEs to remove experimental warnings
 
 2. **Update ADR-0011**:
+
    - Change status from `experimental` to `superseded`
    - Add supersession date to frontmatter
    - Document final stabilization in revision history
 
 3. **Document Final State**:
+
    - CHANGELOG entry noting experimental phase completion
    - List any schemas that were withdrawn (if applicable)
    - Confirm EA Steward sign-off on stabilization
 
 4. **Enable Downstream Adoption**:
+
    - Notify gofulmen, pyfulmen, tsfulmen teams that schemas are stable
    - Publish integration guide for L'Orage Central schema consumption
    - Update module compliance matrix with adoption status

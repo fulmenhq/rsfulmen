@@ -38,6 +38,7 @@ Does NOT apply to:
 **Actions**:
 
 1. **Draft Metrics List**
+
    - Identify all metrics the module will emit
    - Follow naming conventions:
      - Format: `module_operation_unit`
@@ -50,6 +51,7 @@ Does NOT apply to:
      - `_count` - Success/total counts
 
 2. **Create Request Memo** (Temporary, in `.plans/`)
+
    - Location: `.plans/active/libraries/YYYYMMDD-<module>-metrics-request.md`
    - Include:
      - List of proposed metrics (name, unit, description)
@@ -77,17 +79,20 @@ Does NOT apply to:
 **Actions**:
 
 1. **Update Taxonomy**
+
    - File: `config/taxonomy/metrics.yaml`
    - Add metrics to `$defs.metricName.enum` section
    - Add metric definitions to `metrics` array
    - Maintain alphabetical grouping by module prefix
 
 2. **Validate Schema**
+
    - Run `bun run scripts/validate-schemas.ts`
    - Verify no schema errors
    - Confirm `$ref` resolution works
 
 3. **Run Precommit**
+
    - Execute `make precommit`
    - Ensure all quality gates pass
    - Verify sync to lang wrappers completes
@@ -108,15 +113,18 @@ Does NOT apply to:
 **Actions**:
 
 1. **Pull Latest Crucible**
+
    - In library repo: `make sync` or `goneat ssot sync`
    - Verify new metrics appear in `docs/crucible-<lang>/config/taxonomy/metrics.yaml`
 
 2. **Implement Module**
+
    - Use approved metric names (exact match required)
    - Emit metrics via library's telemetry module
    - Schema validation will pass on first try
 
 3. **Validate**
+
    - Run library tests with telemetry enabled
    - Verify schema validation passes for emitted metrics
    - Test metric recording and export
@@ -137,6 +145,7 @@ Does NOT apply to:
 **Actions**:
 
 1. **Check Taxonomy**
+
    - Verify metrics already exist in Crucible taxonomy
    - Pull latest Crucible if stale
 

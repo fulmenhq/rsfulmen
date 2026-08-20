@@ -127,11 +127,13 @@ To preserve chronological continuity and provide migration clarity, **add parall
 ### Why SemVer is the Right Choice
 
 1. **Go Module Compatibility** (Critical)
+
    - Works immediately with `go get` and Go proxy
    - No module path gymnastics (`/v2025`, `/v2026`, etc.)
    - Standard Go ecosystem practice
 
 2. **Eliminates Annual Breaking Changes**
+
    - CalVer with Go compliance would require yearly module path updates:
      ```go
      import "github.com/fulmenhq/crucible/v2025"  // 2025
@@ -140,11 +142,13 @@ To preserve chronological continuity and provide migration clarity, **add parall
    - SemVer keeps module path stable until actual breaking changes
 
 3. **Ecosystem Standard**
+
    - Go, Python (PEP 440), JavaScript (npm), Rust (Cargo) all use SemVer
    - Familiar to all developers
    - Tooling (dependency bots, security scanners) understand SemVer
 
 4. **Semantic Clarity**
+
    - `v0.2.0` signals "pre-stable, minor iteration"
    - `v1.0.0` will signal "stable API contract"
    - Breaking changes explicit via major version bump
@@ -157,10 +161,12 @@ To preserve chronological continuity and provide migration clarity, **add parall
 ### Trade-offs Accepted
 
 1. **Loses Date-at-a-Glance**
+
    - **Impact**: Can't immediately see release date from version number
    - **Mitigation**: CHANGELOG.md includes dates, GitHub releases show timestamps, version numbers still convey progression
 
 2. **Breaking from FulmenHQ CalVer Preference**
+
    - **Impact**: Crucible diverges from initial versioning vision
    - **Mitigation**: This is a pragmatic correction based on ecosystem realities; other FulmenHQ projects can choose differently unless they're Go modules
 
@@ -314,15 +320,18 @@ require github.com/fulmenhq/crucible v2025.10.5+incompatible
    ```
 
 3. **Update CHANGELOG.md**:
+
    - Add `## [0.2.0] - 2025-10-29` entry
    - Document SemVer adoption and retroactive tag mapping
    - Update versioning adherence statement from CalVer to SemVer
 
 4. **Update README.md** (if versioning section exists):
+
    - Remove CalVer references
    - Document SemVer scheme (v0.x.y pre-stable, v1.x.y stable)
 
 5. **Update Documentation**:
+
    - ADR-0010 (this document)
    - docs/ops/repository/release-checklist.md (if CalVer-specific)
    - docs/sop/repository-operations-sop.md (if CalVer-specific)

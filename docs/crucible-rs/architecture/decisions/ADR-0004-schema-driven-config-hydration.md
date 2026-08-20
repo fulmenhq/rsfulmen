@@ -44,25 +44,30 @@ During PyFulmen’s progressive logger work, schema/runtime drift caused repeate
 Each helper library MUST implement a dedicated hydration module that:
 
 1. **Loads and Merges Layers**
+
    - Reads Crucible defaults from embedded assets.
    - Overlays user-managed config directories (`GetFulmenConfigDir` et al.).
    - Applies programmatic overrides last.
 
 2. **Normalizes Schema Fields**
+
    - Converts camelCase keys to language conventions (snake_case for Python, exported struct fields for Go, lowerCamelCase for TS).
    - Flattens nested `config` blocks (e.g., `middleware[].config`) into typed parameters.
    - Preserves explicit zero/empty values (no accidental defaulting).
 
 3. **Validates Against Schemas**
+
    - Validates hydrated configuration using language-appropriate tooling (Pydantic, gojsonschema, AJV).
    - Validates emitted artefacts (e.g., log events) against corresponding schemas when applicable.
 
 4. **Enforces Policy Files**
+
    - Resolves policy search order (`.goneat/`, `/etc/fulmen/`, `/org/`).
    - Applies allow/deny rules prior to returning configuration.
    - Honors strict mode by raising exceptions on violation.
 
 5. **Exposes Pure APIs**
+
    - Expose functions like `normalize_logger_config(raw: Mapping)` that are deterministic and side-effect free.
    - Make hydration idempotent to simplify testing.
    - Keep the pure normalizers free of hidden caches, external I/O, or global mutations; perform those operations in orchestration layers so maintainers can reason about behaviour during reviews and audits.
@@ -153,19 +158,23 @@ Each helper library MUST implement a dedicated hydration module that:
 ## Implementation
 
 1. **Create Normalization Module**
+
    - Python: `pyfulmen.config.normalize_logger_config`.
    - Go: `foundation/config/normalize.go`.
    - TypeScript: `packages/config/src/normalizeLoggerConfig.ts`.
 
 2. **Adopt Shared Fixtures**
+
    - Add configs to `examples/config/logging/` in Crucible; sync to language repos.
    - Round-trip fixtures through normalizers during CI.
 
 3. **Enforce Policy Early**
+
    - Implement search order and strict mode handling within normalizers.
    - Provide descriptive errors (include policy rule that failed).
 
 4. **Validate Output**
+
    - Run schema validation in `make test` (AJV/gojsonschema/Pydantic).
    - Add golden snapshot tests for hydrated configs and log events.
 
