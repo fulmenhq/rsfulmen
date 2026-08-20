@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Host binary identity** (`rsfulmen::buildinfo`) — resolve/format `version` and
+  `version --extended` from app-injected `FULMEN_HOST_*` stamps. Pins
+  (rsfulmen + Crucible) are a separate block and are never the host commit.
+
 ## [0.1.5] - 2026-06-05
 
 Process and maintenance release: adopts a branch/PR development workflow, syncs

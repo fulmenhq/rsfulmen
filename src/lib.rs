@@ -25,6 +25,7 @@
 //! - **pathfinder** (default) - Safe filesystem discovery with glob patterns
 //! - **ascii** (default) - Terminal utilities + Unicode-aware string handling
 //! - **fulencode** (default) - Encoding/decoding, detection, normalization, BOM helpers
+//! - **buildinfo** (always) - Host binary identity for `version --extended`
 //!
 //! ## Quick Start
 //!
@@ -176,6 +177,13 @@ pub mod error_handling;
 #[cfg(feature = "telemetry-metrics")]
 #[cfg_attr(docsrs, doc(cfg(feature = "telemetry-metrics")))]
 pub mod telemetry_metrics;
+
+/// Host binary identity (`version` / `version --extended`).
+///
+/// Resolves the **running product binary** from app-injected `FULMEN_HOST_*`
+/// stamps. Library git and Crucible SSOT commits are pins, not host commit.
+/// See [`host_identity`].
+pub mod buildinfo;
 
 /// Library version information.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
