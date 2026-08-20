@@ -26,13 +26,26 @@ pub enum FileSchemaResolution {
 /// Options for file-backed instance validation.
 #[derive(Debug, Clone, Default)]
 pub struct FileSchemaOptions {
-    /// Repeatable catalog roots. The root schema file’s directory is always an allowed root.
+    /// Additional catalog roots searched for referenced schemas. The root schema
+    /// file’s directory is always included.
     pub ref_dirs: Vec<PathBuf>,
     /// `$id` vs path-suffix resolution.
     pub resolution: FileSchemaResolution,
 }
 
-/// Offline catalog resolver. Allowed roots are the canonical schema-file directory and each `ref_dirs` entry.
+/// Offline catalog resolver for on-disk JSON Schema trees.
+///
+/// External `$ref` values are resolved **without network access** against the
+/// canonical directory of the root schema file and each
+/// [`FileSchemaOptions::ref_dirs`] entry. Traversal that leaves those roots,
+/// non-local `file:` hosts, unsupported URI schemes, duplicate `$id`s, and
+/// symlink path components are rejected as
+/// [`SchemaValidationError::SchemaCompileFailed`].
+///
+/// On Unix, each component under an allowed root is opened with `openat(2)` and
+/// `O_NOFOLLOW` so a swapped intermediate directory cannot escape the catalog.
+/// On other platforms, catalog roots are treated as trusted for the duration of
+/// validation.
 pub struct FileBackedResolver {
     allowed_roots: Vec<PathBuf>,
     schema_dir: PathBuf,
@@ -99,9 +112,18 @@ impl FileBackedResolver {
     }
 
     fn load_contained(&self, path: &Path) -> Result<Arc<Value>, SchemaResolverError> {
-        let contained =
-            contained_canonical(path, &self.allowed_roots).map_err(|e| anyhow::anyhow!(e))?;
-        let value = load_value_stable(&contained).map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        let abs = lexical_absolute(path).map_err(|e| anyhow::anyhow!(e))?;
+        let root = self
+            .allowed_roots
+            .iter()
+            .find(|root| abs.starts_with(root))
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "schema path not contained in catalog roots: {}",
+                    abs.display()
+                )
+            })?;
+        let value = read_under_root(root, &abs).map_err(|e| anyhow::anyhow!(e))?;
         Ok(Arc::new(value))
     }
 
@@ -466,21 +488,108 @@ fn canonicalize_existing(path: &Path) -> Result<PathBuf, SchemaValidationError> 
     })
 }
 
-fn contained_canonical(path: &Path, roots: &[PathBuf]) -> Result<PathBuf, String> {
-    let canon = fs::canonicalize(path).map_err(|e| {
+fn lexical_absolute(path: &Path) -> Result<PathBuf, String> {
+    let abs = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        std::env::current_dir()
+            .map_err(|e| e.to_string())?
+            .join(path)
+    };
+    Ok(normalize_lexical(&abs))
+}
+
+fn normalize_lexical(path: &Path) -> PathBuf {
+    let mut out = PathBuf::new();
+    for c in path.components() {
+        match c {
+            std::path::Component::Prefix(p) => out.push(p.as_os_str()),
+            std::path::Component::RootDir => out.push(std::path::MAIN_SEPARATOR_STR),
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                let _ = out.pop();
+            }
+            std::path::Component::Normal(s) => out.push(s),
+        }
+    }
+    out
+}
+
+fn read_under_root(root: &Path, abs: &Path) -> Result<Value, String> {
+    let rel = abs.strip_prefix(root).map_err(|_| {
         format!(
-            "schema path not contained in catalog roots (canonicalize failed): {}: {e}",
-            path.display()
+            "schema path not contained in catalog roots: {}",
+            abs.display()
         )
     })?;
-    if roots.iter().any(|root| canon.starts_with(root)) {
-        Ok(canon)
-    } else {
-        Err(format!(
-            "schema path not contained in catalog roots: {}",
-            canon.display()
-        ))
+    #[cfg(unix)]
+    {
+        let mut file = openat_nofollow(root, rel)?;
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf).map_err(|e| e.to_string())?;
+        parse_schema_bytes(&abs.display().to_string(), &buf).map_err(|e| e.to_string())
     }
+    #[cfg(not(unix))]
+    {
+        let bytes = fs::read(abs).map_err(|e| e.to_string())?;
+        parse_schema_bytes(&abs.display().to_string(), &bytes).map_err(|e| e.to_string())
+    }
+}
+
+#[cfg(unix)]
+fn openat_nofollow(root: &Path, rel: &Path) -> Result<fs::File, String> {
+    use std::ffi::CString;
+    use std::os::unix::ffi::OsStrExt;
+    use std::os::unix::io::{AsRawFd, FromRawFd, OwnedFd};
+
+    if rel.as_os_str().is_empty() {
+        return Err("schema path resolved to a catalog root directory".to_string());
+    }
+
+    let root_c = CString::new(root.as_os_str().as_bytes())
+        .map_err(|_| "catalog root path contains interior NUL".to_string())?;
+    let root_fd = unsafe {
+        libc::open(
+            root_c.as_ptr(),
+            libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC,
+        )
+    };
+    if root_fd < 0 {
+        return Err(format!(
+            "cannot open catalog root {}: {}",
+            root.display(),
+            std::io::Error::last_os_error()
+        ));
+    }
+    let mut current = unsafe { OwnedFd::from_raw_fd(root_fd) };
+
+    let comps: Vec<_> = rel.components().collect();
+    for (i, component) in comps.iter().enumerate() {
+        let std::path::Component::Normal(name) = component else {
+            return Err(format!(
+                "schema path not contained in catalog roots: {}",
+                rel.display()
+            ));
+        };
+        let name_c = CString::new(name.as_bytes())
+            .map_err(|_| "schema path component contains interior NUL".to_string())?;
+        let last = i + 1 == comps.len();
+        let mut flags = libc::O_RDONLY | libc::O_NOFOLLOW | libc::O_CLOEXEC;
+        if !last {
+            flags |= libc::O_DIRECTORY;
+        }
+        let next = unsafe { libc::openat(current.as_raw_fd(), name_c.as_ptr(), flags) };
+        if next < 0 {
+            return Err(format!(
+                "schema path not contained in catalog roots (nofollow): {}/{}: {}",
+                root.display(),
+                rel.display(),
+                std::io::Error::last_os_error()
+            ));
+        }
+        current = unsafe { OwnedFd::from_raw_fd(next) };
+    }
+    Ok(fs::File::from(current))
 }
 
 fn strip_fragment(s: &str) -> &str {
@@ -896,6 +1005,59 @@ mod tests {
         match err {
             SchemaValidationError::SchemaCompileFailed { message, .. } => {
                 assert!(message.contains("duplicate schema $id"), "{message}");
+            }
+            other => panic!("expected compile failure, got {other:?}"),
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn parent_directory_symlink_swap_is_compile_failure() {
+        let dir = scratch_dir();
+        let sub = dir.join("sub");
+        fs::create_dir(&sub).unwrap();
+        fs::write(
+            sub.join("leaf.schema.json"),
+            r#"{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"string"}"#,
+        )
+        .unwrap();
+        fs::write(
+            dir.join("root.schema.json"),
+            r#"{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "x": { "$ref": "sub/leaf.schema.json" }
+  }
+}
+"#,
+        )
+        .unwrap();
+        let outside_dir = dir
+            .parent()
+            .unwrap()
+            .join(format!("rsfulmen-parent-swap-{}-out", std::process::id()));
+        fs::create_dir_all(outside_dir.join("sub")).unwrap();
+        fs::write(
+            outside_dir.join("sub/leaf.schema.json"),
+            r#"{"type":"number"}"#,
+        )
+        .unwrap();
+        fs::remove_dir_all(&sub).unwrap();
+        std::os::unix::fs::symlink(outside_dir.join("sub"), &sub).unwrap();
+        let err = validate_instance_with_schema_file(
+            &dir.join("root.schema.json"),
+            &json!({}),
+            opts(&dir),
+        )
+        .unwrap_err();
+        let _ = fs::remove_dir_all(&outside_dir);
+        match err {
+            SchemaValidationError::SchemaCompileFailed { message, .. } => {
+                assert!(
+                    message.contains("nofollow") || message.contains("not contained"),
+                    "{message}"
+                );
             }
             other => panic!("expected compile failure, got {other:?}"),
         }
