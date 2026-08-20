@@ -44,8 +44,9 @@ pub struct FileSchemaOptions {
 ///
 /// On Unix, each component under an allowed root is opened with `openat(2)` and
 /// `O_NOFOLLOW` so a swapped intermediate directory cannot escape the catalog.
-/// On other platforms, catalog roots are treated as trusted for the duration of
-/// validation.
+/// The root schema path and each `ref_dirs` entry must be real (non-symlink)
+/// files/directories. On other platforms, catalog roots are treated as trusted
+/// for the duration of validation.
 pub struct FileBackedResolver {
     allowed_roots: Vec<PathBuf>,
     schema_dir: PathBuf,
@@ -60,7 +61,7 @@ impl FileBackedResolver {
         schema_path: &Path,
         opts: &FileSchemaOptions,
     ) -> Result<Self, SchemaValidationError> {
-        let schema_path = canonicalize_existing(schema_path)?;
+        let schema_path = require_real_canonical(schema_path)?;
         let schema_dir = schema_path
             .parent()
             .ok_or_else(|| SchemaValidationError::SchemaCompileFailed {
@@ -68,10 +69,11 @@ impl FileBackedResolver {
                 message: "schema path has no parent directory".to_string(),
             })?
             .to_path_buf();
+        let schema_dir = require_real_canonical(&schema_dir)?;
 
         let mut allowed_roots = vec![schema_dir.clone()];
         for dir in &opts.ref_dirs {
-            allowed_roots.push(canonicalize_existing(dir)?);
+            allowed_roots.push(require_real_canonical(dir)?);
         }
         allowed_roots.sort();
         allowed_roots.dedup();
@@ -486,6 +488,21 @@ fn canonicalize_existing(path: &Path) -> Result<PathBuf, SchemaValidationError> 
         path: path.display().to_string(),
         message: e.to_string(),
     })
+}
+
+fn require_real_canonical(path: &Path) -> Result<PathBuf, SchemaValidationError> {
+    let meta =
+        fs::symlink_metadata(path).map_err(|e| SchemaValidationError::SchemaCompileFailed {
+            path: path.display().to_string(),
+            message: e.to_string(),
+        })?;
+    if meta.file_type().is_symlink() {
+        return Err(SchemaValidationError::SchemaCompileFailed {
+            path: path.display().to_string(),
+            message: format!("catalog path is a symlink: {}", path.display()),
+        });
+    }
+    canonicalize_existing(path)
 }
 
 fn lexical_absolute(path: &Path) -> Result<PathBuf, String> {
@@ -1121,5 +1138,255 @@ mod tests {
             err.is_err(),
             "expected O_NOFOLLOW to reject swapped symlink"
         );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn schema_file_symlink_to_outside_is_compile_failure() {
+        let dir = scratch_dir();
+        write_catalog(&dir);
+        let outside = dir.parent().unwrap().join(format!(
+            "rsfulmen-schema-link-{}.schema.json",
+            std::process::id()
+        ));
+        fs::write(
+            &outside,
+            r#"{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object"}"#,
+        )
+        .unwrap();
+        let link = dir.join("via-link.schema.json");
+        std::os::unix::fs::symlink(&outside, &link).unwrap();
+        let err = validate_instance_with_schema_file(&link, &json!({}), opts(&dir)).unwrap_err();
+        let _ = fs::remove_file(&outside);
+        match err {
+            SchemaValidationError::SchemaCompileFailed { message, .. } => {
+                assert!(
+                    message.contains("symlink") || message.contains("nofollow"),
+                    "{message}"
+                );
+            }
+            other => panic!("expected compile failure, got {other:?}"),
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn ref_dir_symlink_to_outside_is_compile_failure() {
+        let dir = scratch_dir();
+        write_catalog(&dir);
+        let outside = dir
+            .parent()
+            .unwrap()
+            .join(format!("rsfulmen-refdir-{}", std::process::id()));
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(outside.join("extra.schema.json"), r#"{"type":"string"}"#).unwrap();
+        let link = dir.join("ref-link");
+        std::os::unix::fs::symlink(&outside, &link).unwrap();
+        let err = validate_instance_with_schema_file(
+            &dir.join("root.schema.json"),
+            &good_instance(),
+            FileSchemaOptions {
+                ref_dirs: vec![link],
+                resolution: FileSchemaResolution::PreferId,
+            },
+        )
+        .unwrap_err();
+        let _ = fs::remove_dir_all(&outside);
+        match err {
+            SchemaValidationError::SchemaCompileFailed { message, .. } => {
+                assert!(message.contains("symlink"), "{message}");
+            }
+            other => panic!("expected compile failure, got {other:?}"),
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn nested_ancestor_directory_symlink_swap_is_compile_failure() {
+        let dir = scratch_dir();
+        let nested = dir.join("a").join("b");
+        fs::create_dir_all(&nested).unwrap();
+        fs::write(
+            nested.join("leaf.schema.json"),
+            r#"{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"string"}"#,
+        )
+        .unwrap();
+        fs::write(
+            dir.join("root.schema.json"),
+            r#"{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "x": { "$ref": "a/b/leaf.schema.json" }
+  }
+}
+"#,
+        )
+        .unwrap();
+        let outside = dir
+            .parent()
+            .unwrap()
+            .join(format!("rsfulmen-nested-swap-{}", std::process::id()));
+        fs::create_dir_all(outside.join("a").join("b")).unwrap();
+        fs::write(outside.join("a/b/leaf.schema.json"), r#"{"type":"number"}"#).unwrap();
+        fs::remove_dir_all(dir.join("a")).unwrap();
+        std::os::unix::fs::symlink(outside.join("a"), dir.join("a")).unwrap();
+        let err = validate_instance_with_schema_file(
+            &dir.join("root.schema.json"),
+            &json!({}),
+            opts(&dir),
+        )
+        .unwrap_err();
+        let _ = fs::remove_dir_all(&outside);
+        match err {
+            SchemaValidationError::SchemaCompileFailed { message, .. } => {
+                assert!(
+                    message.contains("nofollow") || message.contains("not contained"),
+                    "{message}"
+                );
+            }
+            other => panic!("expected compile failure, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn file_url_dotdot_staying_inside_succeeds() {
+        let dir = scratch_dir();
+        write_catalog(&dir);
+        let widget = fs::canonicalize(dir.join("widget.schema.json")).unwrap();
+        let nested = widget.parent().unwrap().join("sub");
+        let via = Url::from_file_path(nested.join("..").join("widget.schema.json")).unwrap();
+        fs::write(
+            dir.join("dotdot-in.schema.json"),
+            format!(
+                r#"{{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["widget"],
+  "properties": {{
+    "widget": {{ "$ref": "{via}" }}
+  }}
+}}
+"#
+            ),
+        )
+        .unwrap();
+        let issues = validate_instance_with_schema_file(
+            &dir.join("dotdot-in.schema.json"),
+            &json!({"widget": {"kind": "ok"}}),
+            opts(&dir),
+        )
+        .unwrap();
+        assert!(issues.is_empty(), "{issues:?}");
+    }
+
+    #[test]
+    fn file_url_dotdot_escape_is_compile_failure() {
+        let dir = scratch_dir();
+        write_catalog(&dir);
+        let outside = dir.parent().unwrap().join(format!(
+            "rsfulmen-fileurl-escape-{}.schema.json",
+            std::process::id()
+        ));
+        fs::write(&outside, r#"{"type":"string"}"#).unwrap();
+        let via = Url::from_file_path(&outside).unwrap();
+        fs::write(
+            dir.join("dotdot-out.schema.json"),
+            format!(
+                r#"{{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {{
+    "x": {{ "$ref": "{via}" }}
+  }}
+}}
+"#
+            ),
+        )
+        .unwrap();
+        let err = validate_instance_with_schema_file(
+            &dir.join("dotdot-out.schema.json"),
+            &json!({}),
+            opts(&dir),
+        )
+        .unwrap_err();
+        let _ = fs::remove_file(&outside);
+        match err {
+            SchemaValidationError::SchemaCompileFailed { message, .. } => {
+                assert!(
+                    message.contains("not contained") || message.contains("nofollow"),
+                    "{message}"
+                );
+            }
+            other => panic!("expected compile failure, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn cyclic_refs_do_not_hang() {
+        let dir = scratch_dir();
+        fs::write(
+            dir.join("a.schema.json"),
+            r#"{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.example.test/cycle/a.schema.json",
+  "type": "object",
+  "properties": { "b": { "$ref": "b.schema.json" } }
+}
+"#,
+        )
+        .unwrap();
+        fs::write(
+            dir.join("b.schema.json"),
+            r#"{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.example.test/cycle/b.schema.json",
+  "type": "object",
+  "properties": { "a": { "$ref": "a.schema.json" } }
+}
+"#,
+        )
+        .unwrap();
+        let issues =
+            validate_instance_with_schema_file(&dir.join("a.schema.json"), &json!({}), opts(&dir))
+                .unwrap();
+        assert!(issues.is_empty(), "{issues:?}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn ref_to_in_catalog_symlink_is_compile_failure() {
+        let dir = scratch_dir();
+        write_catalog(&dir);
+        let link = dir.join("alias.schema.json");
+        std::os::unix::fs::symlink(dir.join("widget.schema.json"), &link).unwrap();
+        fs::write(
+            dir.join("uses-alias.schema.json"),
+            r#"{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "x": { "$ref": "alias.schema.json" }
+  }
+}
+"#,
+        )
+        .unwrap();
+        let err = validate_instance_with_schema_file(
+            &dir.join("uses-alias.schema.json"),
+            &json!({}),
+            opts(&dir),
+        )
+        .unwrap_err();
+        match err {
+            SchemaValidationError::SchemaCompileFailed { message, .. } => {
+                assert!(
+                    message.contains("nofollow") || message.contains("symlink"),
+                    "{message}"
+                );
+            }
+            other => panic!("expected compile failure, got {other:?}"),
+        }
     }
 }
