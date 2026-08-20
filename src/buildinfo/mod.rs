@@ -106,7 +106,7 @@ pub fn resolve_from_stamps(
         version: pick_field(version, ENV_VERSION, DEFAULT_VERSION),
         commit: pick_field(commit, ENV_COMMIT, DEFAULT_UNKNOWN),
         build_date: pick_field(build_date, ENV_BUILD_DATE, DEFAULT_UNKNOWN),
-        dirty: parse_dirty(dirty).or_else(|| parse_dirty(env_get(ENV_DIRTY).as_deref())),
+        dirty: dirty_from_stamp_then_env(dirty),
         runtime,
         platform: if platform.is_empty() {
             go_platform()
@@ -256,6 +256,20 @@ fn parse_dirty(raw: Option<&str>) -> Option<bool> {
     }
 }
 
+/// A non-empty compile-time dirty stamp is authoritative: `true`/`false` map
+/// as usual; any other non-empty value is unknown and **must not** consult
+/// runtime env (that would allow a malformed stamp to become false-clean).
+fn dirty_from_stamp_then_env(stamp: Option<&str>) -> Option<bool> {
+    match stamp.map(str::trim) {
+        Some(s) if !s.is_empty() => match s {
+            "true" => Some(true),
+            "false" => Some(false),
+            _ => None,
+        },
+        _ => parse_dirty(env_get(ENV_DIRTY).as_deref()),
+    }
+}
+
 fn go_platform() -> String {
     let os = match env::consts::OS {
         "macos" => "darwin",
@@ -390,6 +404,35 @@ mod tests {
         with_clean_env(|| {
             let info = resolve_with_overrides("1.0.0", "abc", "2026-01-01T00:00:00Z", "yes");
             assert_eq!(info.dirty, None);
+        });
+    }
+
+    #[test]
+    fn invalid_stamp_does_not_become_runtime_false_clean() {
+        with_clean_env(|| {
+            // SAFETY: ENV_LOCK serializes env mutation in these tests.
+            unsafe {
+                env::set_var(ENV_DIRTY, "false");
+            }
+            let info = resolve_from_stamps(
+                Some("1.0.0"),
+                Some("abc"),
+                Some("2026-01-01T00:00:00Z"),
+                Some("yes"),
+                None,
+                None,
+            );
+            assert_eq!(info.dirty, None);
+            let text = info.format_extended("tool", None);
+            assert!(
+                !text.contains("Dirty:"),
+                "unknown dirty must be omitted from extended text"
+            );
+            let json = info.to_json("tool", None);
+            assert!(
+                !json.contains("dirty"),
+                "unknown dirty must be omitted from JSON"
+            );
         });
     }
 
