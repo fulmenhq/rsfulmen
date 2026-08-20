@@ -69,6 +69,8 @@ if [ -z "$GONEAT_BIN" ]; then
   fi
 fi
 
+# Guardian enforcement for protected git push operations
+
 # Verify crucible sources are clean before pushing
 if [ -f "$REPO_ROOT/scripts/verify-crucible-clean.sh" ]; then
   if ! "$REPO_ROOT/scripts/verify-crucible-clean.sh"; then
