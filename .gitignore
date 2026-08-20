@@ -1,7 +1,7 @@
 # Rust build artifacts
 /target/
 **/*.rs.bk
-Cargo.lock
+# Cargo.lock is committed so CI/audit/MSRV resolve the same tree.
 
 # IDE and editor files
 .idea/

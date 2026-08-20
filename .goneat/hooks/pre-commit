@@ -71,6 +71,8 @@ if [ -z "$GONEAT_BIN" ]; then
   fi
 fi
 
+# Guardian enforcement for protected git commit operations
+
 # Use goneat's orchestrated assessment (manifest-driven)
 "$GONEAT_BIN" assess --hook pre-commit --hook-manifest "$REPO_ROOT/.goneat/hooks.yaml" --staged-only --package-mode
 

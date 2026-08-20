@@ -40,15 +40,15 @@ jobs:
       - name: Format check
         run: cargo fmt --all -- --check
       - name: Lint (clippy)
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --locked --all-targets --all-features -- -D warnings
       - name: Run tests
-        run: cargo test --all-features
+        run: cargo test --locked --all-features
       - name: Run doc tests
-        run: cargo test --doc --all-features
+        run: cargo test --locked --doc --all-features
       - name: Build
-        run: cargo build --all-features
+        run: cargo build --locked --all-features
       - name: Build (release)
-        run: cargo build --release --all-features
+        run: cargo build --locked --release --all-features
   # Minimal feature builds to catch conditional compilation issues
   feature-matrix:
     name: Feature Matrix
@@ -92,16 +92,16 @@ jobs:
       - name: Build with feature '${{ matrix.features }}'
         run: |
           if [ -z "${{ matrix.features }}" ]; then
-            cargo build --no-default-features
+            cargo build --locked --no-default-features
           else
-            cargo build --no-default-features --features "${{ matrix.features }}"
+            cargo build --locked --no-default-features --features "${{ matrix.features }}"
           fi
       - name: Test with feature '${{ matrix.features }}'
         run: |
           if [ -z "${{ matrix.features }}" ]; then
-            cargo test --no-default-features
+            cargo test --locked --no-default-features
           else
-            cargo test --no-default-features --features "${{ matrix.features }}"
+            cargo test --locked --no-default-features --features "${{ matrix.features }}"
           fi
   # MSRV check
   msrv:
@@ -115,10 +115,10 @@ jobs:
       - name: Set up Rust 1.88
         uses: dtolnay/rust-toolchain@1.88.0
       - name: Build
-        run: cargo build --all-features
+        run: cargo build --locked --all-features
         env:
           RUSTUP_TOOLCHAIN: 1.88.0
       - name: Test
-        run: cargo test --all-features
+        run: cargo test --locked --all-features
         env:
           RUSTUP_TOOLCHAIN: 1.88.0
