@@ -5,7 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0] - 2026-09-02
+
+Stamp-only host identity plus goneat v0.6.0. **Breaking:** `resolve()` no
+longer reads process `FULMEN_HOST_*`. MSRV remains 1.88. Crucible embed is
+v0.4.19.
+
+### Added
+
+- **Host-identity producer** (`host-identity-producer` feature) — application
+  `build.rs` can stamp all six `FULMEN_HOST_*` values from `CARGO_MANIFEST_DIR`.
+  Git locator/index/object/config overrides are stripped (`GIT_DIR`,
+  `GIT_WORK_TREE`, `GIT_ALTERNATE_OBJECT_DIRECTORIES`, `GIT_CONFIG*`, and the
+  rest of the strip set).
+- **`resolve_from_process_env()`** — explicit runtime-environment resolver.
+  Use this when a caller wants process `FULMEN_HOST_*`.
+
+### Changed
+
+- **`host_identity!()` and `resolve_from_stamps`** are compile-stamp-only.
+  Missing stamps use documented defaults (`dev` / `unknown` / omitted dirty).
+  They never read process `FULMEN_HOST_*` and do not derive platform from the
+  running host.
+- **`resolve()`** is stamp-only defaults (same as empty stamps). Callers that
+  relied on process-env fallback must switch to `resolve_from_process_env()`.
+- **goneat** pin `v0.5.16` → `v0.6.0`.
+- Selected crate refreshes: flate2 1.1.10, uuid 1.26.0. jsonschema 0.17,
+  serde_yaml_ng 0.10, zip 2.x, and direct thiserror 1.x unchanged.
+
+### Requirements
+
+- **Rust**: 1.88+ (MSRV, unchanged)
+- **Crucible**: v0.4.19 (embedded)
 
 ## [0.1.6] - 2026-08-20
 
