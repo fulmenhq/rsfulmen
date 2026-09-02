@@ -12,27 +12,19 @@
 //! Compile-time `FULMEN_HOST_*` `rustc-env` values are stamped by the **application**
 //! `build.rs`, not by this crate. Use [`host_identity`](crate::host_identity) from
 //! the binary crate so `option_env!` is evaluated at the app's compile time.
-//! [`resolve`] reads process environment as a fallback and is
-//! informational / caller-influenceable.
+//! [`resolve_from_stamps`] is **compile-stamp-only**: missing stamps use documented
+//! defaults and never read process `FULMEN_HOST_*`. Runtime environment resolution
+//! is only available via [`resolve_from_process_env`].
 //!
 //! Host identity is diagnostics only. Do not use it for authentication,
 //! authorization, or integrity.
 //!
-//! # Application `build.rs` (copy-paste)
+//! # Application `build.rs`
 //!
-//! The application crate (not rsfulmen) should stamp:
-//!
-//! ```text
-//! FULMEN_HOST_VERSION
-//! FULMEN_HOST_COMMIT
-//! FULMEN_HOST_BUILD_DATE   // RFC3339 UTC
-//! FULMEN_HOST_DIRTY        // "true" | "false" | empty = unknown
-//! ```
-//!
-//! See the Host Binary Identity Standard
-//! (`docs/crucible-rs/standards/repository-structure/host-binary-identity.md`).
-//! A self-contained `build.rs` recipe lives in that standard (Phase A). After
-//! stamping, the binary crate calls:
+//! Enable the `host-identity-producer` feature in `[build-dependencies]` and call
+//! [`producer::emit_host_identity`]. That probe reads Git from
+//! `CARGO_MANIFEST_DIR` and strips Git locator/index/object/config overrides
+//! (`GIT_DIR`, `GIT_WORK_TREE`, `GIT_ALTERNATE_OBJECT_DIRECTORIES`, …). Then:
 //!
 //! ```rust
 //! let info = rsfulmen::host_identity!();
@@ -41,6 +33,10 @@
 //! ```
 
 use std::env;
+
+#[cfg(feature = "host-identity-producer")]
+#[cfg_attr(docsrs, doc(cfg(feature = "host-identity-producer")))]
+pub mod producer;
 
 const ENV_VERSION: &str = "FULMEN_HOST_VERSION";
 const ENV_COMMIT: &str = "FULMEN_HOST_COMMIT";
@@ -88,10 +84,13 @@ pub struct BuildInfo {
     pub platform: String,
 }
 
-/// Resolve host identity from compile-time stamps, then process env, then defaults.
+/// Resolve host identity from compile-time stamps only.
 ///
 /// Stamp arguments are typically `option_env!("FULMEN_HOST_*")` from the
-/// **calling** crate via [`crate::host_identity`]. Empty strings are placeholders.
+/// **calling** crate via [`crate::host_identity`]. Empty or missing stamps use
+/// documented defaults (`dev` / `unknown` / omitted dirty / empty runtime and
+/// platform). This function **never** reads process `FULMEN_HOST_*` and does
+/// **not** derive platform from the running host.
 pub fn resolve_from_stamps(
     version: Option<&str>,
     commit: Option<&str>,
@@ -100,33 +99,42 @@ pub fn resolve_from_stamps(
     runtime: Option<&str>,
     platform: Option<&str>,
 ) -> BuildInfo {
-    let runtime = pick_field(runtime, ENV_RUNTIME, "");
-    let platform = pick_field(platform, ENV_PLATFORM, "");
     BuildInfo {
-        version: pick_field(version, ENV_VERSION, DEFAULT_VERSION),
-        commit: pick_field(commit, ENV_COMMIT, DEFAULT_UNKNOWN),
-        build_date: pick_field(build_date, ENV_BUILD_DATE, DEFAULT_UNKNOWN),
-        dirty: dirty_from_stamp_then_env(dirty),
-        runtime,
-        platform: if platform.is_empty() {
-            go_platform()
-        } else {
-            platform
-        },
+        version: stamp_or_default(version, DEFAULT_VERSION),
+        commit: stamp_or_default(commit, DEFAULT_UNKNOWN),
+        build_date: stamp_or_default(build_date, DEFAULT_UNKNOWN),
+        dirty: parse_dirty(dirty),
+        runtime: stamp_or_default(runtime, ""),
+        platform: stamp_or_default(platform, ""),
     }
 }
 
-/// Resolve from process `FULMEN_HOST_*` only (runtime fallback).
+/// Documented defaults with no compile stamps and no process environment.
 ///
-/// Prefer [`crate::host_identity`] in application crates so compile-time
-/// `rustc-env` stamps from the app `build.rs` are visible.
+/// Prefer [`crate::host_identity`] in application crates. For an explicit
+/// runtime-environment read, use [`resolve_from_process_env`].
 pub fn resolve() -> BuildInfo {
     resolve_from_stamps(None, None, None, None, None, None)
 }
 
+/// Resolve from process `FULMEN_HOST_*` only.
+///
+/// This is the intentionally runtime-oriented API. Launchers can influence the
+/// result. Prefer [`crate::host_identity`] for compiled binary identity.
+pub fn resolve_from_process_env() -> BuildInfo {
+    BuildInfo {
+        version: env_or_default(ENV_VERSION, DEFAULT_VERSION),
+        commit: env_or_default(ENV_COMMIT, DEFAULT_UNKNOWN),
+        build_date: env_or_default(ENV_BUILD_DATE, DEFAULT_UNKNOWN),
+        dirty: parse_dirty(env_get(ENV_DIRTY).as_deref()),
+        runtime: env_or_default(ENV_RUNTIME, ""),
+        platform: env_or_default(ENV_PLATFORM, ""),
+    }
+}
+
 /// Resolve from explicit override strings (unit-test and injection helper).
 ///
-/// Empty strings fall through to process env, then defaults.
+/// Empty strings use documented defaults. Process environment is not consulted.
 pub fn resolve_with_overrides(
     version: impl AsRef<str>,
     commit: impl AsRef<str>,
@@ -228,13 +236,17 @@ fn env_get(key: &str) -> Option<String> {
     env::var(key).ok()
 }
 
-fn pick_field(stamp: Option<&str>, env_key: &str, default: &str) -> String {
+fn stamp_or_default(stamp: Option<&str>, default: &str) -> String {
     if let Some(s) = stamp {
         let t = s.trim();
         if !t.is_empty() {
             return t.to_string();
         }
     }
+    default.to_string()
+}
+
+fn env_or_default(env_key: &str, default: &str) -> String {
     if let Some(v) = env_get(env_key) {
         let t = v.trim();
         if !t.is_empty() {
@@ -256,26 +268,14 @@ fn parse_dirty(raw: Option<&str>) -> Option<bool> {
     }
 }
 
-/// A non-empty compile-time dirty stamp is authoritative: `true`/`false` map
-/// as usual; any other non-empty value is unknown and **must not** consult
-/// runtime env (that would allow a malformed stamp to become false-clean).
-fn dirty_from_stamp_then_env(stamp: Option<&str>) -> Option<bool> {
-    match stamp.map(str::trim) {
-        Some(s) if !s.is_empty() => match s {
-            "true" => Some(true),
-            "false" => Some(false),
-            _ => None,
-        },
-        _ => parse_dirty(env_get(ENV_DIRTY).as_deref()),
-    }
-}
-
-fn go_platform() -> String {
-    let os = match env::consts::OS {
+/// Map Cargo / `std::env::consts` OS+ARCH to Go-form `OS/ARCH`.
+#[cfg(feature = "host-identity-producer")]
+pub(crate) fn go_form_os_arch(os: &str, arch: &str) -> String {
+    let os = match os {
         "macos" => "darwin",
         other => other,
     };
-    let arch = match env::consts::ARCH {
+    let arch = match arch {
         "aarch64" => "arm64",
         "x86_64" => "amd64",
         other => other,
@@ -379,7 +379,7 @@ mod tests {
             assert_eq!(info.commit, "unknown");
             assert_eq!(info.build_date, "unknown");
             assert_eq!(info.dirty, None);
-            assert!(!info.platform.is_empty());
+            assert!(info.platform.is_empty());
         });
     }
 
@@ -544,17 +544,85 @@ mod tests {
     }
 
     #[test]
-    fn runtime_env_fills_when_stamps_empty() {
+    fn runtime_env_fills_only_via_explicit_process_api() {
         with_clean_env(|| {
             unsafe {
                 env::set_var(ENV_VERSION, "9.9.9");
                 env::set_var(ENV_COMMIT, "eeeeeee");
                 env::set_var(ENV_DIRTY, "false");
+                env::set_var(ENV_PLATFORM, "linux/forge");
             }
-            let info = resolve();
+            let info = resolve_from_process_env();
             assert_eq!(info.version, "9.9.9");
             assert_eq!(info.commit, "eeeeeee");
             assert_eq!(info.dirty, Some(false));
+            assert_eq!(info.platform, "linux/forge");
+        });
+    }
+
+    #[test]
+    fn stamps_ignore_poisoned_process_env() {
+        with_clean_env(|| {
+            unsafe {
+                env::set_var(ENV_VERSION, "poison-ver");
+                env::set_var(ENV_COMMIT, "poison-commit");
+                env::set_var(ENV_BUILD_DATE, "poison-date");
+                env::set_var(ENV_DIRTY, "true");
+                env::set_var(ENV_RUNTIME, "poison-runtime");
+                env::set_var(ENV_PLATFORM, "linux/forge");
+            }
+            let info = resolve_from_stamps(
+                Some("1.0.0"),
+                Some("abcdef1234567890"),
+                Some("2026-01-01T00:00:00Z"),
+                Some("false"),
+                Some("rustc 1.98.0"),
+                Some("darwin/arm64"),
+            );
+            assert_eq!(info.version, "1.0.0");
+            assert_eq!(info.commit, "abcdef1234567890");
+            assert_eq!(info.build_date, "2026-01-01T00:00:00Z");
+            assert_eq!(info.dirty, Some(false));
+            assert_eq!(info.runtime, "rustc 1.98.0");
+            assert_eq!(info.platform, "darwin/arm64");
+        });
+    }
+
+    #[test]
+    fn absent_stamps_do_not_take_process_env() {
+        with_clean_env(|| {
+            unsafe {
+                env::set_var(ENV_VERSION, "poison-ver");
+                env::set_var(ENV_COMMIT, "poison-commit");
+                env::set_var(ENV_PLATFORM, "linux/forge");
+                env::set_var(ENV_DIRTY, "false");
+            }
+            let info = resolve_from_stamps(None, None, None, None, None, None);
+            assert_eq!(info.version, "dev");
+            assert_eq!(info.commit, "unknown");
+            assert_eq!(info.build_date, "unknown");
+            assert_eq!(info.dirty, None);
+            assert!(info.platform.is_empty());
+            let json = info.to_json("tool", None);
+            assert!(!json.contains("poison"));
+            assert!(!json.contains("linux/forge"));
+            assert!(!json.contains("\"dirty\""));
+        });
+    }
+
+    #[test]
+    fn host_identity_macro_ignores_runtime_poison() {
+        with_clean_env(|| {
+            unsafe {
+                env::set_var(ENV_VERSION, "poison-ver");
+                env::set_var(ENV_COMMIT, "poison-commit");
+                env::set_var(ENV_PLATFORM, "linux/forge");
+            }
+            let poisoned = crate::host_identity!();
+            let clean = resolve_from_stamps(None, None, None, None, None, None);
+            assert_eq!(poisoned.to_json("tool", None), clean.to_json("tool", None));
+            assert!(!poisoned.to_json("tool", None).contains("poison"));
+            assert!(!poisoned.to_json("tool", None).contains("linux/forge"));
         });
     }
 }

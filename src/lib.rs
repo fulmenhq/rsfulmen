@@ -181,8 +181,8 @@ pub mod telemetry_metrics;
 /// Host binary identity (`version` / `version --extended`).
 ///
 /// Resolves the **running product binary** from app-injected `FULMEN_HOST_*`
-/// stamps. Library git and Crucible SSOT commits are pins, not host commit.
-/// See [`host_identity`].
+/// compile stamps (`host_identity!()` is stamp-only). Library git and Crucible
+/// SSOT commits are pins, not host commit. See [`host_identity`].
 pub mod buildinfo;
 
 /// Library version information.

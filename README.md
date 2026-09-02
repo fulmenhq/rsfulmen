@@ -17,7 +17,9 @@ Every team writes their own HTTP status helpers, exit code enums, and country co
 ## Host binary identity
 
 Product CLIs that depend on rsfulmen should report **the binary they are**, not
-rsfulmen's git. Stamp `FULMEN_HOST_*` in the **application** `build.rs`, then:
+rsfulmen's git. In the application `build.rs`, depend on rsfulmen with
+`default-features = false` and `features = ["host-identity-producer"]`, then
+call `rsfulmen::buildinfo::producer::emit_host_identity()`. At runtime:
 
 ```rust
 let info = rsfulmen::host_identity!();
@@ -27,6 +29,9 @@ println!(
     info.format_extended("mycli", Some(&rsfulmen::buildinfo::Pins::from_crate()))
 );
 ```
+
+`host_identity!()` is compile-stamp-only: missing stamps use documented defaults
+and never read process `FULMEN_HOST_*`.
 
 See `rsfulmen::buildinfo` and
 [`docs/crucible-rs/standards/repository-structure/host-binary-identity.md`](docs/crucible-rs/standards/repository-structure/host-binary-identity.md).

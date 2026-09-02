@@ -68,6 +68,10 @@ error-handling = ["dep:serde_json"]
 # Telemetry + metrics export (taxonomy-backed).
 telemetry-metrics = ["dep:serde_json"]
 
+# Application `build.rs` host-identity producer (Git probe + rustc-env stamps).
+# Not default: build scripts should depend with `default-features = false`.
+host-identity-producer = []
+
 # Everything.
 full = ["foundry", "config", "crucible", "docscribe", "schema-validation", "similarity", "error-handling", "telemetry-metrics", "appidentity", "logging", "fulhash", "pathfinder", "ascii", "fulencode", "fulpack"]
 
@@ -133,6 +137,7 @@ ctrlc = "3.4"
 # Testing utilities
 rstest = "0.18"
 pretty_assertions = "1.4"
+tempfile = "3"
 
 [profile.release]
 lto = true
