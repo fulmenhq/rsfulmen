@@ -4,6 +4,56 @@ This document tracks release notes for rsfulmen releases.
 
 > **Convention**: Keep only the latest 3 releases here to prevent file bloat. Older releases are archived in `docs/releases/`.
 
+## [0.2.0] - 2026-09-02
+
+### Stamp-only host identity, producer, goneat v0.6.0
+
+**Release Type**: Breaking / Feature Release
+
+#### Overview
+
+Host `version --extended` no longer reports a launcher's `FULMEN_HOST_*` when
+compile stamps are missing. Application crates can stamp identity from a
+`build.rs` producer. goneat is pinned to v0.6.0. MSRV remains 1.88.
+
+Shipped as **0.2.0** because `resolve()` on 0.1.6 read process environment.
+Cargo `^0.1` would pull a 0.1.7 and change that behavior.
+
+Public commits: [#15](https://github.com/fulmenhq/rsfulmen/pull/15) (`5d35eae`),
+[#16](https://github.com/fulmenhq/rsfulmen/pull/16) (`6cdcfd9`).
+
+#### Highlights
+
+- **Stamp-only `host_identity!()`** — missing stamps use documented defaults;
+  process `FULMEN_HOST_*` is never consulted.
+- **Producer** (`host-identity-producer` feature) — `emit_host_identity()` for
+  application `build.rs`. Git probe uses `CARGO_MANIFEST_DIR` and strips
+  locator/index/object/config overrides.
+- **`resolve_from_process_env()`** — explicit runtime-environment API.
+- **goneat v0.6.0**; flate2 1.1.10; uuid 1.26.0.
+
+#### Breaking Changes
+
+**`resolve()` no longer reads process `FULMEN_HOST_*`.** It returns documented
+defaults when no compile stamps are supplied. Callers that used `resolve()` as
+a runtime-env fallback must call `resolve_from_process_env()`.
+
+`host_identity!()` is stamp-only (the intended identity path).
+
+#### Testing
+
+- `make check-all` — 450 unit tests, 5 host-identity forging tests, 76 doc tests
+- MSRV 1.88 locked build/test
+- clippy `-D warnings` on 1.98.0
+- `cargo audit` clean on the 0.2.0 lockfile
+
+#### Requirements
+
+- **Rust**: 1.88+ (MSRV, unchanged)
+- **Crucible**: v0.4.19 (embedded)
+
+---
+
 ## [0.1.6] - 2026-08-20
 
 ### File-backed catalogs, fulpack create, lockfile, host identity
@@ -84,65 +134,5 @@ None. No public API changes.
 
 - **Rust**: 1.88+ (MSRV, unchanged)
 - **Crucible**: v0.4.13 (embedded)
-
----
-
-## [0.1.4] - 2026-02-21
-
-### Crucible v0.4.12 integration, five new modules, runtime signal handling
-
-**Release Type**: Feature Release
-
-#### Overview
-
-Major feature release adding typed role catalog, fulencode (encoding/decoding/normalization), runtime signal handling, UUIDv7 correlation IDs, and config env overrides. Syncs Crucible from v0.4.4 to v0.4.12, the largest SSOT update in rsfulmen's history. Brings rsfulmen significantly closer to gofulmen parity.
-
-#### Highlights
-
-- **Typed Role Catalog** (`crucible::roles`) — Load agentic role definitions as full-fidelity `RolePrompt` structs. 22 fields covering the entire `role-prompt.schema.json` spec, including three fields discovered during the v0.4.12 cross-team review (`pre_push_checklist`, `required_reading`, `cross_role_note`). Forward-compatible enums for `RoleCategory` and `ExampleType`. 14 roles embedded (8 approved + 6 including 3 draft).
-- **Fulencode** (`fulencode`) — Binary-to-text encoding/decoding (Base64, Base64URL, Hex), character encoding (UTF-8, UTF-16LE/BE), encoding detection with BOM/heuristic confidence, Unicode normalization (NFC/NFD/NFKC/NFKD + text-safe profile rejecting zero-width and bidi attacks), BOM management. Cross-language fixture tests from Crucible SSOT.
-- **Runtime Signal Handling** (`signals`) — `SignalManager` with thread-safe handler dispatch, LIFO shutdown chains, FIFO reload chains, SIGINT double-tap force-quit, and cross-platform support (`signal-hook` on Unix, `ctrlc` on Windows). Includes `SignalInjector` for deterministic test injection.
-- **Correlation IDs** (`foundry::correlation`) — UUIDv7 generation, parsing, validation. `CorrelationId` newtype with strict v7 enforcement, serde support, and lowercase canonical form.
-- **Config Env Overrides** (`config::env`) — Map environment variables to config key paths with type parsing, alias support, conflict detection, and sensitive value masking. Feeds directly into three-layer config.
-- **Crucible v0.4.12** — 6 new agentic roles, updated role-prompt schema, fulencode schemas/fixtures, design tokens, expanded upstream standards.
-
-#### New Feature Flags
-
-| Feature               | Dependencies                       | Description                      |
-| --------------------- | ---------------------------------- | -------------------------------- |
-| `fulencode`           | base64, hex, unicode-normalization | Encoding/decoding/normalization  |
-| `foundry-correlation` | uuid                               | UUIDv7 correlation ID generation |
-
-#### New Modules
-
-| Module                   | Feature               | Key Functions                                                     |
-| ------------------------ | --------------------- | ----------------------------------------------------------------- |
-| `crucible::roles`        | `crucible`            | `load_role()`, `list_role_slugs()`, `load_role_catalog()`         |
-| `fulencode`              | `fulencode`           | `encode()`, `decode()`, `detect()`, `normalize()`, `detect_bom()` |
-| `signals::SignalManager` | `foundry-core`        | `handle()`, `on_shutdown()`, `on_reload()`, `listen()`            |
-| `foundry::correlation`   | `foundry-correlation` | `generate()`, `parse()`, `is_valid()`, `CorrelationId`            |
-| `config::env`            | `config`              | `load_env_overrides()`, `load_env_overrides_with_report()`        |
-
-#### Bug Fixes
-
-- **Pathfinder temp-dir race** — Parallel tests could collide when `SystemTime::now()` returned the same nanosecond. Fixed with `AtomicU64` sequence counter.
-- **CI yamllint warning** — Fixed missing space before inline comment in `ci.yml`.
-
-#### Breaking Changes
-
-None. All new modules are additive. Existing APIs unchanged.
-
-#### Testing
-
-- `make check-all` — 362 unit tests, 74 doc tests
-- Role catalog: invariant-based tests (core slugs present, sorted, README excluded)
-- Fulencode: cross-language fixture tests from Crucible SSOT
-- Signal handling: injector-based tests with deterministic dispatch
-- Correlation IDs: uniqueness, version validation, serde roundtrip
-
-#### Requirements
-
-- **Rust**: 1.88+ (MSRV, unchanged)
-- **Crucible**: v0.4.12 (embedded)
 
 ---

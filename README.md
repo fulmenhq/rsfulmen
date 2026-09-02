@@ -12,7 +12,7 @@ Every team writes their own HTTP status helpers, exit code enums, and country co
 - **Cross-language parity**: Same exit codes, signals, and schemas as gofulmen, pyfulmen, tsfulmen
 - **Minimal footprint**: Feature flags let you include only what you need
 
-**Lifecycle Phase**: `alpha` | **Version**: 0.1.6
+**Lifecycle Phase**: `alpha` | **Version**: 0.2.0
 
 ## Host binary identity
 
