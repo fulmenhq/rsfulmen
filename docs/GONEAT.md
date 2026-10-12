@@ -122,10 +122,11 @@ cat .crucible/metadata/metadata.yaml
 
 rsfulmen CI (`.github/workflows/ci.yml`) runs on `ubuntu-latest` **inside**
 `ghcr.io/fulmenhq/goneat-tools-runner-glibc:v0.5.9` (digest-pinned; fulmen-toolbox
-v0.5.9). That image ships goneat **v0.6.3**, rustup, and `cargo-deny`. The Test
-and Feature Matrix jobs still install `dtolnay/rust-toolchain@1.98.0` so clippy
-matches `rust-toolchain.toml`. The MSRV job installs 1.88.0. Do not add
-`darwin/amd64` to any matrix.
+v0.5.9, `--user 1001`). That image ships goneat **v0.6.3**, rustup, and
+`cargo-deny`. Jobs still install `dtolnay/rust-toolchain@1.98.0` (MSRV: 1.88.0)
+so clippy matches `rust-toolchain.toml`. rustup/cargo homes are
+`/tmp/rsfulmen-*` because UID 1001 cannot write the image `/opt/rustup`. Do not
+add `darwin/amd64` to any matrix.
 
 When local `goneat` and CI disagree on YAML format/lint, compare the local pin
 (`GONEAT_VERSION`) to the runner pin (`v0.5.9` / goneat v0.6.3) before changing
