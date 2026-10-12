@@ -67,7 +67,8 @@ pub mod appidentity;
 /// Structured logging with SIMPLE and STRUCTURED profiles.
 ///
 /// Provides leveled logging (Trace through Fatal) with configurable output
-/// format, component context, and structured fields.
+/// format, component context, structured fields, and an opt-in middleware
+/// chain (redaction, correlation, throttle) plus organizational policy load.
 #[cfg(feature = "logging")]
 #[cfg_attr(docsrs, doc(cfg(feature = "logging")))]
 pub mod logging;
@@ -128,7 +129,8 @@ pub mod foundry;
 ///
 /// Re-exports all foundry signal catalog helpers (`lookup_signal`, constants,
 /// platform support metadata) and adds runtime handling primitives via
-/// [`signals::SignalManager`].
+/// [`signals::SignalManager`], including `POST /admin/signal` request helpers
+/// and (with the `json` feature) a thin HTTP method/path/body adapter.
 #[cfg(any(
     feature = "foundry",
     feature = "foundry-core",

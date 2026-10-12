@@ -23,7 +23,7 @@ default = ["foundry", "config", "crucible", "docscribe", "three-layer-config", "
 
 # Foundry feature groups (aligned to Crucible foundry-catalogs v1.1.0).
 foundry-core = []
-foundry-mime-types = ["foundry-core", "dep:serde_json"]
+foundry-mime-types = ["foundry-core", "json"]
 foundry-patterns = ["foundry-core", "dep:regex", "dep:glob"]
 foundry-correlation = ["foundry-core", "dep:uuid"]
 
@@ -32,8 +32,10 @@ foundry = ["foundry-core", "foundry-mime-types", "foundry-patterns", "foundry-co
 
 # Platform modules. Config path resolution is std-only (no `dirs` / MPL).
 config = []
-appidentity = ["dep:serde_json"]
-logging = ["dep:serde_json"]
+# Named so `cfg(feature = "json")` matches crate presence (dep: serde_json).
+json = ["dep:serde_json"]
+appidentity = ["json"]
+logging = ["json", "dep:regex"]
 
 # Canonical hashing (xxh3-128 default + SHA-256).
 fulhash = ["dep:xxhash-rust", "dep:sha2", "dep:hex"]
@@ -42,7 +44,7 @@ fulhash = ["dep:xxhash-rust", "dep:sha2", "dep:hex"]
 pathfinder = ["dep:walkdir", "dep:sha2", "dep:hex", "dep:glob"]
 
 # Canonical archive operations (tar/tar.gz/zip/gzip). Requires pathfinder + fulhash per the standard.
-fulpack = ["dep:tar", "dep:flate2", "dep:zip", "dep:serde_json", "fulhash", "pathfinder", "error-handling"]
+fulpack = ["dep:tar", "dep:flate2", "dep:zip", "json", "fulhash", "pathfinder", "error-handling"]
 
 # Encoding/decoding + normalization helpers.
 fulencode = ["dep:base64", "dep:hex", "dep:unicode-normalization"]
@@ -60,13 +62,13 @@ schema-id = ["crucible"]
 similarity = ["dep:strsim", "dep:unicode-normalization", "dep:unicode-segmentation"]
 
 # Heavy: JSON Schema validation utilities.
-schema-validation = ["crucible", "dep:anyhow", "dep:url", "dep:jsonschema", "dep:serde_json"]
+schema-validation = ["crucible", "dep:anyhow", "dep:url", "dep:jsonschema", "json"]
 
 # Canonical error envelope + propagation helpers.
-error-handling = ["dep:serde_json"]
+error-handling = ["json"]
 
 # Telemetry + metrics export (taxonomy-backed).
-telemetry-metrics = ["dep:serde_json"]
+telemetry-metrics = ["json"]
 
 # Application `build.rs` host-identity producer (Git probe + rustc-env stamps).
 # Not default: build scripts should depend with `default-features = false`.

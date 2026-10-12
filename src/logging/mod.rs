@@ -20,6 +20,21 @@
 //! log.warn("high latency", &[("method", "GET"), ("duration_ms", "523")]);
 //! ```
 //!
+//! ## Middleware
+//!
+//! Redaction, correlation, and throttle are opt-in. The default logger has an
+//! empty chain. Attach a [`MiddlewareChain`] with
+//! [`Logger::with_middleware_chain`]. Formatters read the *processed* record
+//! only so redacted secrets never reach the sink.
+//!
+//! ```rust
+//! use rsfulmen::logging::{new_cli, MiddlewareChain, RedactSecretsMiddleware, Severity};
+//!
+//! let chain = MiddlewareChain::new().with(RedactSecretsMiddleware::defaults().unwrap());
+//! let log = new_cli("myapp", Severity::Info).with_middleware_chain(chain);
+//! log.info("ok", &[("password", "never-emitted")]);
+//! ```
+//!
 //! ## Child Loggers
 //!
 //! Use [`Logger::with_fields`] and [`Logger::with_component`] to create child
@@ -41,6 +56,16 @@ use std::fmt;
 use std::io::Write;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
+
+pub mod middleware;
+pub mod policy;
+
+pub use middleware::{
+    CorrelationMiddleware, LogRecord, Middleware, MiddlewareAction, MiddlewareChain,
+    RedactSecretsMiddleware, SensitiveKeyMiddleware, ThrottleMiddleware,
+    DEFAULT_REDACTION_REPLACEMENT, DEFAULT_SECRET_KEYS, DEFAULT_SECRET_PATTERNS,
+};
+pub use policy::{LoggingPolicy, PolicyError, PolicyProfile, PolicyValidationOptions};
 
 // ---------------------------------------------------------------------------
 // Core types
@@ -132,6 +157,7 @@ pub struct Logger {
     fields: Vec<(String, String)>,
     component: Option<String>,
     writer: Arc<Mutex<Box<dyn Write + Send>>>,
+    pipeline: middleware::MiddlewareChain,
 }
 
 // Manual Debug because `dyn Write` is not Debug.
@@ -141,6 +167,7 @@ impl fmt::Debug for Logger {
             .field("config", &self.config)
             .field("fields", &self.fields)
             .field("component", &self.component)
+            .field("pipeline_len", &self.pipeline.len())
             .finish_non_exhaustive()
     }
 }
@@ -193,6 +220,18 @@ pub fn new(config: LoggerConfig) -> Logger {
         fields: Vec::new(),
         component: None,
         writer: Arc::new(Mutex::new(Box::new(std::io::stderr()))),
+        pipeline: middleware::MiddlewareChain::new(),
+    }
+}
+
+/// Create a logger that writes to a custom sink (tests and in-process capture).
+pub fn new_with_writer<W: Write + Send + 'static>(config: LoggerConfig, writer: W) -> Logger {
+    Logger {
+        config,
+        fields: Vec::new(),
+        component: None,
+        writer: Arc::new(Mutex::new(Box::new(writer))),
+        pipeline: middleware::MiddlewareChain::new(),
     }
 }
 
@@ -232,12 +271,7 @@ impl Logger {
     /// [`with_component`](Logger::with_component) share the same output.
     #[cfg(test)]
     fn with_writer<W: Write + Send + 'static>(config: LoggerConfig, writer: W) -> Self {
-        Logger {
-            config,
-            fields: Vec::new(),
-            component: None,
-            writer: Arc::new(Mutex::new(Box::new(writer))),
-        }
+        new_with_writer(config, writer)
     }
 
     // -- logging methods ---------------------------------------------------
@@ -293,6 +327,7 @@ impl Logger {
             fields: new_fields,
             component: self.component.clone(),
             writer: Arc::clone(&self.writer),
+            pipeline: self.pipeline.clone(),
         }
     }
 
@@ -316,6 +351,20 @@ impl Logger {
             fields: self.fields.clone(),
             component: Some(component.to_string()),
             writer: Arc::clone(&self.writer),
+            pipeline: self.pipeline.clone(),
+        }
+    }
+
+    /// Return a logger that runs `pipeline` before formatting each record.
+    ///
+    /// An empty chain is a no-op (default). Redaction should be first.
+    pub fn with_middleware_chain(&self, pipeline: middleware::MiddlewareChain) -> Logger {
+        Logger {
+            config: self.config.clone(),
+            fields: self.fields.clone(),
+            component: self.component.clone(),
+            writer: Arc::clone(&self.writer),
+            pipeline,
         }
     }
 
@@ -344,105 +393,150 @@ impl Logger {
 
         let timestamp = format_rfc3339(SystemTime::now());
         let logger_name = self.logger_name();
+        let mut fields: Vec<(String, String)> = self.fields.clone();
+        for (k, v) in extra_fields {
+            fields.push(((*k).to_string(), (*v).to_string()));
+        }
+        let mut record = middleware::LogRecord {
+            timestamp,
+            severity,
+            message: msg.to_string(),
+            logger: logger_name,
+            component: self.component.clone(),
+            fields,
+            correlation_id: None,
+            redaction_flags: Vec::new(),
+            throttle_bucket: None,
+        };
+        if !self.pipeline.apply(&mut record) {
+            return;
+        }
 
+        let extra: Vec<(&str, &str)> = record
+            .fields
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
+            .collect();
+
+        // Format from the *processed* record only. Do not re-read `self.fields`
+        // here — those still hold caller secrets that middleware may have redacted.
         let line = match self.config.profile {
-            Profile::Simple => {
-                self.format_simple(&timestamp, severity, &logger_name, msg, extra_fields)
-            }
-            Profile::Structured => {
-                self.format_structured(&timestamp, severity, &logger_name, msg, extra_fields)
-            }
+            Profile::Simple => format_simple_line(
+                &record.timestamp,
+                record.severity,
+                &record.logger,
+                &record.message,
+                &extra,
+            ),
+            Profile::Structured => self.format_structured_record(&record),
         };
 
         if let Ok(mut w) = self.writer.lock() {
             let _ = writeln!(w, "{}", line);
         }
     }
+}
 
-    /// Format a record in the Simple (human-readable) profile.
-    ///
-    /// Format: `{timestamp} {LEVEL:5} [{name}] {message} {key=value}...`
-    fn format_simple(
-        &self,
-        timestamp: &str,
-        severity: Severity,
-        logger_name: &str,
-        msg: &str,
-        extra_fields: &[(&str, &str)],
-    ) -> String {
-        let level_str = format!("{:<5}", severity);
+fn format_simple_line(
+    timestamp: &str,
+    severity: Severity,
+    logger_name: &str,
+    msg: &str,
+    fields: &[(&str, &str)],
+) -> String {
+    let level_str = format!("{:<5}", severity);
+    let mut buf = format!("{} {} [{}] {}", timestamp, level_str, logger_name, msg);
+    for (k, v) in fields {
+        buf.push(' ');
+        append_kv_simple(&mut buf, k, v);
+    }
+    buf
+}
 
-        let mut buf = format!("{} {} [{}] {}", timestamp, level_str, logger_name, msg);
+fn structured_field_map(
+    timestamp: &str,
+    severity: Severity,
+    logger_name: &str,
+    msg: &str,
+    component: Option<&str>,
+    fields: &[(&str, &str)],
+) -> serde_json::Map<String, serde_json::Value> {
+    let mut map = serde_json::Map::new();
 
-        // Append base fields (from with_fields)
-        for (k, v) in &self.fields {
-            buf.push(' ');
-            append_kv_simple(&mut buf, k, v);
+    for (k, v) in fields {
+        if is_structured_canonical_key(k) {
+            continue;
         }
-
-        // Append per-call fields
-        for (k, v) in extra_fields {
-            buf.push(' ');
-            append_kv_simple(&mut buf, k, v);
-        }
-
-        buf
+        map.insert(
+            (*k).to_string(),
+            serde_json::Value::String((*v).to_string()),
+        );
     }
 
-    /// Format a record in the Structured (JSON) profile.
-    fn format_structured(
-        &self,
-        timestamp: &str,
-        severity: Severity,
-        logger_name: &str,
-        msg: &str,
-        extra_fields: &[(&str, &str)],
-    ) -> String {
-        let mut map = serde_json::Map::new();
+    map.insert(
+        "timestamp".to_string(),
+        serde_json::Value::String(timestamp.to_string()),
+    );
+    map.insert(
+        "level".to_string(),
+        serde_json::Value::String(severity.to_string()),
+    );
+    map.insert(
+        "logger".to_string(),
+        serde_json::Value::String(logger_name.to_string()),
+    );
+    map.insert(
+        "message".to_string(),
+        serde_json::Value::String(msg.to_string()),
+    );
 
-        // Append base fields (from with_fields)
-        for (k, v) in &self.fields {
-            if is_structured_canonical_key(k) {
-                continue;
-            }
-            map.insert(k.clone(), serde_json::Value::String(v.clone()));
+    if let Some(component) = component {
+        map.insert(
+            "component".to_string(),
+            serde_json::Value::String(component.to_string()),
+        );
+    }
+
+    map
+}
+
+impl Logger {
+    fn format_structured_record(&self, record: &middleware::LogRecord) -> String {
+        let extra: Vec<(&str, &str)> = record
+            .fields
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
+            .collect();
+        let mut map = structured_field_map(
+            &record.timestamp,
+            record.severity,
+            &record.logger,
+            &record.message,
+            record.component.as_deref(),
+            &extra,
+        );
+        if let Some(id) = &record.correlation_id {
+            map.entry("correlationId")
+                .or_insert(serde_json::Value::String(id.clone()));
         }
-
-        // Append per-call fields
-        for (k, v) in extra_fields {
-            if is_structured_canonical_key(k) {
-                continue;
-            }
+        if !record.redaction_flags.is_empty() {
             map.insert(
-                (*k).to_string(),
-                serde_json::Value::String((*v).to_string()),
+                "redactionFlags".to_string(),
+                serde_json::Value::Array(
+                    record
+                        .redaction_flags
+                        .iter()
+                        .map(|f| serde_json::Value::String(f.clone()))
+                        .collect(),
+                ),
             );
         }
-
-        map.insert(
-            "timestamp".to_string(),
-            serde_json::Value::String(timestamp.to_string()),
-        );
-        map.insert(
-            "level".to_string(),
-            serde_json::Value::String(severity.to_string()),
-        );
-        map.insert(
-            "logger".to_string(),
-            serde_json::Value::String(logger_name.to_string()),
-        );
-        map.insert(
-            "message".to_string(),
-            serde_json::Value::String(msg.to_string()),
-        );
-
-        if let Some(component) = &self.component {
+        if let Some(bucket) = &record.throttle_bucket {
             map.insert(
-                "component".to_string(),
-                serde_json::Value::String(component.clone()),
+                "throttleBucket".to_string(),
+                serde_json::Value::String(bucket.clone()),
             );
         }
-
         serde_json::to_string(&serde_json::Value::Object(map)).unwrap_or_default()
     }
 }
@@ -950,5 +1044,42 @@ mod tests {
         log.info("msg", &[("desc", "hello \"quoted\"\nworld")]);
         let output = buf.contents();
         assert!(output.contains("desc=\"hello \\\"quoted\\\"\\nworld\""));
+    }
+
+    #[test]
+    fn test_middleware_redacts_parent_fields_before_sink() {
+        let buf = SharedBuffer::new();
+        let chain = MiddlewareChain::new().with(RedactSecretsMiddleware::defaults().unwrap());
+        let log = logger_with_buffer("app", Severity::Trace, Profile::Simple, &buf)
+            .with_fields(&[("password", "hunter2")])
+            .with_middleware_chain(chain);
+        log.info("login", &[("token", "super-secret-value")]);
+        let output = buf.contents();
+        assert!(!output.contains("hunter2"), "parent field leaked: {output}");
+        assert!(
+            !output.contains("super-secret-value"),
+            "call field leaked: {output}"
+        );
+        assert!(output.contains(DEFAULT_REDACTION_REPLACEMENT));
+    }
+
+    #[test]
+    fn test_middleware_redacts_structured_profile() {
+        let buf = SharedBuffer::new();
+        let chain = MiddlewareChain::new().with(SensitiveKeyMiddleware::defaults());
+        let log = logger_with_buffer("app", Severity::Trace, Profile::Structured, &buf)
+            .with_middleware_chain(chain);
+        log.info("ok", &[("authorization", "Bearer secret-token")]);
+        let output = buf.contents();
+        assert!(
+            !output.contains("secret-token"),
+            "structured sink leaked: {output}"
+        );
+        let parsed: serde_json::Value =
+            serde_json::from_str(output.trim()).expect("output should be valid JSON");
+        assert_eq!(
+            parsed.get("authorization").and_then(|v| v.as_str()),
+            Some(DEFAULT_REDACTION_REPLACEMENT)
+        );
     }
 }

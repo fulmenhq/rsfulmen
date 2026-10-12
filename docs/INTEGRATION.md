@@ -157,12 +157,25 @@ assert!(fulhash::verify(b"hello", &digest));
 Runtime signal manager: ordered cleanup, reload on SIGHUP, optional double-tap
 Ctrl+C. Unix uses `signal-hook`; Windows uses `ctrlc`.
 
+`POST /admin/signal` is a request helper, not a server. Auth, TLS, and 429
+rate-limit stay with the caller. The JSON adapter
+(`SignalManager::handle_admin_signal_http`) needs the `json` feature
+(pulled by `logging` and other JSON modules). `foundry-core` alone keeps the
+typed `handle_admin_signal_request` path and stays free of `serde_json`.
+
 ```rust
 use rsfulmen::signals::SignalManager;
 
-let mut manager = SignalManager::new();
+let manager = SignalManager::new();
 manager.on_shutdown(|| { /* cleanup */ Ok(()) });
 manager.on_reload(|| { /* reread config */ Ok(()) });
+
+// Typed body (foundry-core). HTTP adapter is feature `json`.
+let _ = manager.handle_admin_signal_request(rsfulmen::signals::SignalEndpointRequest {
+    signal: "HUP".into(),
+    reason: Some("reload".into()),
+    correlation_id: None,
+});
 ```
 
 ### Crucible metadata (`crucible`)
@@ -197,10 +210,12 @@ than hard-coding the pin in application logic.
 ### CLI
 
 ```rust
-use rsfulmen::logging::{self, Severity};
+use rsfulmen::logging::{self, MiddlewareChain, RedactSecretsMiddleware, Severity};
 
 fn main() {
     let log = logging::new_cli("my-tool", Severity::Info);
+    let chain = MiddlewareChain::new().with(RedactSecretsMiddleware::defaults().unwrap());
+    let log = log.with_middleware_chain(chain);
     if let Err(err) = run(&log) {
         log.error("command failed", &[("error", &err.to_string())]);
         std::process::exit(1);

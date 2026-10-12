@@ -550,6 +550,60 @@ impl SignalManager {
         SignalEndpointResponse::Accepted(accepted)
     }
 
+    /// Thin HTTP adapter for `POST /admin/signal`.
+    ///
+    /// No server crate: the caller supplies method, path, and body. Returns
+    /// `(status_code, json_body)`. Other methods/paths are 405/404.
+    ///
+    /// Authentication, TLS, and rate-limit (401/403/429) stay with the caller.
+    /// Requires the `json` feature (`serde_json`); `foundry-core` alone does
+    /// not enable this method.
+    #[cfg(feature = "json")]
+    pub fn handle_admin_signal_http(
+        &self,
+        method: &str,
+        path: &str,
+        body: &[u8],
+        metadata: SignalEndpointMetadata,
+    ) -> (u16, String) {
+        let path = path.split('?').next().unwrap_or(path);
+        if path != "/admin/signal" {
+            return (
+                404,
+                r#"{"status":"error","error":"not_found","message":"not found"}"#.to_string(),
+            );
+        }
+        if !method.eq_ignore_ascii_case("POST") {
+            return (
+                405,
+                r#"{"status":"error","error":"method_not_allowed","message":"POST required"}"#
+                    .to_string(),
+            );
+        }
+        let request = match serde_json::from_slice::<SignalEndpointRequest>(body) {
+            Ok(req) => req,
+            Err(err) => {
+                let resp = SignalEndpointErrorResponse {
+                    status: "error".to_string(),
+                    error: "invalid_json".to_string(),
+                    message: err.to_string(),
+                };
+                return (
+                    400,
+                    serde_json::to_string(&resp).unwrap_or_else(|_| "{}".to_string()),
+                );
+            }
+        };
+        let response = self.handle_admin_signal_request_with_metadata(request, metadata);
+        let status = response.status_code();
+        let body = match response {
+            SignalEndpointResponse::Accepted(ok) => serde_json::to_string(&ok),
+            SignalEndpointResponse::Error(err) => serde_json::to_string(&err),
+        }
+        .unwrap_or_else(|_| "{}".to_string());
+        (status, body)
+    }
+
     /// Check whether a signal is supported on the current platform.
     pub fn supports(&self, signal: i32) -> bool {
         signal_by_platform_number(signal)
