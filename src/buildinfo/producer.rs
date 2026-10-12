@@ -443,9 +443,6 @@ mod tests {
     use super::*;
     use std::fs;
     use std::process::{Command, Stdio};
-    use std::sync::Mutex;
-
-    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     fn base_env() -> HashMap<String, String> {
         let mut m = HashMap::new();
@@ -527,7 +524,7 @@ mod tests {
 
     #[test]
     fn platform_from_target_not_host() {
-        let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let _g = crate::acquire_process_env_lock();
         let dir = temp_prefix("rsfulmen-hostid-plat-");
         let mut env_map = base_env();
         env_map.insert("FULMEN_HOST_COMMIT".into(), "abc".into());

@@ -411,14 +411,13 @@ nested:
 
     #[test]
     fn load_three_layer_user_null_then_runtime_restore() {
-        use crate::config::env::process_env_lock;
-        use std::ffi::OsString;
+        use std::ffi::{OsStr, OsString};
 
         struct EnvGuard {
             previous: Vec<(String, Option<OsString>)>,
         }
         impl EnvGuard {
-            fn set(values: &[(&str, &str)]) -> Self {
+            fn set(values: &[(&str, &OsStr)]) -> Self {
                 let mut previous = Vec::with_capacity(values.len());
                 for (key, value) in values {
                     previous.push(((*key).to_string(), std::env::var_os(key)));
@@ -452,24 +451,37 @@ nested:
         // restored. `notes` is a real defaults key that stays deleted.
         fs::write(&user_path, "key: null\nlast_updated: null\nnotes: null\n").unwrap();
 
-        let config_home_str = config_home.to_str().expect("utf8 temp path");
-        let _lock = process_env_lock().lock().unwrap();
+        let _lock = crate::acquire_process_env_lock();
         let _guard = EnvGuard::set(&[
-            ("XDG_CONFIG_HOME", config_home_str),
-            ("APPDATA", config_home_str),
+            ("XDG_CONFIG_HOME", config_home.as_os_str()),
+            ("APPDATA", config_home.as_os_str()),
         ]);
 
-        let options = ThreeLayerOptions {
+        let base = ThreeLayerOptions {
             app_name,
             defaults_path: "terminal/v1.0.0/terminal-overrides-defaults.yaml".to_string(),
             user_config_path: user_rel.to_string(),
-            runtime_overrides: Some(
-                serde_yaml::from_str("key: restored\nlast_updated: from-runtime\n").unwrap(),
-            ),
+            runtime_overrides: None,
             schema_path: None,
         };
 
-        let out = load_three_layer(&options).unwrap();
+        let deleted = load_three_layer(&base).unwrap();
+        let deleted_map = deleted.config.as_mapping().unwrap();
+        for key in ["key", "last_updated", "notes"] {
+            assert!(
+                deleted_map.get(Value::String(key.into())).is_none(),
+                "{key} must be absent after user null and no runtime overrides"
+            );
+        }
+        assert_eq!(
+            deleted.provenance.paths.get("/notes"),
+            Some(&ConfigLayer::User)
+        );
+
+        let mut restored = base.clone();
+        restored.runtime_overrides =
+            Some(serde_yaml::from_str("key: restored\nlast_updated: from-runtime\n").unwrap());
+        let out = load_three_layer(&restored).unwrap();
         let mapping = out.config.as_mapping().unwrap();
         assert_eq!(
             mapping.get(Value::String("key".into())).unwrap(),

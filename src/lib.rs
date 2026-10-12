@@ -195,6 +195,22 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Updated automatically by `make sync-ssot`.
 pub const CRUCIBLE_VERSION: &str = "v0.4.19";
 
+/// Crate-wide lock for tests that read or mutate the process environment.
+#[cfg(test)]
+pub(crate) fn process_env_lock() -> &'static std::sync::Mutex<()> {
+    static LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
+    LOCK.get_or_init(|| std::sync::Mutex::new(()))
+}
+
+/// Acquire [`process_env_lock`], recovering a poisoned lock so one failed
+/// assertion cannot cascade into unrelated tests.
+#[cfg(test)]
+pub(crate) fn acquire_process_env_lock() -> std::sync::MutexGuard<'static, ()> {
+    process_env_lock()
+        .lock()
+        .unwrap_or_else(|error| error.into_inner())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -217,5 +233,23 @@ mod tests {
             CRUCIBLE_VERSION.starts_with('v'),
             "CRUCIBLE_VERSION should start with 'v'"
         );
+    }
+
+    #[test]
+    fn process_env_lock_recovers_after_panic_and_restores_env() {
+        const KEY: &str = "RSFULMEN_TEST_PROCESS_ENV_LOCK";
+        let panicked = std::panic::catch_unwind(|| {
+            let _guard = acquire_process_env_lock();
+            std::env::set_var(KEY, "during-panic");
+            panic!("intentional lock poison");
+        });
+        assert!(panicked.is_err());
+        let _guard = acquire_process_env_lock();
+        assert_eq!(
+            std::env::var_os(KEY).as_deref(),
+            Some(std::ffi::OsStr::new("during-panic"))
+        );
+        std::env::remove_var(KEY);
+        assert!(std::env::var_os(KEY).is_none());
     }
 }

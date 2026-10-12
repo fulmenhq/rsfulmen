@@ -329,12 +329,9 @@ macro_rules! host_identity {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Mutex;
-
-    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     fn with_clean_env<F: FnOnce()>(f: F) {
-        let _g = ENV_LOCK.lock().expect("env lock");
+        let _g = crate::acquire_process_env_lock();
         for k in [
             ENV_VERSION,
             ENV_COMMIT,
@@ -343,7 +340,7 @@ mod tests {
             ENV_RUNTIME,
             ENV_PLATFORM,
         ] {
-            // SAFETY: ENV_LOCK serializes env mutation in these tests.
+            // SAFETY: the crate-wide process env lock serializes these tests.
             unsafe { env::remove_var(k) };
         }
         f();
@@ -410,7 +407,7 @@ mod tests {
     #[test]
     fn invalid_stamp_does_not_become_runtime_false_clean() {
         with_clean_env(|| {
-            // SAFETY: ENV_LOCK serializes env mutation in these tests.
+            // SAFETY: the crate-wide process env lock serializes these tests.
             unsafe {
                 env::set_var(ENV_DIRTY, "false");
             }
