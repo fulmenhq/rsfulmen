@@ -343,15 +343,17 @@ println!("{}", id.name);
 
 ### Logging (`logging`)
 
-_Use case: Structured logging with human-readable (`Simple`) or JSON (`Structured`) profiles matching the Crucible observability standard. Redaction, correlation, and throttle are opt-in middleware._
+_Use case: Structured logging with human-readable (`Simple`) or JSON (`Structured`) profiles matching the Crucible observability standard._
+
+Redaction is **fully supported and off by default** (empty middleware chain). Enable it explicitly:
 
 ```rust
 use rsfulmen::logging::{self, MiddlewareChain, RedactSecretsMiddleware, Severity};
 
-let log = logging::new_cli("myapp", Severity::Info)
-    .with_middleware_chain(
-        MiddlewareChain::new().with(RedactSecretsMiddleware::defaults().unwrap()),
-    );
+let log = logging::new_cli("myapp", Severity::Info); // no redaction
+let log = log.with_middleware_chain(
+    MiddlewareChain::new().with(RedactSecretsMiddleware::defaults().unwrap()),
+);
 log.info("service started", &[("port", "8080")]);
 ```
 

@@ -209,6 +209,9 @@ than hard-coding the pin in application logic.
 
 ### CLI
 
+Redaction is fully supported and **off by default**. `new_cli` / `new` use an
+empty middleware chain. Enable it by attaching `RedactSecretsMiddleware` first:
+
 ```rust
 use rsfulmen::logging::{self, MiddlewareChain, RedactSecretsMiddleware, Severity};
 

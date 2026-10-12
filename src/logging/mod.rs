@@ -22,8 +22,8 @@
 //!
 //! ## Middleware
 //!
-//! Redaction, correlation, and throttle are opt-in. The default logger has an
-//! empty chain. Attach a [`MiddlewareChain`] with
+//! Redaction is fully supported and **off by default**. The default logger has
+//! an empty chain. Attach a [`MiddlewareChain`] with
 //! [`Logger::with_middleware_chain`]. Formatters read the *processed* record
 //! only so redacted secrets never reach the sink.
 //!
@@ -687,6 +687,26 @@ mod tests {
         assert_eq!(log.config.name, "testapp");
         assert_eq!(log.config.level, Severity::Info);
         assert_eq!(log.config.profile, Profile::Simple);
+        assert!(
+            log.pipeline.is_empty(),
+            "default logger must not enable redaction"
+        );
+    }
+
+    #[test]
+    fn test_default_logger_does_not_redact() {
+        let buf = SharedBuffer::new();
+        let log = logger_with_buffer("app", Severity::Trace, Profile::Simple, &buf);
+        log.info("login", &[("password", "hunter2")]);
+        let output = buf.contents();
+        assert!(
+            output.contains("hunter2"),
+            "default chain is empty; secret should reach the sink: {output}"
+        );
+        assert!(
+            !output.contains(DEFAULT_REDACTION_REPLACEMENT),
+            "redaction must be off by default: {output}"
+        );
     }
 
     #[test]
