@@ -359,4 +359,161 @@ array:
             assert_eq!(mapping(&tagged.value)["nested"]["k"], yaml("original"));
         }
     }
+
+    fn merge_layers(layers: &[Value]) -> Value {
+        let (first, rest) = layers.split_first().expect("at least one layer");
+        rest.iter()
+            .fold(deep_copy(first), |acc, layer| merge(&acc, layer))
+    }
+
+    #[derive(serde::Deserialize)]
+    struct GofulmenParityDoc {
+        cases: Vec<GofulmenParityCase>,
+    }
+
+    #[derive(serde::Deserialize)]
+    struct GofulmenParityCase {
+        name: String,
+        base: Value,
+        overlay: Value,
+        expected: Value,
+    }
+
+    #[test]
+    fn gofulmen_merge_parity_fixtures() {
+        // Ported from https://github.com/fulmenhq/gofulmen/blob/main/config/primitives_test.go
+        let doc: GofulmenParityDoc =
+            serde_yaml::from_str(include_str!("testdata/gofulmen-merge-parity.yaml"))
+                .expect("parity fixture yaml should parse");
+        assert!(
+            !doc.cases.is_empty(),
+            "parity fixture file must contain cases"
+        );
+
+        for case in &doc.cases {
+            let got = merge(&case.base, &case.overlay);
+            assert_eq!(got, case.expected, "parity case `{}` failed", case.name);
+        }
+    }
+
+    #[test]
+    fn merge_defaults_user_env_null_delete_then_restore() {
+        let defaults = yaml(
+            r#"
+keep: from-defaults
+deleted_then_restored: from-defaults
+stays_deleted: from-defaults
+nested:
+  x: 1
+  y: 2
+"#,
+        );
+        let user = yaml(
+            r#"
+deleted_then_restored: null
+stays_deleted: null
+nested:
+  y: null
+  z: 3
+"#,
+        );
+        let env = yaml(
+            r#"
+deleted_then_restored: from-env
+nested:
+  y: from-env
+"#,
+        );
+
+        let merged = merge_layers(&[defaults, user, env]);
+        assert_eq!(
+            merged,
+            yaml(
+                r#"
+keep: from-defaults
+deleted_then_restored: from-env
+nested:
+  x: 1
+  z: 3
+  y: from-env
+"#
+            )
+        );
+        let map = mapping(&merged);
+        assert!(
+            map.get("stays_deleted").is_none(),
+            "null in user with no later restore must omit the key"
+        );
+    }
+
+    #[test]
+    fn merge_null_missing_key_null_in_sequence_and_map_over_null_base() {
+        let missing = merge(&yaml("a: 1\n"), &yaml("absent: null\n"));
+        assert_eq!(missing, yaml("a: 1\n"));
+        assert!(
+            mapping(&missing).get("absent").is_none(),
+            "null for a key that was never present is a no-op, not an inserted null"
+        );
+
+        let with_seq = merge(
+            &yaml("list: [1, 2]\nkeep: yes\n"),
+            &yaml("list: [9, null, 8]\n"),
+        );
+        assert_eq!(with_seq, yaml("keep: yes\nlist: [9, null, 8]\n"));
+        let seq = mapping(&with_seq)["list"]
+            .as_sequence()
+            .expect("list must remain a sequence");
+        assert_eq!(seq[1], Value::Null, "null inside a sequence is a value");
+
+        let over_null = merge(
+            &yaml("k: null\nkeep: 1\nnested:\n  inner: null\n"),
+            &yaml("k:\n  child: 2\nnested:\n  inner:\n    rebuilt: true\n"),
+        );
+        assert_eq!(
+            over_null,
+            yaml("k:\n  child: 2\nkeep: 1\nnested:\n  inner:\n    rebuilt: true\n")
+        );
+    }
+
+    #[cfg(feature = "three-layer-config")]
+    #[test]
+    fn three_layer_agrees_with_public_merge() {
+        use crate::config::three_layer::{merge_with_provenance, ConfigLayer, Provenance};
+
+        let cases: Vec<Vec<Value>> = vec![
+            vec![
+                yaml("a: 1\nnested:\n  x: 1\n  list: [1, 2]\n"),
+                yaml("a: 2\nnested:\n  y: 2\n  list: [9]\n"),
+                yaml("a: 3\nnested:\n  x: 10\n"),
+            ],
+            vec![
+                yaml("keep: from-defaults\ndeleted_then_restored: from-defaults\nstays_deleted: from-defaults\n"),
+                yaml("deleted_then_restored: null\nstays_deleted: null\n"),
+                yaml("deleted_then_restored: from-env\n"),
+            ],
+            vec![yaml("k: null\n"), yaml("k:\n  child: 2\n")],
+            vec![yaml("list: [1, 2]\n"), yaml("list: [9, null, 8]\n")],
+            vec![yaml("a: 1\n"), yaml("absent: null\n")],
+            vec![yaml("{a: 1}"), yaml("null"), yaml("{a: 2}")],
+        ];
+
+        for layers in cases {
+            let via_public = merge_layers(&layers);
+            let (first, rest) = layers.split_first().unwrap();
+            let mut provenance = Provenance::default();
+            let via_three = rest.iter().fold(deep_copy(first), |acc, overlay| {
+                merge_with_provenance(
+                    acc,
+                    deep_copy(overlay),
+                    ConfigLayer::Runtime,
+                    &mut provenance,
+                    "",
+                )
+            });
+            assert_eq!(
+                via_public, via_three,
+                "three_layer must use the same value merge as config::merge"
+            );
+        }
+    }
 }
