@@ -199,6 +199,29 @@ let _ = manager.handle_admin_signal_request(rsfulmen::signals::SignalEndpointReq
 });
 ```
 
+### Telemetry (`telemetry-metrics`)
+
+JSON events are canonical. Prometheus text is a derived scrape format — this
+crate does not listen on `/metrics`. HTTP helpers record the `http_*` taxonomy
+and normalize raw paths (`/users/42` → `/users/:id`).
+
+```rust
+use rsfulmen::telemetry_metrics::{HttpRecord, HttpRecorder, Metrics};
+
+let metrics = Metrics::new();
+let http = HttpRecorder::new(metrics.clone(), "api").with_sizes();
+let _inflight = http.enter().unwrap();
+http.record(
+    HttpRecord::new("GET", "/users/42", 200)
+        .duration_ms(12.0)
+        .sizes(128, 256),
+)
+.unwrap();
+let _ = metrics.export_prometheus_text().unwrap();
+```
+
+Duration histograms use **seconds**. `HttpRecord::duration_ms` divides by 1000.
+
 ### Crucible metadata (`crucible`)
 
 ```rust
@@ -216,7 +239,7 @@ than hard-coding the pin in application logic.
 | Feature              | Module                   | Typical use                          |
 | -------------------- | ------------------------ | ------------------------------------ |
 | `error-handling`     | `error_handling`         | Canonical error envelope             |
-| `telemetry-metrics`  | `telemetry_metrics`      | Taxonomy-backed counters/gauges      |
+| `telemetry-metrics`  | `telemetry_metrics`      | JSON / Prometheus text + HTTP helpers |
 | `appidentity`        | `appidentity`            | `.fulmen/app.yaml` upward search     |
 | `ascii`              | `ascii`                  | Display width, box drawing           |
 | `similarity`         | `similarity`             | Fuzzy match / "did you mean?"        |

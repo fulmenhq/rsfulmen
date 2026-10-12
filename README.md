@@ -319,17 +319,22 @@ let report = env::load_env_overrides_with_report(&specs).unwrap();
 
 _Use case: Emit metrics that conform to your organization's taxonomy without building a custom metrics framework._
 
-Taxonomy-backed counters, gauges, and histograms exported as schema-valid JSON
-events.
+Taxonomy-backed counters, gauges, and histograms. Export JSON events or
+Prometheus text (no in-process scrape server). HTTP helpers record `http_*`
+metrics and normalize routes so cardinality stays bounded.
 
 ```rust
-use rsfulmen::telemetry_metrics::Metrics;
+use rsfulmen::telemetry_metrics::{HttpRecord, HttpRecorder, Metrics};
 
 let metrics = Metrics::new();
 metrics.counter("schema_validations").unwrap().inc(None).unwrap();
 
-let events = metrics.flush().unwrap();
-assert!(!events.is_empty());
+let http = HttpRecorder::new(metrics.clone(), "api");
+http.record(HttpRecord::new("GET", "/users/42", 200).duration_ms(12.0))
+    .unwrap();
+
+let prom = metrics.export_prometheus_text().unwrap();
+assert!(prom.contains("http_requests_total"));
 ```
 
 ### App Identity (`appidentity`)

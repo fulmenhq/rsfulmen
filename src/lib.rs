@@ -175,7 +175,7 @@ pub mod schema_validation;
 #[cfg_attr(docsrs, doc(cfg(feature = "error-handling")))]
 pub mod error_handling;
 
-/// Telemetry + taxonomy-backed metrics export.
+/// Telemetry + taxonomy-backed metrics export (JSON, Prometheus text, HTTP helpers).
 #[cfg(feature = "telemetry-metrics")]
 #[cfg_attr(docsrs, doc(cfg(feature = "telemetry-metrics")))]
 pub mod telemetry_metrics;
