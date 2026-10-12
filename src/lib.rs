@@ -73,7 +73,7 @@ pub mod appidentity;
 #[cfg_attr(docsrs, doc(cfg(feature = "logging")))]
 pub mod logging;
 
-/// Canonical hashing with xxh3-128 (default) and SHA-256.
+/// Canonical hashing with xxh3-128 (default), SHA-256, CRC-32, and CRC-32C.
 ///
 /// Provides content-addressable digests in `algo:hex` format, streaming
 /// hash computation, and verification helpers.
