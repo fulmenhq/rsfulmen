@@ -717,8 +717,8 @@ pub fn signal_count() -> usize {
 /// assert_eq!(resolve_signal("TERM").unwrap().name, "SIGTERM");
 /// assert_eq!(resolve_signal("term").unwrap().name, "SIGTERM");
 /// assert_eq!(resolve_signal("15").unwrap().name, "SIGTERM");
-/// assert_eq!(resolve_signal("-15").unwrap().name, "SIGTERM");
 /// assert_eq!(resolve_signal("  SIGTERM  ").unwrap().name, "SIGTERM");
+/// assert!(resolve_signal("-15").is_none());
 ///
 /// // Unknown signals return None
 /// assert!(resolve_signal("SIGFOO").is_none());
@@ -738,12 +738,12 @@ pub fn resolve_signal(name: &str) -> Option<&'static Signal> {
         return Some(signal);
     }
 
-    // Step 4: Numeric match (accepts "15" and "-15" kill-style inputs)
-    if let Ok(num) = trimmed.parse::<i32>() {
-        // `checked_abs` avoids overflow for i32::MIN
-        if let Some(num_abs) = num.checked_abs() {
-            if num_abs > 0 {
-                if let Some(signal) = lookup_signal_by_number(num_abs) {
+    // Step 4: Positive numeric match only (`"15"` → SIGTERM). Negatives are
+    // not supported (Crucible signal-resolution fixtures).
+    if trimmed.bytes().all(|b| b.is_ascii_digit()) {
+        if let Ok(num) = trimmed.parse::<i32>() {
+            if num > 0 {
+                if let Some(signal) = lookup_signal_by_number(num) {
                     return Some(signal);
                 }
             }
@@ -1658,7 +1658,7 @@ mod tests {
     #[test]
     fn test_resolve_signal_numeric() {
         assert_eq!(resolve_signal("15").unwrap().name, "SIGTERM");
-        assert_eq!(resolve_signal("-15").unwrap().name, "SIGTERM");
+        assert!(resolve_signal("-15").is_none());
         assert_eq!(resolve_signal("2").unwrap().name, "SIGINT");
         assert_eq!(resolve_signal("1").unwrap().name, "SIGHUP");
         assert_eq!(resolve_signal("9").unwrap().name, "SIGKILL");
@@ -1826,5 +1826,92 @@ mod tests {
         // Empty and whitespace-only patterns return empty vec
         assert!(match_signal_names("").is_empty());
         assert!(match_signal_names("   ").is_empty());
+    }
+
+    #[test]
+    fn test_signal_resolution_fixtures() {
+        #[derive(Deserialize)]
+        struct ResolveCase {
+            input: String,
+            expect_name: Option<String>,
+        }
+        #[derive(Deserialize)]
+        struct ListCase {
+            expect_contains: Option<Vec<String>>,
+            expect_min_count: Option<usize>,
+        }
+        #[derive(Deserialize)]
+        struct MatchCase {
+            pattern: Option<String>,
+            expect_equals_list_signal_names: Option<bool>,
+            expect_contains: Option<Vec<String>>,
+            expect_not_contains: Option<Vec<String>>,
+            expect_min_count: Option<usize>,
+            expect_count: Option<usize>,
+            expect_empty: Option<bool>,
+        }
+        #[derive(Deserialize)]
+        struct Fixtures {
+            resolve_signal_tests: Vec<ResolveCase>,
+            list_signal_names_tests: Vec<ListCase>,
+            match_signal_names_tests: Vec<MatchCase>,
+        }
+
+        const YAML: &str = include_str!(
+            "../../config/crucible-rs/library/foundry/signal-resolution-fixtures.yaml"
+        );
+        let fixtures: Fixtures = serde_yaml::from_str(YAML).expect("signal resolution fixtures");
+
+        for case in fixtures.resolve_signal_tests {
+            let got = resolve_signal(&case.input).map(|s| s.name.clone());
+            assert_eq!(got, case.expect_name, "resolve_signal({:?})", case.input);
+        }
+
+        let names = list_signal_names();
+        for case in fixtures.list_signal_names_tests {
+            if let Some(min) = case.expect_min_count {
+                assert!(names.len() >= min, "list_signal_names min_count");
+            }
+            if let Some(required) = case.expect_contains {
+                for name in required {
+                    assert!(names.contains(&name.as_str()), "missing {name}");
+                }
+            }
+        }
+
+        for case in fixtures.match_signal_names_tests {
+            let Some(pattern) = case.pattern else {
+                continue;
+            };
+            let matched = match_signal_names(&pattern);
+            if case.expect_equals_list_signal_names == Some(true) {
+                assert_eq!(matched, names, "pattern {pattern} should match all names");
+            }
+            if let Some(required) = case.expect_contains {
+                for name in required {
+                    assert!(
+                        matched.contains(&name.as_str()),
+                        "pattern {pattern} missing {name}"
+                    );
+                }
+            }
+            if let Some(forbidden) = case.expect_not_contains {
+                for name in forbidden {
+                    assert!(
+                        !matched.contains(&name.as_str()),
+                        "pattern {pattern} unexpectedly has {name}"
+                    );
+                }
+            }
+            if let Some(min) = case.expect_min_count {
+                assert!(matched.len() >= min, "pattern {pattern} min_count");
+            }
+            if let Some(count) = case.expect_count {
+                assert_eq!(matched.len(), count, "pattern {pattern} expect_count");
+            }
+            if case.expect_empty == Some(true) {
+                assert!(matched.is_empty(), "pattern {pattern} should be empty");
+            }
+        }
     }
 }
