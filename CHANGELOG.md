@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`foundry::signals::resolve_signal`** — only positive numeric forms are
+  accepted (`"15"`). Kill-style negatives such as `"-15"` now return
+  `None` to match the Crucible signal-resolution fixtures. Callers that
+  still accept `kill --signal -N` input should strip a leading `-` before
+  calling `resolve_signal`.
+
 ### Fixed
 
 - **Windows `file://` schema containment** — catalog roots from

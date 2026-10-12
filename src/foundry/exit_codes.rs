@@ -90,6 +90,24 @@ pub enum ExitCategory {
 }
 
 impl ExitCategory {
+    /// Catalog category id (`standard`, `signals`, …).
+    pub fn id(self) -> &'static str {
+        match self {
+            ExitCategory::Standard => "standard",
+            ExitCategory::Networking => "networking",
+            ExitCategory::Configuration => "configuration",
+            ExitCategory::Runtime => "runtime",
+            ExitCategory::Usage => "usage",
+            ExitCategory::Permissions => "permissions",
+            ExitCategory::Data => "data",
+            ExitCategory::Security => "security",
+            ExitCategory::Observability => "observability",
+            ExitCategory::Testing => "testing",
+            ExitCategory::Shell => "shell",
+            ExitCategory::Signals => "signals",
+        }
+    }
+
     /// Get the human-readable name of the category.
     pub fn name(&self) -> &'static str {
         match self {
@@ -139,6 +157,14 @@ pub struct ExitCode {
     pub description: String,
     /// The category this code belongs to
     pub category: ExitCategory,
+    /// Catalog usage context.
+    pub context: Option<String>,
+    /// Optional retry guidance (`retry` / `no_retry` / `investigate`).
+    pub retry_hint: Option<String>,
+    /// Optional BSD `sysexits.h` equivalent recorded on the row.
+    pub bsd_equivalent: Option<String>,
+    /// Optional Python-runtime note.
+    pub python_note: Option<String>,
 }
 
 // Raw types for YAML parsing
@@ -147,8 +173,10 @@ struct RawCode {
     code: i32,
     name: String,
     description: String,
-    #[allow(dead_code)]
     context: Option<String>,
+    retry_hint: Option<String>,
+    bsd_equivalent: Option<String>,
+    python_note: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -223,6 +251,10 @@ impl ExitCodeIndexes {
                     name: code.name,
                     description: code.description,
                     category,
+                    context: code.context,
+                    retry_hint: code.retry_hint,
+                    bsd_equivalent: code.bsd_equivalent,
+                    python_note: code.python_note,
                 });
                 by_code.insert(code.code, index);
             }
@@ -350,6 +382,10 @@ pub struct BsdMapping {
     pub fulmen_code: i32,
     /// Fulmen symbolic name.
     pub fulmen_name: String,
+    /// Catalog category id for the Fulmen mapping.
+    pub category: String,
+    /// Catalog notes for the mapping.
+    pub notes: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -363,6 +399,8 @@ struct RawBsdMapping {
     bsd_name: String,
     fulmen_code: i32,
     fulmen_name: String,
+    category: String,
+    notes: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -382,6 +420,8 @@ static BSD_MAPPINGS: Lazy<Vec<BsdMapping>> = Lazy::new(|| {
             bsd_name: m.bsd_name,
             fulmen_code: m.fulmen_code,
             fulmen_name: m.fulmen_name,
+            category: m.category,
+            notes: m.notes,
         })
         .collect()
 });
@@ -510,7 +550,24 @@ mod tests {
         assert_eq!(map_bsd_to_fulmen(75), Some(34));
         assert_eq!(map_bsd_to_fulmen(0), None);
         assert_eq!(map_bsd_to_fulmen(99), None);
-        assert!(list_bsd_mappings().len() >= 4);
+
+        #[derive(Deserialize)]
+        struct Catalog {
+            bsd_compatibility: BsdCompatibility,
+        }
+        let catalog: Catalog =
+            serde_yaml::from_str(EXIT_CODES_YAML).expect("bsd_compatibility table");
+        let got = list_bsd_mappings();
+        assert_eq!(got.len(), catalog.bsd_compatibility.mappings.len());
+        for (got, raw) in got.iter().zip(catalog.bsd_compatibility.mappings.iter()) {
+            assert_eq!(got.bsd_code, raw.bsd_code);
+            assert_eq!(got.bsd_name, raw.bsd_name);
+            assert_eq!(got.fulmen_code, raw.fulmen_code);
+            assert_eq!(got.fulmen_name, raw.fulmen_name);
+            assert_eq!(got.category, raw.category);
+            assert_eq!(got.notes, raw.notes);
+            assert!(!got.notes.is_empty(), "notes required for {}", got.bsd_name);
+        }
     }
 
     #[test]
@@ -519,37 +576,52 @@ mod tests {
         struct SnapCode {
             name: String,
             category: String,
+            description: String,
+            context: Option<String>,
+            retry_hint: Option<String>,
+            bsd_equivalent: Option<String>,
+            python_note: Option<String>,
         }
         #[derive(Deserialize)]
         struct Snapshot {
+            version: String,
             codes: std::collections::BTreeMap<String, SnapCode>,
         }
 
         const SNAPSHOT: &str =
             include_str!("../../config/crucible-rs/library/foundry/exit-codes.snapshot.json");
         let snap: Snapshot = serde_yaml::from_str(SNAPSHOT).expect("exit-codes snapshot");
+        assert_eq!(snap.version, "v1.0.0");
+        assert_eq!(
+            list_exit_codes().len(),
+            snap.codes.len(),
+            "catalog cardinality must match snapshot"
+        );
 
         for (code_str, expected) in &snap.codes {
             let code: i32 = code_str.parse().expect("snapshot code key");
             let got = lookup_exit_code(code)
                 .unwrap_or_else(|| panic!("catalog missing snapshot code {code}"));
             assert_eq!(got.name, expected.name, "name for {code}");
-            let category = match expected.category.as_str() {
-                "standard" => ExitCategory::Standard,
-                "networking" => ExitCategory::Networking,
-                "configuration" => ExitCategory::Configuration,
-                "runtime" => ExitCategory::Runtime,
-                "usage" => ExitCategory::Usage,
-                "permissions" => ExitCategory::Permissions,
-                "data" => ExitCategory::Data,
-                "security" => ExitCategory::Security,
-                "observability" => ExitCategory::Observability,
-                "testing" => ExitCategory::Testing,
-                "shell" => ExitCategory::Shell,
-                "signals" => ExitCategory::Signals,
-                other => panic!("unknown snapshot category {other}"),
-            };
-            assert_eq!(got.category, category, "category for {code}");
+            assert_eq!(got.category.id(), expected.category, "category for {code}");
+            assert_eq!(
+                got.description, expected.description,
+                "description for {code}"
+            );
+            assert_eq!(
+                got.context.as_deref().map(str::trim_end),
+                expected.context.as_deref().map(str::trim_end),
+                "context for {code}"
+            );
+            assert_eq!(got.retry_hint, expected.retry_hint, "retry_hint for {code}");
+            assert_eq!(
+                got.bsd_equivalent, expected.bsd_equivalent,
+                "bsd_equivalent for {code}"
+            );
+            assert_eq!(
+                got.python_note, expected.python_note,
+                "python_note for {code}"
+            );
         }
 
         for entry in list_exit_codes() {
