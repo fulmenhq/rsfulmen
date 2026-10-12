@@ -159,20 +159,14 @@ impl LoggingPolicy {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
 
     #[test]
     fn load_and_validate_policy() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("logging-policy.yaml");
-        let mut file = std::fs::File::create(&path).unwrap();
-        write!(
-            file,
-            "allowedProfiles: [SIMPLE, STRUCTURED]\n\
-             environmentRules:\n\
-               production: [STRUCTURED]\n\
-             requiredProfiles:\n\
-               workhorse: [STRUCTURED]\n"
+        std::fs::write(
+            &path,
+            "allowedProfiles: [SIMPLE, STRUCTURED]\nenvironmentRules:\n  production: [STRUCTURED]\nrequiredProfiles:\n  workhorse: [STRUCTURED]\n",
         )
         .unwrap();
 

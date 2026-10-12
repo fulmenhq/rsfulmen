@@ -3,7 +3,7 @@
 //! The HTTP adapter needs `serde_json` (`json` feature). `foundry-core` alone
 //! compiles the request/response types and `handle_admin_signal_request`.
 
-#![cfg(feature = "json")]
+#![cfg(all(feature = "json", feature = "foundry-core"))]
 
 use rsfulmen::signals::{SignalEndpointMetadata, SignalManager};
 
