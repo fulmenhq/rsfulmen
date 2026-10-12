@@ -56,7 +56,8 @@ pub fn merge(base: &Value, overlay: &Value) -> Value {
 /// if let Value::Mapping(map) = &mut copy {
 ///     map.insert(Value::String("extra".into()), Value::Bool(true));
 /// }
-/// assert_eq!(src, serde_yaml::from_str("nested:\n  k: original\n").unwrap());
+/// let expected: Value = serde_yaml::from_str("nested:\n  k: original\n").unwrap();
+/// assert_eq!(src, expected);
 /// ```
 pub fn deep_copy(value: &Value) -> Value {
     match value {
@@ -107,7 +108,7 @@ mod tests {
         serde_yaml::from_str(s).expect("test yaml should parse")
     }
 
-    fn mapping<'a>(value: &'a Value) -> &'a Mapping {
+    fn mapping(value: &Value) -> &Mapping {
         value.as_mapping().expect("expected mapping")
     }
 
