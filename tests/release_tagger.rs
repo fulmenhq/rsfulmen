@@ -12,7 +12,7 @@ fn script(name: &str) -> PathBuf {
 }
 
 fn run_without_tagger(script_name: &str) -> std::process::Output {
-    Command::new(script(&script_name))
+    Command::new(script(script_name))
         .current_dir(repo_root())
         .env_remove("RSFULMEN_TAGGER_NAME")
         .env_remove("RSFULMEN_TAGGER_EMAIL")
