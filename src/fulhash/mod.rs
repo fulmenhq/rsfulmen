@@ -24,13 +24,22 @@
 //! |------------|-----------------------|-------------|------------------------------|
 //! | xxh3-128   | `Algorithm::Xxh3_128` | 16 bytes    | Fast content-addressable IDs |
 //! | SHA-256    | `Algorithm::Sha256`   | 32 bytes    | Cryptographic integrity      |
+//! | crc32      | `Algorithm::Crc32`    | 4 bytes     | ZIP/GZIP/PNG interoperability |
+//! | crc32c     | `Algorithm::Crc32c`   | 4 bytes     | Castagnoli / cloud storage    |
 
+use crc::{Crc, CRC_32_ISCSI, CRC_32_ISO_HDLC};
 use serde::{Deserialize, Serialize};
 use sha2::Digest as ShaDigest;
+use std::collections::BTreeMap;
 use std::fmt;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
+
+/// IEEE CRC-32 (ISO-HDLC / ZIP / GZIP / PNG).
+const CRC32: Crc<u32> = Crc::<u32>::new(&CRC_32_ISO_HDLC);
+/// Castagnoli CRC-32C (iSCSI / GCS / SSE4.2).
+const CRC32C: Crc<u32> = Crc::<u32>::new(&CRC_32_ISCSI);
 
 /// Default buffer size for streaming reads (8 KiB).
 const DEFAULT_BUFFER_SIZE: usize = 8192;
@@ -44,13 +53,19 @@ const DEFAULT_BUFFER_SIZE: usize = 8192;
 /// The default algorithm is [`Algorithm::Xxh3_128`] — a fast,
 /// non-cryptographic hash suitable for content-addressable storage.
 /// Use [`Algorithm::Sha256`] when a cryptographic guarantee is required.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize,
+)]
 pub enum Algorithm {
     /// xxHash3-128 — fast, non-cryptographic (default).
     #[default]
     Xxh3_128,
     /// SHA-256 — cryptographic.
     Sha256,
+    /// CRC-32 (IEEE / ISO-HDLC) — archive interoperability.
+    Crc32,
+    /// CRC-32C (Castagnoli) — cloud / hardware-accelerated checksums.
+    Crc32c,
 }
 
 impl Algorithm {
@@ -59,6 +74,8 @@ impl Algorithm {
         match self {
             Self::Xxh3_128 => "xxh3-128",
             Self::Sha256 => "sha256",
+            Self::Crc32 => "crc32",
+            Self::Crc32c => "crc32c",
         }
     }
 
@@ -67,6 +84,8 @@ impl Algorithm {
         match s {
             "xxh3-128" => Ok(Self::Xxh3_128),
             "sha256" => Ok(Self::Sha256),
+            "crc32" => Ok(Self::Crc32),
+            "crc32c" => Ok(Self::Crc32c),
             other => Err(FulhashError::UnsupportedAlgorithm(other.to_string())),
         }
     }
@@ -76,6 +95,7 @@ impl Algorithm {
         match self {
             Self::Xxh3_128 => 16,
             Self::Sha256 => 32,
+            Self::Crc32 | Self::Crc32c => 4,
         }
     }
 }
@@ -137,7 +157,7 @@ impl Default for HashOptions {
 #[derive(Debug, thiserror::Error)]
 pub enum FulhashError {
     /// The requested algorithm name is not recognised.
-    #[error("unsupported algorithm: {0}")]
+    #[error("unsupported algorithm: {0} (supported algorithms: xxh3-128, sha256, crc32, crc32c)")]
     UnsupportedAlgorithm(String),
 
     /// A digest string could not be parsed.
@@ -210,6 +230,74 @@ fn hash_sha256_reader<R: Read>(reader: R, buffer_size: usize) -> Result<Vec<u8>,
     Ok(hasher.finalize().to_vec())
 }
 
+fn hash_crc32(data: &[u8]) -> Vec<u8> {
+    CRC32.checksum(data).to_be_bytes().to_vec()
+}
+
+fn hash_crc32c(data: &[u8]) -> Vec<u8> {
+    CRC32C.checksum(data).to_be_bytes().to_vec()
+}
+
+fn hash_crc32_reader<R: Read>(reader: R, buffer_size: usize) -> Result<Vec<u8>, std::io::Error> {
+    crc32_reader(reader, buffer_size, &CRC32)
+}
+
+fn hash_crc32c_reader<R: Read>(reader: R, buffer_size: usize) -> Result<Vec<u8>, std::io::Error> {
+    crc32_reader(reader, buffer_size, &CRC32C)
+}
+
+fn crc32_reader<R: Read>(
+    mut reader: R,
+    buffer_size: usize,
+    algo: &Crc<u32>,
+) -> Result<Vec<u8>, std::io::Error> {
+    let mut digest = algo.digest();
+    let mut buf = vec![0u8; buffer_size];
+    loop {
+        let n = reader.read(&mut buf)?;
+        if n == 0 {
+            break;
+        }
+        digest.update(&buf[..n]);
+    }
+    Ok(digest.finalize().to_be_bytes().to_vec())
+}
+
+/// Incremental hasher used by [`multi_hash_reader`].
+enum RunningHasher {
+    Xxh3(Box<xxhash_rust::xxh3::Xxh3>),
+    Sha256(sha2::Sha256),
+    Crc32(crc::Digest<'static, u32>),
+    Crc32c(crc::Digest<'static, u32>),
+}
+
+impl RunningHasher {
+    fn new(algorithm: Algorithm) -> Self {
+        match algorithm {
+            Algorithm::Xxh3_128 => Self::Xxh3(Box::new(xxhash_rust::xxh3::Xxh3::new())),
+            Algorithm::Sha256 => Self::Sha256(sha2::Sha256::new()),
+            Algorithm::Crc32 => Self::Crc32(CRC32.digest()),
+            Algorithm::Crc32c => Self::Crc32c(CRC32C.digest()),
+        }
+    }
+
+    fn update(&mut self, data: &[u8]) {
+        match self {
+            Self::Xxh3(h) => h.update(data),
+            Self::Sha256(h) => h.update(data),
+            Self::Crc32(h) | Self::Crc32c(h) => h.update(data),
+        }
+    }
+
+    fn finalize(self) -> Vec<u8> {
+        match self {
+            Self::Xxh3(h) => h.digest128().to_be_bytes().to_vec(),
+            Self::Sha256(h) => h.finalize().to_vec(),
+            Self::Crc32(h) | Self::Crc32c(h) => h.finalize().to_be_bytes().to_vec(),
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -232,6 +320,8 @@ pub fn hash(data: &[u8], algorithm: Option<Algorithm>) -> Result<Digest, Fulhash
     let bytes = match algo {
         Algorithm::Xxh3_128 => hash_xxh3_128(data),
         Algorithm::Sha256 => hash_sha256(data),
+        Algorithm::Crc32 => hash_crc32(data),
+        Algorithm::Crc32c => hash_crc32c(data),
     };
     Ok(Digest {
         algorithm: algo,
@@ -279,6 +369,8 @@ pub fn hash_reader<R: Read>(
     let bytes = match opts.algorithm {
         Algorithm::Xxh3_128 => hash_xxh3_128_reader(reader, buffer_size)?,
         Algorithm::Sha256 => hash_sha256_reader(reader, buffer_size)?,
+        Algorithm::Crc32 => hash_crc32_reader(reader, buffer_size)?,
+        Algorithm::Crc32c => hash_crc32c_reader(reader, buffer_size)?,
     };
     Ok(Digest {
         algorithm: opts.algorithm,
@@ -421,6 +513,75 @@ pub fn verify(data: &[u8], expected: &Digest) -> bool {
 pub fn verify_file(path: &Path, expected: &Digest) -> Result<bool, FulhashError> {
     let actual = hash_file(path, Some(expected.algorithm))?;
     Ok(actual.bytes == expected.bytes)
+}
+
+/// Hash `data` with each requested algorithm in a single pass.
+///
+/// Algorithms are deduplicated. An empty slice returns an empty map.
+/// Duplicate algorithms collapse to one entry.
+///
+/// # Examples
+///
+/// ```
+/// use rsfulmen::fulhash::{multi_hash, Algorithm};
+///
+/// let digests = multi_hash(b"content", &[Algorithm::Xxh3_128, Algorithm::Sha256]).unwrap();
+/// assert_eq!(digests.len(), 2);
+/// ```
+pub fn multi_hash(
+    data: &[u8],
+    algorithms: &[Algorithm],
+) -> Result<BTreeMap<Algorithm, Digest>, FulhashError> {
+    multi_hash_reader(std::io::Cursor::new(data), algorithms)
+}
+
+/// Hash a UTF-8 string with each requested algorithm in a single pass.
+pub fn multi_hash_string(
+    s: &str,
+    algorithms: &[Algorithm],
+) -> Result<BTreeMap<Algorithm, Digest>, FulhashError> {
+    multi_hash(s.as_bytes(), algorithms)
+}
+
+/// Hash a reader with each requested algorithm in a single pass.
+///
+/// The reader is consumed once. Empty `algorithms` returns an empty map
+/// without reading.
+pub fn multi_hash_reader<R: Read>(
+    mut reader: R,
+    algorithms: &[Algorithm],
+) -> Result<BTreeMap<Algorithm, Digest>, FulhashError> {
+    if algorithms.is_empty() {
+        return Ok(BTreeMap::new());
+    }
+
+    let mut unique = BTreeMap::new();
+    for algorithm in algorithms {
+        unique.insert(*algorithm, RunningHasher::new(*algorithm));
+    }
+
+    let mut buf = vec![0u8; DEFAULT_BUFFER_SIZE];
+    loop {
+        let n = reader.read(&mut buf)?;
+        if n == 0 {
+            break;
+        }
+        for hasher in unique.values_mut() {
+            hasher.update(&buf[..n]);
+        }
+    }
+
+    let mut out = BTreeMap::new();
+    for (algorithm, hasher) in unique {
+        out.insert(
+            algorithm,
+            Digest {
+                algorithm,
+                bytes: hasher.finalize(),
+            },
+        );
+    }
+    Ok(out)
 }
 
 // ---------------------------------------------------------------------------
@@ -803,5 +964,163 @@ mod tests {
 
         let sha_digest = hash(b"display test", Some(Algorithm::Sha256)).unwrap();
         assert_eq!(sha_digest.to_string(), format_digest(&sha_digest));
+    }
+
+    fn crc_hex(digest: &Digest) -> String {
+        hex::encode(&digest.bytes)
+    }
+
+    #[test]
+    fn test_crc32_known_vectors() {
+        // ISO-HDLC / IEEE check value for "123456789" is 0xCBF43926.
+        let empty = hash(b"", Some(Algorithm::Crc32)).unwrap();
+        assert_eq!(empty.bytes.len(), 4);
+        assert_eq!(crc_hex(&empty), "00000000");
+
+        let check = hash(b"123456789", Some(Algorithm::Crc32)).unwrap();
+        assert_eq!(crc_hex(&check), "cbf43926");
+        assert_eq!(format_digest(&check), "crc32:cbf43926");
+    }
+
+    #[test]
+    fn test_crc32c_known_vectors() {
+        // Castagnoli check value for "123456789" is 0xE3069283.
+        let empty = hash(b"", Some(Algorithm::Crc32c)).unwrap();
+        assert_eq!(crc_hex(&empty), "00000000");
+
+        let check = hash(b"123456789", Some(Algorithm::Crc32c)).unwrap();
+        assert_eq!(crc_hex(&check), "e3069283");
+        assert_eq!(format_digest(&check), "crc32c:e3069283");
+    }
+
+    #[test]
+    fn test_crc_streaming_matches_block() {
+        let data = b"Hello, World!";
+        for algo in [Algorithm::Crc32, Algorithm::Crc32c] {
+            let block = hash(data, Some(algo)).unwrap();
+            let opts = HashOptions {
+                algorithm: algo,
+                buffer_size: 3,
+            };
+            let streamed = hash_reader(Cursor::new(data), Some(opts)).unwrap();
+            assert_eq!(block, streamed, "{algo:?} streaming must match block");
+        }
+    }
+
+    #[test]
+    fn test_crc_parse_roundtrip_and_length() {
+        let digest = hash(b"payload", Some(Algorithm::Crc32)).unwrap();
+        let parsed = parse_digest(&format_digest(&digest)).unwrap();
+        assert_eq!(parsed, digest);
+
+        let err = parse_digest("crc32:cbf439").expect_err("wrong length");
+        assert!(matches!(err, FulhashError::InvalidDigestFormat(_)));
+    }
+
+    #[test]
+    fn test_multi_hash_matches_individual_and_dedups() {
+        let data = b"multi-hash payload";
+        let algos = [
+            Algorithm::Xxh3_128,
+            Algorithm::Sha256,
+            Algorithm::Crc32,
+            Algorithm::Crc32c,
+            Algorithm::Sha256,
+        ];
+        let many = multi_hash(data, &algos).unwrap();
+        assert_eq!(many.len(), 4, "duplicates must collapse");
+        for algo in [
+            Algorithm::Xxh3_128,
+            Algorithm::Sha256,
+            Algorithm::Crc32,
+            Algorithm::Crc32c,
+        ] {
+            assert_eq!(many.get(&algo).unwrap(), &hash(data, Some(algo)).unwrap());
+        }
+        assert!(multi_hash(data, &[]).unwrap().is_empty());
+        assert_eq!(
+            multi_hash_string("multi-hash payload", &[Algorithm::Crc32]).unwrap()
+                [&Algorithm::Crc32],
+            hash(data, Some(Algorithm::Crc32)).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_multi_hash_reader_is_single_pass() {
+        let data = b"single-pass reader body";
+        struct CountRead<'a> {
+            data: &'a [u8],
+            pos: usize,
+            bytes: usize,
+        }
+        impl Read for CountRead<'_> {
+            fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+                let n = (self.data.len() - self.pos).min(buf.len());
+                buf[..n].copy_from_slice(&self.data[self.pos..self.pos + n]);
+                self.pos += n;
+                self.bytes += n;
+                Ok(n)
+            }
+        }
+
+        let mut reader = CountRead {
+            data,
+            pos: 0,
+            bytes: 0,
+        };
+        let out = multi_hash_reader(
+            &mut reader,
+            &[
+                Algorithm::Xxh3_128,
+                Algorithm::Sha256,
+                Algorithm::Crc32,
+                Algorithm::Crc32c,
+            ],
+        )
+        .unwrap();
+        assert_eq!(reader.bytes, data.len(), "reader must be consumed once");
+        assert_eq!(
+            out[&Algorithm::Sha256],
+            hash(data, Some(Algorithm::Sha256)).unwrap()
+        );
+        assert_eq!(
+            out[&Algorithm::Crc32c],
+            hash(data, Some(Algorithm::Crc32c)).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_crucible_fixtures_xxh3_and_sha256() {
+        // hello-world from config/crucible-rs/library/fulhash/fixtures.yaml
+        let hello = b"Hello, World!";
+        assert_eq!(
+            format_digest(&hash(hello, Some(Algorithm::Xxh3_128)).unwrap()),
+            "xxh3-128:531df2844447dd5077db03842cd75395"
+        );
+        assert_eq!(
+            format_digest(&hash(hello, Some(Algorithm::Sha256)).unwrap()),
+            "sha256:dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f"
+        );
+        let empty = b"";
+        assert_eq!(
+            format_digest(&hash(empty, Some(Algorithm::Xxh3_128)).unwrap()),
+            "xxh3-128:99aa06d3014798d86001c324468d497f"
+        );
+
+        let many = multi_hash(hello, &[Algorithm::Xxh3_128, Algorithm::Sha256]).unwrap();
+        assert_eq!(
+            format_digest(&many[&Algorithm::Xxh3_128]),
+            "xxh3-128:531df2844447dd5077db03842cd75395"
+        );
+    }
+
+    #[test]
+    fn test_unsupported_algorithm_lists_supported() {
+        let err = parse_digest("md5:abcdef").expect_err("md5 is unsupported");
+        let msg = err.to_string();
+        assert!(msg.contains("md5"), "{msg}");
+        assert!(msg.contains("supported algorithms"), "{msg}");
+        assert!(msg.contains("crc32"), "{msg}");
+        assert!(msg.contains("crc32c"), "{msg}");
     }
 }
