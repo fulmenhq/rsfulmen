@@ -4,6 +4,8 @@
 //!
 //! The canonical export format is JSON, validated against
 //! `schemas/crucible-rs/observability/metrics/v1.0.0/metrics-event.schema.json`.
+//! Prometheus text and HTTP `http_*` helpers are opt-in adapters — no scrape
+//! server and no framework middleware.
 
 use std::collections::{BTreeMap, HashMap};
 use std::sync::{Arc, Mutex};
@@ -16,6 +18,18 @@ pub const METRICS_EVENT_SCHEMA_PATH: &str =
     "observability/metrics/v1.0.0/metrics-event.schema.json";
 
 const METRICS_TAXONOMY_YAML: &str = include_str!("../../config/crucible-rs/taxonomy/metrics.yaml");
+
+pub mod export;
+pub mod http;
+
+pub use export::{
+    render_json_array, render_json_lines, render_prometheus_text, Exporter, JsonLinesExporter,
+    PrometheusTextExporter,
+};
+pub use http::{
+    normalize_route, outcome_from_status, ActiveHttpRequest, HttpRecord, HttpRecorder,
+    HTTP_DURATION_BUCKETS_S, HTTP_SIZE_BUCKETS_BYTES,
+};
 
 /// Errors produced by telemetry operations.
 #[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
@@ -31,6 +45,10 @@ pub enum TelemetryError {
     /// Timestamp formatting failed.
     #[error("timestamp formatting failed: {0}")]
     TimestampFormat(String),
+
+    /// Writer failed while exporting.
+    #[error("export I/O failed: {0}")]
+    Io(String),
 }
 
 /// Metric unit (aligned with the metrics taxonomy).
@@ -726,6 +744,7 @@ mod tests {
     use super::*;
 
     use pretty_assertions::assert_eq;
+    #[cfg(feature = "schema-validation")]
     use serde_json::Value;
 
     #[test]
