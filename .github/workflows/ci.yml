@@ -9,10 +9,15 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+# fulmen-toolbox v0.5.9 glibc runner (goneat v0.6.3). Digest from
+# SHA256SUMS-goneat-tools-runner-glibc on that release.
 jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/fulmenhq/goneat-tools-runner-glibc:v0.5.9@sha256:412a315241a59fc0313f4e79f182f7f373a04f194174c61b439cf8ba26174d54
+      options: --user 1001
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -33,10 +38,12 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
-      - name: Verify Rust version
+      - name: Verify runner + Rust
         run: |
           rustc --version
           cargo --version
+          goneat --version | head -n1
+          cargo deny --version
       - name: Format check
         run: cargo fmt --all -- --check
       - name: Lint (clippy)
@@ -53,6 +60,9 @@ jobs:
   feature-matrix:
     name: Feature Matrix
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/fulmenhq/goneat-tools-runner-glibc:v0.5.9@sha256:412a315241a59fc0313f4e79f182f7f373a04f194174c61b439cf8ba26174d54
+      options: --user 1001
     strategy:
       matrix:
         features:
@@ -107,6 +117,9 @@ jobs:
   msrv:
     name: MSRV (1.88)
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/fulmenhq/goneat-tools-runner-glibc:v0.5.9@sha256:412a315241a59fc0313f4e79f182f7f373a04f194174c61b439cf8ba26174d54
+      options: --user 1001
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -124,18 +137,17 @@ jobs:
           RUSTUP_TOOLCHAIN: 1.88.0
   # Supply-chain policy (licenses, bans, advisories, sources).
   # deny.toml is the policy; do not add license exceptions without sign-off.
+  # cargo-deny comes from the toolbox runner (not cargo-deny-action).
   cargo-deny:
     name: cargo deny
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/fulmenhq/goneat-tools-runner-glibc:v0.5.9@sha256:412a315241a59fc0313f4e79f182f7f373a04f194174c61b439cf8ba26174d54
+      options: --user 1001
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           persist-credentials: false
       - name: cargo deny (licenses bans advisories sources)
-        uses: EmbarkStudios/cargo-deny-action@v2.1.1
-        with:
-          rust-version: "1.98.0"
-          command: check
-          arguments: --all-features
-          command-arguments: licenses bans advisories sources
+        run: cargo deny --all-features check licenses bans advisories sources

@@ -19,23 +19,23 @@ circular dependency (goneat is Go; this repo is a Rust library).
 ## Pin
 
 ```
-GONEAT_VERSION ?= v0.6.2   # Makefile
+GONEAT_VERSION ?= v0.6.3   # Makefile
 ```
-
-**TODO(goneat v0.6.3):** bump the pin when v0.6.3 is published. As of 2026-10-12
-the latest goneat release is **v0.6.2**. Tag and release of rsfulmen wait on
-goneat v0.6.3 **and** fulmen-toolbox v0.5.9.
 
 Override locally if you must:
 
 ```bash
-make bootstrap GONEAT_VERSION=v0.6.2
+make bootstrap GONEAT_VERSION=v0.6.3
 # or force reinstall
 make bootstrap-force
 ```
 
 `goneat v0.6.2+` has no `darwin/amd64` asset. That drop is estate-wide; do not
 re-add that triple to any matrix.
+
+v0.6.3 skips gosec / govulncheck unless the tree has a `go.mod`. Rust-only
+hooks therefore pass the security category without `--no-verify` (the v0.6.2
+false positive on a Rust adapter is fixed).
 
 Confirm the binary:
 
@@ -120,17 +120,16 @@ cat .crucible/metadata/metadata.yaml
 
 ## CI alignment
 
-rsfulmen CI (`.github/workflows/ci.yml`) currently runs on `ubuntu-latest` with
-`dtolnay/rust-toolchain@1.98.0` (MSRV job uses 1.88.0). It does **not** yet use
-the Fulmen toolbox runner image.
-
-gofulmen CI pins
-`ghcr.io/fulmenhq/goneat-tools-runner-glibc:v0.5.8`. Moving rsfulmen onto that
-image waits on **fulmen-toolbox v0.5.9** (and a Wright decision — see the
-cluster A PR). Do not add `darwin/amd64` to any matrix.
+rsfulmen CI (`.github/workflows/ci.yml`) runs on `ubuntu-latest` **inside**
+`ghcr.io/fulmenhq/goneat-tools-runner-glibc:v0.5.9` (digest-pinned; fulmen-toolbox
+v0.5.9). That image ships goneat **v0.6.3**, rustup, and `cargo-deny`. The Test
+and Feature Matrix jobs still install `dtolnay/rust-toolchain@1.98.0` so clippy
+matches `rust-toolchain.toml`. The MSRV job installs 1.88.0. Do not add
+`darwin/amd64` to any matrix.
 
 When local `goneat` and CI disagree on YAML format/lint, compare the local pin
-to the runner pin before changing repo policy.
+(`GONEAT_VERSION`) to the runner pin (`v0.5.9` / goneat v0.6.3) before changing
+repo policy.
 
 ## Daily workflow
 
@@ -185,5 +184,5 @@ requires the cargo plugin.
 
 `make release-publish` exists on rsfulmen. Other language foundations still need
 parity for that path. **Feature PRs must not tag, release, or edit
-`VERSION` / `CHANGELOG.md` / `RELEASE_NOTES.md` / `docs/releases/`.** Those land
-in a final release-pack PR after goneat v0.6.3 and fulmen-toolbox v0.5.9.
+`VERSION` / `CHANGELOG.md` / `RELEASE_NOTES.md` / `docs/releases/`.** The next
+release pack waits on Dave.
