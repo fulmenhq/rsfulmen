@@ -88,6 +88,19 @@ Environment-variable overlays live under `rsfulmen::config::env` (`EnvVarSpec`,
 `load_env_overrides_with_report`). Three-layer loading is the `three-layer-config`
 feature.
 
+Public `config::merge` / `config::deep_copy` operate on `serde_yaml::Value`:
+mappings merge recursively, sequences replace, and `null` deletes a mapping
+key. Inputs are borrowed; the result does not alias them.
+
+```rust
+use rsfulmen::config::{deep_copy, merge};
+
+let base = serde_yaml::from_str("a: 1\nnested: {x: 1}").unwrap();
+let overlay = serde_yaml::from_str("nested: {y: 2}\nb: null").unwrap();
+let merged = merge(&base, &overlay);
+let _independent = deep_copy(&merged);
+```
+
 ### Foundry catalogs (`foundry` / `foundry-core`)
 
 Same catalog data as gofulmen / tsfulmen / pyfulmen, from Crucible v0.4.19.

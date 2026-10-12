@@ -32,9 +32,12 @@
 use std::path::PathBuf;
 
 pub mod env;
+mod merge;
 #[cfg(feature = "three-layer-config")]
 pub mod three_layer;
 mod xdg;
+
+pub use merge::{deep_copy, merge};
 
 /// XDG base directories structure.
 #[derive(Debug, Clone, PartialEq, Eq)]

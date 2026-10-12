@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
-use serde_yaml::{Mapping, Value};
+use serde_yaml::Value;
 
 use crate::config::get_app_config_dir;
 
@@ -220,67 +220,54 @@ fn provenance_mark_root(provenance: &mut Provenance, layer: ConfigLayer) {
     provenance.paths.insert("".to_string(), layer);
 }
 
-fn merge_with_provenance(
+/// Merge `overlay` onto `base` using [`crate::config::merge`], then record
+/// which overlay keys this layer last wrote.
+pub(crate) fn merge_with_provenance(
     base: Value,
     overlay: Value,
     layer: ConfigLayer,
     provenance: &mut Provenance,
     path: &str,
 ) -> Value {
-    match (base, overlay) {
-        (Value::Mapping(mut base_map), Value::Mapping(overlay_map)) => {
-            merge_maps(&mut base_map, overlay_map, layer, provenance, path);
-            Value::Mapping(base_map)
-        }
-        (Value::Sequence(_), Value::Sequence(overlay_seq)) => {
-            provenance.paths.insert(path.to_string(), layer);
-            Value::Sequence(overlay_seq)
-        }
-        (Value::Null, overlay) => {
-            provenance.paths.insert(path.to_string(), layer);
-            overlay
-        }
-        (_, Value::Null) => {
-            // Null deletes are handled at the parent map level. If we get here,
-            // treat as null overwrite.
-            provenance.paths.insert(path.to_string(), layer);
-            Value::Null
-        }
-        (_, overlay) => {
-            provenance.paths.insert(path.to_string(), layer);
-            overlay
-        }
-    }
+    record_merge_provenance(&base, &overlay, layer, provenance, path);
+    super::merge(&base, &overlay)
 }
 
-fn merge_maps(
-    base: &mut Mapping,
-    overlay: Mapping,
+fn record_merge_provenance(
+    base: &Value,
+    overlay: &Value,
     layer: ConfigLayer,
     provenance: &mut Provenance,
     path: &str,
 ) {
-    for (k, v) in overlay {
-        // Only track provenance for string keys (Fulmen configs should use these).
-        let key_str = k.as_str().map(|s| s.to_string());
-        let child_path = if let Some(key_str) = &key_str {
-            join_path(path, key_str)
-        } else {
-            path.to_string()
-        };
+    match (base, overlay) {
+        (Value::Mapping(base_map), Value::Mapping(overlay_map)) => {
+            for (key, overlay_value) in overlay_map {
+                let child_path = match key.as_str() {
+                    Some(key_str) => join_path(path, key_str),
+                    None => path.to_string(),
+                };
 
-        if v.is_null() {
-            base.remove(&k);
-            provenance.paths.insert(child_path, layer);
-            continue;
+                if overlay_value.is_null() {
+                    provenance.paths.insert(child_path, layer);
+                    continue;
+                }
+
+                if let Some(existing) = base_map.get(key) {
+                    record_merge_provenance(
+                        existing,
+                        overlay_value,
+                        layer,
+                        provenance,
+                        &child_path,
+                    );
+                } else {
+                    provenance.paths.insert(child_path, layer);
+                }
+            }
         }
-
-        if let Some(existing) = base.remove(&k) {
-            let merged = merge_with_provenance(existing, v, layer, provenance, &child_path);
-            base.insert(k, merged);
-        } else {
-            provenance.paths.insert(child_path.clone(), layer);
-            base.insert(k, v);
+        _ => {
+            provenance.paths.insert(path.to_string(), layer);
         }
     }
 }

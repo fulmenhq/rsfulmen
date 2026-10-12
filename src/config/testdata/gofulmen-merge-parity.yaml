@@ -1,0 +1,93 @@
+# Ported from https://github.com/fulmenhq/gofulmen/blob/main/config/primitives_test.go
+# (`MergeMaps` / `DeepCopyMap`). Only YAML-representable cases live here.
+#
+# Go-only cases that have no `serde_yaml::Value` analogue (not ported):
+# - typed-nil map merges as empty object (`var m map[string]any`)
+# - typed-nil slice replaces as a nil slice (`var s []any`)
+# - `MergeMaps(nil, nil)` returns a non-nil empty map
+# - cycle rejection, json.Number, NaN/Inf, unsupported Go types
+#
+# Closest portable stand-ins are included below (`empty mapping`, YAML `null`).
+
+source: https://github.com/fulmenhq/gofulmen/blob/main/config/primitives_test.go
+
+cases:
+  - name: recursively_merges_objects_and_replaces_arrays
+    go_test: TestMergeMapsRecursivelyMergesWithoutAliasingInputs
+    base:
+      keep: base
+      object:
+        base: kept
+        shared:
+          - source: base
+      array:
+        - base
+    overlay:
+      object:
+        overlay:
+          - source: overlay
+      array:
+        - overlay
+    expected:
+      keep: base
+      object:
+        base: kept
+        shared:
+          - source: base
+        overlay:
+          - source: overlay
+      array:
+        - overlay
+
+  - name: untyped_null_deletes_mapping_key
+    go_test: TestMergeMapsDeletesWithUntypedNilAndHandlesTypedNilContainers
+    base:
+      delete:
+        nested: value
+      object:
+        keep: value
+      slice:
+        - value
+    overlay:
+      delete: null
+    expected:
+      object:
+        keep: value
+      slice:
+        - value
+
+  - name: empty_overlay_mapping_is_identity
+    go_test: TestMergeMapsDeletesWithUntypedNilAndHandlesTypedNilContainers
+    note: "Go typed-nil map is an empty object, not a delete. YAML {} is that portable case."
+    base:
+      object:
+        keep: value
+    overlay:
+      object: {}
+    expected:
+      object:
+        keep: value
+
+  - name: empty_mapping_on_absent_key
+    go_test: TestMergeMapsDeletesWithUntypedNilAndHandlesTypedNilContainers
+    note: "Go typed-nil map on an absent key becomes a non-nil empty object."
+    base: {}
+    overlay:
+      object: {}
+    expected:
+      object: {}
+
+  - name: nested_null_deletes_only_that_key
+    go_test: TestMergeMapsNilInputsAndNestedDeletion
+    base:
+      object:
+        remove: value
+        keep: value
+    overlay:
+      object:
+        remove: null
+        added: value
+    expected:
+      object:
+        keep: value
+        added: value
