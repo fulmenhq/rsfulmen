@@ -145,13 +145,22 @@ rather than installing a global logger.
 ### Pathfinder (`pathfinder`)
 
 Safe discovery with glob include/exclude, traversal protection, and repository
-root detection (`.git` directory or file).
+root detection.
+
+`find_repository_root` is the historical `.git`-only unbounded `Option` walk.
+`discover_repository_root` is the Crucible-aligned API: markers, max depth
+(default 10), home-directory ceiling, and structured errors.
 
 ```rust
-use rsfulmen::pathfinder;
+use rsfulmen::pathfinder::{
+    discover_repository_root, find_repository_root, RepositoryRootOptions,
+};
 use std::path::Path;
 
-let root = pathfinder::find_repository_root(Path::new("."));
+let _ = find_repository_root(Path::new("."));
+
+let opts = RepositoryRootOptions::with_markers([".git", "Cargo.toml"]);
+let _ = discover_repository_root(Path::new("."), &opts);
 ```
 
 ### Fulhash (`fulhash`)
