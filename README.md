@@ -528,7 +528,7 @@ rsfulmen = { version = "0.1", default-features = false, features = ["schema-vali
 ### Prerequisites
 
 - Rust 1.88+
-- [goneat](https://github.com/fulmenhq/goneat) **v0.6.2** for SSOT sync (installed via `make bootstrap`; [docs/GONEAT.md](docs/GONEAT.md)). TODO(goneat v0.6.3): bump when published.
+- [goneat](https://github.com/fulmenhq/goneat) **v0.6.3** for SSOT sync (installed via `make bootstrap`; [docs/GONEAT.md](docs/GONEAT.md)).
 
 ### Quick Start
 

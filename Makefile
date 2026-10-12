@@ -17,9 +17,7 @@ BIN_DIR := ./bin
 
 # External tooling (bootstrap)
 BINDIR ?= $(HOME)/.local/bin
-# TODO(goneat v0.6.3): bump when published. Tag/release also waits on
-# fulmen-toolbox v0.5.9. Latest published goneat as of 2026-10-12 is v0.6.2.
-GONEAT_VERSION ?= v0.6.2
+GONEAT_VERSION ?= v0.6.3
 SFETCH_INSTALL_URL ?= https://github.com/3leaps/sfetch/releases/latest/download/install-sfetch.sh
 
 # Coverage thresholds by lifecycle phase
