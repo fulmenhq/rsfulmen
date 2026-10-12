@@ -8,6 +8,8 @@ This directory contains archived release notes for rsfulmen.
 
 | Version             | Date       | Type                  |
 | ------------------- | ---------- | --------------------- |
+| [v0.1.5](v0.1.5.md) | 2026-06-05 | Process Release       |
+| [v0.1.4](v0.1.4.md) | 2026-02-21 | Feature Release       |
 | [v0.1.3](v0.1.3.md) | 2026-02-08 | Feature Release       |
 | [v0.1.2](v0.1.2.md) | 2026-01-08 | Feature Release       |
 | [v0.1.1](v0.1.1.md) | 2026-01-08 | Documentation Release |

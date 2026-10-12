@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-10-12
+
+Patch release after goneat v0.6.2 (#18): crate lockfile refresh, signed-tag
+tagger env, and `cargo deny` license policy. MSRV remains 1.88. Crucible
+embed is v0.4.19.
+
+### Added
+
+- **Signed-tag identity env** — `RSFULMEN_TAGGER_NAME` and
+  `RSFULMEN_TAGGER_EMAIL` are required for `make release-tag` and
+  `make release-verify-tag`. Scripts stamp the annotated tag with those
+  values and verify the tag object against them. No identities are
+  committed.
+
+### Changed
+
+- **goneat** pin `v0.6.0` → `v0.6.2` (merged in #18).
+- **Estate-wide darwin/amd64 drop** — goneat v0.6.2+ ships no
+  `darwin/amd64` asset. Intel macOS cannot bootstrap that pin.
+- `Cargo.lock` refresh within current direct-dep ranges (uuid 1.28.0,
+  xxhash-rust 0.8.19, libc 0.2.190, serde_json 1.0.154). Held:
+  jsonschema 0.17, dirs 5, thiserror 1, rstest 0.18, unicode-width 0.1,
+  zip 2, sha2 0.10, signal-hook 0.3, base64 0.22.
+- **`deny.toml`** — explicit license allow list so `cargo deny check`
+  licenses passes. `RUSTSEC-2024-0449` (unmaintained `unsafe-libyaml`
+  via `serde_yaml_ng`) is ignored; no compatible drop-in without a YAML
+  crate change.
+
+### Requirements
+
+- **Rust**: 1.88+ (MSRV, unchanged)
+- **Crucible**: v0.4.19 (embedded)
+
 ## [0.2.0] - 2026-09-02
 
 Stamp-only host identity plus goneat v0.6.0. **Breaking:** `resolve()` no

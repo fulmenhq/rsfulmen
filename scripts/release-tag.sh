@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/release-tagger.sh
+. "${script_dir}/lib/release-tagger.sh"
+
 repo_root() {
 	git rev-parse --show-toplevel
 }
@@ -75,10 +79,13 @@ ensure_gpg_signing_ready() {
 		exit 1
 	fi
 }
+
 main() {
 	local root
 	root="$(repo_root)"
 	cd "$root"
+
+	require_tagger_env
 
 	local version
 	version="$(read_version)"
@@ -135,7 +142,7 @@ main() {
 	tag_err="$(mktemp)"
 
 	if [ -n "${RSFULMEN_PGP_KEY_ID:-}" ]; then
-		if ! git tag -s -a "$tag" -u "${RSFULMEN_PGP_KEY_ID}" -m "Release $tag" 2>"${tag_err}"; then
+		if ! git -c user.name="${RSFULMEN_TAGGER_NAME}" -c user.email="${RSFULMEN_TAGGER_EMAIL}" tag -s -a "$tag" -u "${RSFULMEN_PGP_KEY_ID}" -m "Release $tag" 2>"${tag_err}"; then
 			cat "${tag_err}" >&2
 			if grep -qi "no secret key" "${tag_err}"; then
 				echo "hint: no secret key available for signing (check RSFULMEN_GPG_HOMEDIR/RSFULMEN_PGP_KEY_ID)" >&2
@@ -145,7 +152,7 @@ main() {
 			exit 1
 		fi
 	else
-		if ! git tag -s -a "$tag" -m "Release $tag" 2>"${tag_err}"; then
+		if ! git -c user.name="${RSFULMEN_TAGGER_NAME}" -c user.email="${RSFULMEN_TAGGER_EMAIL}" tag -s -a "$tag" -m "Release $tag" 2>"${tag_err}"; then
 			cat "${tag_err}" >&2
 			if grep -qi "no secret key" "${tag_err}"; then
 				echo "hint: no secret key available for signing (check RSFULMEN_GPG_HOMEDIR/RSFULMEN_PGP_KEY_ID)" >&2
@@ -160,6 +167,7 @@ main() {
 
 	echo "→ Verifying tag signature: $tag"
 	git verify-tag "$tag" >/dev/null
+	verify_tag_identity "$tag"
 
 	echo "✅ Created and verified signed tag: $tag"
 
