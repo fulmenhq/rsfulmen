@@ -171,8 +171,9 @@ mod tests {
     use serde::Deserialize;
     use std::collections::{BTreeMap, BTreeSet};
 
-    #[derive(Deserialize)]
+    #[derive(Deserialize, PartialEq, Debug)]
     struct Snapshot {
+        version: String,
         modes: BTreeMap<String, BTreeMap<String, Vec<i32>>>,
     }
 
@@ -200,24 +201,34 @@ mod tests {
     #[test]
     fn snapshot_parity_every_listed_code_maps() {
         let snap: Snapshot = serde_yaml::from_str(SNAPSHOT).expect("snapshot json");
-        for (mode_id, table) in &snap.modes {
-            let mode = SimplifiedMode::from_id(mode_id).expect("snapshot mode id");
-            let mut seen = BTreeSet::new();
-            for (simplified, sources) in table {
-                let expected: i32 = simplified.parse().expect("simplified key");
-                for code in sources {
-                    assert!(
-                        seen.insert(*code),
-                        "snapshot lists {code} twice in mode {mode_id}"
-                    );
-                    assert_eq!(
-                        map_to_simplified(*code, mode),
-                        Some(expected),
-                        "code {code} in mode {mode_id}"
-                    );
+        assert_eq!(snap.version, "v1.0.0");
+
+        let mut computed: BTreeMap<String, BTreeMap<String, Vec<i32>>> = BTreeMap::new();
+        for mode in [SimplifiedMode::Basic, SimplifiedMode::Severity] {
+            let mut table: BTreeMap<i32, BTreeSet<i32>> = BTreeMap::new();
+            for code in 0..=255 {
+                if let Some(simplified) = map_to_simplified(code, mode) {
+                    table.entry(simplified).or_default().insert(code);
                 }
             }
+            let rendered: BTreeMap<String, Vec<i32>> = table
+                .into_iter()
+                .map(|(simplified, sources)| {
+                    (simplified.to_string(), sources.into_iter().collect())
+                })
+                .collect();
+            computed.insert(mode.as_str().to_string(), rendered);
         }
+
+        assert_eq!(
+            computed.keys().cloned().collect::<BTreeSet<_>>(),
+            snap.modes.keys().cloned().collect::<BTreeSet<_>>(),
+            "mode set must match snapshot"
+        );
+        assert_eq!(
+            computed, snap.modes,
+            "per-mode mapping must match snapshot exactly"
+        );
     }
 
     #[test]

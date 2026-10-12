@@ -1831,27 +1831,43 @@ mod tests {
     #[test]
     fn test_signal_resolution_fixtures() {
         #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
         struct ResolveCase {
             input: String,
             expect_name: Option<String>,
+            #[allow(dead_code)]
+            description: Option<String>,
         }
         #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
         struct ListCase {
             expect_contains: Option<Vec<String>>,
             expect_min_count: Option<usize>,
+            #[allow(dead_code)]
+            description: Option<String>,
         }
         #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
         struct MatchCase {
-            pattern: Option<String>,
+            pattern: String,
             expect_equals_list_signal_names: Option<bool>,
             expect_contains: Option<Vec<String>>,
             expect_not_contains: Option<Vec<String>>,
             expect_min_count: Option<usize>,
             expect_count: Option<usize>,
             expect_empty: Option<bool>,
+            #[allow(dead_code)]
+            description: Option<String>,
         }
         #[derive(Deserialize)]
         struct Fixtures {
+            #[allow(dead_code)]
+            description: Option<String>,
+            #[allow(dead_code)]
+            version: Option<String>,
+            #[serde(rename = "$schema")]
+            #[allow(dead_code)]
+            schema: Option<String>,
             resolve_signal_tests: Vec<ResolveCase>,
             list_signal_names_tests: Vec<ListCase>,
             match_signal_names_tests: Vec<MatchCase>,
@@ -1880,9 +1896,7 @@ mod tests {
         }
 
         for case in fixtures.match_signal_names_tests {
-            let Some(pattern) = case.pattern else {
-                continue;
-            };
+            let pattern = case.pattern;
             let matched = match_signal_names(&pattern);
             if case.expect_equals_list_signal_names == Some(true) {
                 assert_eq!(matched, names, "pattern {pattern} should match all names");
@@ -1913,5 +1927,19 @@ mod tests {
                 assert!(matched.is_empty(), "pattern {pattern} should be empty");
             }
         }
+    }
+
+    #[test]
+    fn test_signal_resolution_fixture_rejects_missing_pattern_and_unknown_fields() {
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct MatchCase {
+            #[allow(dead_code)]
+            pattern: String,
+        }
+        let missing = serde_yaml::from_str::<MatchCase>("expect_empty: true");
+        assert!(missing.is_err(), "pattern is required");
+        let unknown = serde_yaml::from_str::<MatchCase>("pattern: '*'\nnot_a_field: 1");
+        assert!(unknown.is_err(), "unknown fields must fail deserialization");
     }
 }
