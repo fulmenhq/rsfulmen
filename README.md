@@ -494,7 +494,7 @@ rsfulmen = { version = "0.1", default-features = false, features = ["schema-vali
 | `foundry-correlation` | UUIDv7 correlation IDs                        | Adds `uuid`                                  |
 | `foundry`             | All foundry submodules                        | Convenience flag                             |
 | `fulencode`           | encode/decode/detect/normalize/BOM            | Adds `base64` + `unicode-normalization`      |
-| `config`              | `rsfulmen::config` (XDG paths)                | Adds `dirs`                                  |
+| `config`              | `rsfulmen::config` (XDG paths)                | std-only (no `dirs`)                         |
 | `appidentity`         | `rsfulmen::appidentity`                       | `.fulmen/app.yaml` discovery (adds `serde_json`) |
 | `logging`             | `rsfulmen::logging`                           | Simple/Structured profiles (adds `serde_json`) |
 | `fulhash`             | `rsfulmen::fulhash`                           | xxh3-128 + SHA-256 (adds `xxhash-rust`/`sha2`/`hex`) |

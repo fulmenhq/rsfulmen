@@ -115,8 +115,8 @@ cat .crucible/metadata/metadata.yaml
 | `prepush`     | rustfmt, clippy, tests, goneat assess (high)      |
 | `version-*`   | goneat version set/bump (release-pack only)       |
 
-`make check-all` is `fmt-check` + clippy + tests. Supply-chain policy is
-`make deny` (`cargo deny check`); CI runs that as its own job.
+`make check-all` is `fmt-check` + clippy + tests + `make deny` (read-only;
+`cargo deny` does not mutate the tree). CI also runs deny as its own job.
 
 ## CI alignment
 

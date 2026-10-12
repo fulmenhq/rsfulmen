@@ -14,7 +14,7 @@ This document covers day-to-day development workflow, release processes, and too
 | `make test`      | Run all tests                               |
 | `make lint`      | Run clippy linter                           |
 | `make fmt`       | Format code with rustfmt                    |
-| `make check-all` | Full quality gate (fmt-check + lint + test) |
+| `make check-all` | Full quality gate (fmt-check + lint + test + deny) |
 | `make deny`      | `cargo deny check` (licenses, bans, advisories, sources) |
 | `make doc`       | Generate rustdoc documentation              |
 

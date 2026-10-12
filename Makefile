@@ -8,7 +8,7 @@
 #   make bootstrap      - Install dependencies and external tools
 #   make test           - Run tests
 #   make build          - Build library
-#   make check-all      - Full quality check (lint, test)
+#   make check-all      - Full quality check (lint, test, deny)
 
 # Variables
 VERSION := $(shell cat VERSION 2>/dev/null || echo "0.1.0")
@@ -258,7 +258,7 @@ deny: ## Run cargo-deny (licenses, bans, advisories, sources)
 	@cargo deny check licenses bans advisories sources
 	@echo "✅ cargo deny passed"
 
-check-all: fmt-check lint test ## Run all quality checks
+check-all: fmt-check lint test deny ## Run all quality checks (read-only; deny does not mutate)
 	@echo "✅ All checks passed"
 
 quality: build check-all ## Run build, lint, and tests

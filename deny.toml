@@ -17,7 +17,6 @@ allow = [
     "BSD-2-Clause",
     "0BSD",
     "BSL-1.0",
-    "MPL-2.0",
     "Zlib",
 ]
 

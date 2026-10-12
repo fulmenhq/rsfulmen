@@ -7,7 +7,7 @@ This directory contains local development documentation for rsfulmen. For Crucib
 | Document                       | Description                                       |
 | ------------------------------ | ------------------------------------------------- |
 | [operations.md](operations.md) | Build, test, release, and operations runbook      |
-| [adr/](adr/)                   | Architecture Decision Records (rsfulmen-specific) |
+| [adr/](adr/)                   | Legacy local-ADR index (new records: [`../decisions/`](../decisions/)) |
 
 Related repo docs (not in this folder):
 
@@ -15,6 +15,7 @@ Related repo docs (not in this folder):
 | -------- | ----------- |
 | [INTEGRATION.md](../INTEGRATION.md) | Consumer integration guide |
 | [GONEAT.md](../GONEAT.md) | goneat pin, bootstrap, and SSOT sync |
+| [decisions/](../decisions/) | Local `*DR` records (ADR / SecDR / …) |
 
 ## Quick Start
 

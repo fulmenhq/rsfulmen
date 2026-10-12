@@ -34,6 +34,7 @@ use std::path::PathBuf;
 pub mod env;
 #[cfg(feature = "three-layer-config")]
 pub mod three_layer;
+mod xdg;
 
 /// XDG base directories structure.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -53,11 +54,7 @@ pub struct XdgBaseDirs {
 /// - macOS: Uses `~/Library/Application Support` and `~/Library/Caches`
 /// - Windows: Uses `%APPDATA%` and `%LOCALAPPDATA%`
 pub fn get_xdg_base_dirs() -> XdgBaseDirs {
-    XdgBaseDirs {
-        config_home: dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")),
-        data_home: dirs::data_dir().unwrap_or_else(|| PathBuf::from(".")),
-        cache_home: dirs::cache_dir().unwrap_or_else(|| PathBuf::from(".")),
-    }
+    xdg::from_process_env()
 }
 
 /// Get the configuration directory for an arbitrary application.

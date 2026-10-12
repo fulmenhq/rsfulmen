@@ -292,9 +292,11 @@ All language foundations should embed the same Crucible tag for catalog parity.
 
 ### Config directory not where you expect
 
-`dirs` (behind the `config` feature) follows the platform conventions documented
-in [Fulmen Config Paths](crucible-rs/standards/config/fulmen-config-paths.md).
-Override with standard XDG environment variables on Linux.
+Config paths follow the platform conventions documented in
+[Fulmen Config Paths](crucible-rs/standards/config/fulmen-config-paths.md).
+Resolution is std-only (no `dirs` crate). Absolute `XDG_*` environment
+variables win on every platform; otherwise Unix, macOS, and Windows fallbacks
+from that table apply.
 
 ## Support
 
