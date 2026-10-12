@@ -1,6 +1,11 @@
 # Architecture Decision Records (rsfulmen)
 
-This directory contains **local ADRs** for rsfulmen-specific decisions. For ecosystem-wide ADRs that apply across all Fulmen helper libraries, see [`../../crucible-rs/architecture/decisions/`](../../crucible-rs/architecture/decisions/).
+New rsfulmen `*DR` records (ADR / DDR / SecDR / PDR / EPR) live in
+[`../../decisions/`](../../decisions/), following
+[3leaps/crucible ADR-0003](https://github.com/3leaps/crucible/blob/main/docs/decisions/ADR-0003-decision-record-taxonomy.md).
+This folder keeps the older local-ADR index and template.
+
+For ecosystem-wide ADRs that apply across all Fulmen helper libraries, see [`../../crucible-rs/architecture/decisions/`](../../crucible-rs/architecture/decisions/).
 
 ## ADR Index
 

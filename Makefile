@@ -8,7 +8,7 @@
 #   make bootstrap      - Install dependencies and external tools
 #   make test           - Run tests
 #   make build          - Build library
-#   make check-all      - Full quality check (lint, test)
+#   make check-all      - Full quality check (lint, test, deny)
 
 # Variables
 VERSION := $(shell cat VERSION 2>/dev/null || echo "0.1.0")
@@ -17,6 +17,8 @@ BIN_DIR := ./bin
 
 # External tooling (bootstrap)
 BINDIR ?= $(HOME)/.local/bin
+# TODO(goneat v0.6.3): bump when published. Tag/release also waits on
+# fulmen-toolbox v0.5.9. Latest published goneat as of 2026-10-12 is v0.6.2.
 GONEAT_VERSION ?= v0.6.2
 SFETCH_INSTALL_URL ?= https://github.com/3leaps/sfetch/releases/latest/download/install-sfetch.sh
 
@@ -38,7 +40,7 @@ endif
 
 .PHONY: all help bootstrap bootstrap-force bootstrap-cargo-tools tools hooks-ensure sync sync-ssot lint fmt test test-cov build build-all clean
 .PHONY: version version-set version-propagate version-bump-major version-bump-minor version-bump-patch version-bump-calver
-.PHONY: check-all quality precommit prepush lifecycle msrv-check
+.PHONY: check-all quality precommit prepush lifecycle msrv-check deny
 .PHONY: release-check release-prepare release-build release-clean
 .PHONY: release-provenance-check release-guard-tag-version release-tag release-verify-tag
 .PHONY: doc
@@ -77,6 +79,7 @@ help: ## Show this help message
 	@echo ""
 	@echo "Quality Targets:"
 	@echo "  check-all       - Run all quality checks (lint, test)"
+	@echo "  deny            - cargo deny check (licenses, bans, advisories, sources)"
 	@echo "  quality         - Run build, lint, and tests"
 	@echo "  precommit       - Pre-commit hooks (fast, critical issues)"
 	@echo "  prepush         - Pre-push hooks (comprehensive, high severity)"
@@ -250,7 +253,12 @@ msrv-check: ## Verify MSRV compatibility with dependencies (requires cargo-msrv)
 		echo "⚠️  cargo-msrv not installed, skipping (run: make bootstrap-cargo-tools)"; \
 	fi
 
-check-all: fmt-check lint test ## Run all quality checks
+deny: ## Run cargo-deny (licenses, bans, advisories, sources)
+	@echo "Running cargo deny check (licenses, bans, advisories, sources)..."
+	@cargo deny check licenses bans advisories sources
+	@echo "✅ cargo deny passed"
+
+check-all: fmt-check lint test deny ## Run all quality checks (read-only; deny does not mutate)
 	@echo "✅ All checks passed"
 
 quality: build check-all ## Run build, lint, and tests

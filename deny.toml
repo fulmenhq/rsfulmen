@@ -1,5 +1,7 @@
-# cargo-deny policy. `cargo deny check` uses this allow list; an empty
-# default allow list is what failed licenses on #18.
+# cargo-deny policy. CI (`.github/workflows/ci.yml` job `cargo deny`) and
+# `make deny` run: cargo deny check licenses bans advisories sources
+# Do not add license exceptions without maintainer sign-off.
+# An empty default allow list is what failed licenses on #18.
 
 [graph]
 all-features = true
@@ -15,7 +17,6 @@ allow = [
     "BSD-2-Clause",
     "0BSD",
     "BSL-1.0",
-    "MPL-2.0",
     "Zlib",
 ]
 

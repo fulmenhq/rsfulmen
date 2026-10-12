@@ -14,7 +14,8 @@ This document covers day-to-day development workflow, release processes, and too
 | `make test`      | Run all tests                               |
 | `make lint`      | Run clippy linter                           |
 | `make fmt`       | Format code with rustfmt                    |
-| `make check-all` | Full quality gate (fmt-check + lint + test) |
+| `make check-all` | Full quality gate (fmt-check + lint + test + deny) |
+| `make deny`      | `cargo deny check` (licenses, bans, advisories, sources) |
 | `make doc`       | Generate rustdoc documentation              |
 
 ### Daily Workflow
@@ -154,7 +155,7 @@ goneat doctor tools --scope foundation
 
 ### Rust Toolchain
 
-**MSRV**: 1.83+
+**MSRV**: 1.88 (working toolchain: `rust-toolchain.toml` → 1.98.0)
 
 ```bash
 # Check MSRV compatibility
@@ -172,9 +173,13 @@ rustup update
 # Audit for known vulnerabilities
 cargo audit
 
-# Check licenses and security policy
-cargo deny check
+# Check licenses, bans, advisories, and crate sources
+make deny
+# equivalent: cargo deny check licenses bans advisories sources
 ```
+
+Policy file: [`deny.toml`](../../deny.toml). CI runs the same check as a dedicated
+`cargo deny` job. Do not add license exceptions without maintainer sign-off.
 
 ### Vulnerability Reporting
 
