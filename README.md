@@ -38,6 +38,8 @@ See `rsfulmen::buildinfo` and
 
 📖 **[Read the complete rsfulmen overview](docs/rsfulmen-overview.md)** for comprehensive documentation including module catalog and roadmap.
 
+Consumer integration: **[docs/INTEGRATION.md](docs/INTEGRATION.md)**. Contributor tooling: **[docs/GONEAT.md](docs/GONEAT.md)**.
+
 ## Overview
 
 rsfulmen provides consistent, high-quality implementations of common functionality across the FulmenHQ ecosystem. Built on Crucible's schemas and standards, it ensures uniformity and reliability with idiomatic Rust APIs.
@@ -100,7 +102,7 @@ fn main() {
 
 | Field         | Description                                                  |
 | ------------- | ------------------------------------------------------------ |
-| `version`     | CalVer Crucible version (e.g., `0.4.13`)                     |
+| `version`     | CalVer Crucible version (e.g., `0.4.19`)                     |
 | `commit`      | Git commit SHA of the synced Crucible snapshot               |
 | `dirty`       | `true` if synced from uncommitted changes (development only) |
 | `synced_at`   | RFC3339 timestamp when sync occurred                         |
@@ -513,7 +515,7 @@ rsfulmen = { version = "0.1", default-features = false, features = ["schema-vali
 ### Prerequisites
 
 - Rust 1.88+
-- [goneat](https://github.com/fulmenhq/goneat) for SSOT sync (installed via `make bootstrap`)
+- [goneat](https://github.com/fulmenhq/goneat) **v0.6.2** for SSOT sync (installed via `make bootstrap`; [docs/GONEAT.md](docs/GONEAT.md)). TODO(goneat v0.6.3): bump when published.
 
 ### Quick Start
 
@@ -542,6 +544,7 @@ make check-all
 | `lint`      | Run clippy with strict warnings         |
 | `fmt`       | Format code with rustfmt                |
 | `check-all` | fmt-check + lint + test                 |
+| `deny`      | `cargo deny check` (licenses, bans, advisories, sources) |
 | `doc`       | Generate rustdoc documentation          |
 | `version`   | Print current version                   |
 
@@ -572,7 +575,7 @@ rsfulmen is part of the Fulmen helper library family. All libraries derive their
 | [gofulmen](https://github.com/fulmenhq/gofulmen) | Go         | Reference impl | v0.4.x           |
 | [tsfulmen](https://github.com/fulmenhq/tsfulmen) | TypeScript | Stable         | v0.4.x           |
 | [pyfulmen](https://github.com/fulmenhq/pyfulmen) | Python     | Stable         | v0.4.x           |
-| rsfulmen                                         | Rust       | Alpha          | v0.4.13          |
+| rsfulmen                                         | Rust       | Alpha          | v0.4.19          |
 
 **Why this matters**: A Rust service using `EXIT_CONFIG_INVALID` (code 20) will match a Go service using the same exit code. Your alerting rules and runbooks work across the entire stack.
 
@@ -610,11 +613,28 @@ cargo tree
 # Check for known vulnerabilities
 cargo audit
 
+# License / ban / advisory / source policy (CI + make deny)
+cargo deny check licenses bans advisories sources
+
 # Generate SBOM
 cargo sbom > sbom.json
 ```
 
 See [SECURITY.md](SECURITY.md) for vulnerability reporting and our full security policy.
+
+## Documentation
+
+### For library consumers
+
+- **[Integration Guide](docs/INTEGRATION.md)** — add rsfulmen to an application, pick features, typical CLI/library patterns
+- **[rsfulmen Overview](docs/rsfulmen-overview.md)** — module catalog and feature-gate trade-offs
+- **rustdoc** — `cargo doc --open --package rsfulmen`
+
+### For contributors
+
+- **[Goneat Guide](docs/GONEAT.md)** — bootstrap pin, Crucible sync, Makefile / CI alignment
+- **[Operations](docs/development/operations.md)** — day-to-day build, test, and release runbook
+- **[AGENTS.md](AGENTS.md)** — supervised-mode agent protocol
 
 ## Contributing
 

@@ -122,3 +122,20 @@ jobs:
         run: cargo test --locked --all-features
         env:
           RUSTUP_TOOLCHAIN: 1.88.0
+  # Supply-chain policy (licenses, bans, advisories, sources).
+  # deny.toml is the policy; do not add license exceptions without sign-off.
+  cargo-deny:
+    name: cargo deny
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: cargo deny (licenses bans advisories sources)
+        uses: EmbarkStudios/cargo-deny-action@v2.1.1
+        with:
+          rust-version: "1.98.0"
+          command: check
+          arguments: --all-features
+          command-arguments: licenses bans advisories sources

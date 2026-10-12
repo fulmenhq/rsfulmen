@@ -9,6 +9,13 @@ This directory contains local development documentation for rsfulmen. For Crucib
 | [operations.md](operations.md) | Build, test, release, and operations runbook      |
 | [adr/](adr/)                   | Architecture Decision Records (rsfulmen-specific) |
 
+Related repo docs (not in this folder):
+
+| Document | Description |
+| -------- | ----------- |
+| [INTEGRATION.md](../INTEGRATION.md) | Consumer integration guide |
+| [GONEAT.md](../GONEAT.md) | goneat pin, bootstrap, and SSOT sync |
+
 ## Quick Start
 
 ```bash
