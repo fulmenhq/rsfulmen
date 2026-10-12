@@ -319,17 +319,20 @@ impl std::fmt::Display for ParseBoolError {
 
 impl std::error::Error for ParseBoolError {}
 
+/// Process-wide lock for tests that mutate environment variables.
+///
+/// `load_three_layer` reads `XDG_CONFIG_HOME` / `APPDATA` via `get_app_config_dir`.
+#[cfg(test)]
+pub(crate) fn process_env_lock() -> &'static std::sync::Mutex<()> {
+    static LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
+    LOCK.get_or_init(|| std::sync::Mutex::new(()))
+}
+
 #[cfg(test)]
 mod tests {
     use std::ffi::OsString;
-    use std::sync::{Mutex, OnceLock};
 
     use super::*;
-
-    fn env_lock() -> &'static Mutex<()> {
-        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-        LOCK.get_or_init(|| Mutex::new(()))
-    }
 
     struct EnvGuard {
         previous: Vec<(String, Option<OsString>)>,
@@ -368,7 +371,7 @@ mod tests {
 
     #[test]
     fn test_load_env_overrides_string() {
-        let _lock = env_lock().lock().unwrap();
+        let _lock = process_env_lock().lock().unwrap();
         let _guard = EnvGuard::set(&[("RSF_ENV_APP_NAME", "myapp")]);
         let specs = vec![EnvVarSpec {
             name: "RSF_ENV_APP_NAME".to_string(),
@@ -393,7 +396,7 @@ mod tests {
 
     #[test]
     fn test_load_env_overrides_int() {
-        let _lock = env_lock().lock().unwrap();
+        let _lock = process_env_lock().lock().unwrap();
         let _guard = EnvGuard::set(&[("RSF_ENV_APP_PORT", "8080")]);
         let specs = vec![EnvVarSpec {
             name: "RSF_ENV_APP_PORT".to_string(),
@@ -418,7 +421,7 @@ mod tests {
 
     #[test]
     fn test_load_env_overrides_bool_flexible() {
-        let _lock = env_lock().lock().unwrap();
+        let _lock = process_env_lock().lock().unwrap();
         let specs = vec![EnvVarSpec {
             name: "RSF_ENV_APP_FLAG".to_string(),
             path: vec!["debug".to_string()],
@@ -455,7 +458,7 @@ mod tests {
 
     #[test]
     fn test_load_env_overrides_parse_error() {
-        let _lock = env_lock().lock().unwrap();
+        let _lock = process_env_lock().lock().unwrap();
         let _guard = EnvGuard::set(&[("RSF_ENV_APP_PORT", "notanumber")]);
         let specs = vec![EnvVarSpec {
             name: "RSF_ENV_APP_PORT".to_string(),
@@ -470,7 +473,7 @@ mod tests {
 
     #[test]
     fn test_alias_takes_precedence() {
-        let _lock = env_lock().lock().unwrap();
+        let _lock = process_env_lock().lock().unwrap();
         let _guard = EnvGuard::set(&[("RSF_ENV_APP_PORT", "8080"), ("RSF_ENV_PORT", "9090")]);
         let specs = vec![EnvVarSpec {
             name: "RSF_ENV_APP_PORT".to_string(),
@@ -495,7 +498,7 @@ mod tests {
 
     #[test]
     fn test_conflict_detected_different_values() {
-        let _lock = env_lock().lock().unwrap();
+        let _lock = process_env_lock().lock().unwrap();
         let _guard = EnvGuard::set(&[("RSF_ENV_APP_PORT", "8080"), ("RSF_ENV_PORT", "9090")]);
         let specs = vec![EnvVarSpec {
             name: "RSF_ENV_APP_PORT".to_string(),
@@ -513,7 +516,7 @@ mod tests {
 
     #[test]
     fn test_no_conflict_when_values_match_after_trim() {
-        let _lock = env_lock().lock().unwrap();
+        let _lock = process_env_lock().lock().unwrap();
         let _guard = EnvGuard::set(&[("RSF_ENV_APP_PORT", "8080"), ("RSF_ENV_PORT", " 8080 ")]);
         let specs = vec![EnvVarSpec {
             name: "RSF_ENV_APP_PORT".to_string(),
@@ -528,7 +531,7 @@ mod tests {
 
     #[test]
     fn test_sensitive_value_masking() {
-        let _lock = env_lock().lock().unwrap();
+        let _lock = process_env_lock().lock().unwrap();
         let _guard = EnvGuard::set(&[
             ("RSF_ENV_APP_SECRET_KEY", "mysecret"),
             ("RSF_ENV_SECRET_KEY", "othersecret"),
@@ -559,7 +562,7 @@ mod tests {
 
     #[test]
     fn test_unset_env_var_skipped() {
-        let _lock = env_lock().lock().unwrap();
+        let _lock = process_env_lock().lock().unwrap();
         let _guard = EnvGuard::unset(&["RSF_ENV_APP_MISSING"]);
         let specs = vec![EnvVarSpec {
             name: "RSF_ENV_APP_MISSING".to_string(),
@@ -575,7 +578,7 @@ mod tests {
 
     #[test]
     fn test_nested_path_creates_intermediate_maps() {
-        let _lock = env_lock().lock().unwrap();
+        let _lock = process_env_lock().lock().unwrap();
         let _guard = EnvGuard::set(&[("RSF_ENV_DB_HOST", "localhost")]);
         let specs = vec![EnvVarSpec {
             name: "RSF_ENV_DB_HOST".to_string(),
@@ -609,7 +612,7 @@ mod tests {
 
     #[test]
     fn test_report_applied_tracks_source() {
-        let _lock = env_lock().lock().unwrap();
+        let _lock = process_env_lock().lock().unwrap();
         let _guard = EnvGuard::set(&[("RSF_ENV_PORT", "8080")]);
         let specs = vec![EnvVarSpec {
             name: "RSF_ENV_APP_PORT".to_string(),
@@ -628,7 +631,7 @@ mod tests {
 
     #[test]
     fn test_parse_error_masks_sensitive_values() {
-        let _lock = env_lock().lock().unwrap();
+        let _lock = process_env_lock().lock().unwrap();
         let _guard = EnvGuard::set(&[("RSF_ENV_DB_PASSWORD", "not-a-bool")]);
         let specs = vec![EnvVarSpec {
             name: "RSF_ENV_DB_PASSWORD".to_string(),
@@ -648,7 +651,7 @@ mod tests {
     fn test_integration_with_three_layer() {
         use crate::config::three_layer::{load_three_layer, ThreeLayerOptions};
 
-        let _lock = env_lock().lock().unwrap();
+        let _lock = process_env_lock().lock().unwrap();
         let _guard = EnvGuard::set(&[("RSF_ENV_TERMINAL_LANG", "fr")]);
 
         let specs = vec![EnvVarSpec {

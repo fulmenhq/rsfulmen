@@ -410,6 +410,93 @@ nested:
     }
 
     #[test]
+    fn load_three_layer_user_null_then_runtime_restore() {
+        use crate::config::env::process_env_lock;
+        use std::ffi::OsString;
+
+        struct EnvGuard {
+            previous: Vec<(String, Option<OsString>)>,
+        }
+        impl EnvGuard {
+            fn set(values: &[(&str, &str)]) -> Self {
+                let mut previous = Vec::with_capacity(values.len());
+                for (key, value) in values {
+                    previous.push(((*key).to_string(), std::env::var_os(key)));
+                    std::env::set_var(key, value);
+                }
+                Self { previous }
+            }
+        }
+        impl Drop for EnvGuard {
+            fn drop(&mut self) {
+                for (key, previous) in self.previous.iter().rev() {
+                    match previous {
+                        Some(value) => std::env::set_var(key, value),
+                        None => std::env::remove_var(key),
+                    }
+                }
+            }
+        }
+
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let config_home = tmp.path().join("config");
+        let app_name = format!(
+            "rsfulmen-three-layer-{}",
+            tmp.path().file_name().unwrap().to_string_lossy()
+        );
+        let user_rel = "overrides.yaml";
+        let user_path = config_home.join(&app_name).join(user_rel);
+        fs::create_dir_all(user_path.parent().unwrap()).unwrap();
+        // `key` is not in the terminal SSOT defaults (user null is a no-op
+        // delete). `last_updated` is a real defaults key that is deleted then
+        // restored. `notes` is a real defaults key that stays deleted.
+        fs::write(&user_path, "key: null\nlast_updated: null\nnotes: null\n").unwrap();
+
+        let config_home_str = config_home.to_str().expect("utf8 temp path");
+        let _lock = process_env_lock().lock().unwrap();
+        let _guard = EnvGuard::set(&[
+            ("XDG_CONFIG_HOME", config_home_str),
+            ("APPDATA", config_home_str),
+        ]);
+
+        let options = ThreeLayerOptions {
+            app_name,
+            defaults_path: "terminal/v1.0.0/terminal-overrides-defaults.yaml".to_string(),
+            user_config_path: user_rel.to_string(),
+            runtime_overrides: Some(
+                serde_yaml::from_str("key: restored\nlast_updated: from-runtime\n").unwrap(),
+            ),
+            schema_path: None,
+        };
+
+        let out = load_three_layer(&options).unwrap();
+        let mapping = out.config.as_mapping().unwrap();
+        assert_eq!(
+            mapping.get(Value::String("key".into())).unwrap(),
+            &Value::String("restored".into())
+        );
+        assert_eq!(
+            mapping.get(Value::String("last_updated".into())).unwrap(),
+            &Value::String("from-runtime".into())
+        );
+        assert!(
+            mapping.get(Value::String("notes".into())).is_none(),
+            "notes must stay deleted after user null and no runtime restore"
+        );
+        assert!(mapping.contains_key(Value::String("version".into())));
+        assert!(mapping.contains_key(Value::String("terminals".into())));
+        assert_eq!(
+            out.provenance.paths.get("/key"),
+            Some(&ConfigLayer::Runtime)
+        );
+        assert_eq!(
+            out.provenance.paths.get("/last_updated"),
+            Some(&ConfigLayer::Runtime)
+        );
+        assert_eq!(out.provenance.paths.get("/notes"), Some(&ConfigLayer::User));
+    }
+
+    #[test]
     fn test_load_three_layer_defaults_only_with_runtime_overrides() {
         // Use a unique app name + non-existent config file to avoid pulling any user config.
         let options = ThreeLayerOptions {
