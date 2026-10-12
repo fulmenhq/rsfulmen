@@ -25,8 +25,9 @@ licenses passes. MSRV remains 1.88. Embedded Crucible is v0.4.19.
   `make release-tag` and `make release-verify-tag`. Tag object is stamped
   and verified against env. No identities committed.
 - **`deny.toml`** — license allow list; fixes the #18 licenses failure.
-- **Lockfile** — uuid 1.28.0; xxhash-rust 0.8.19; libc 0.2.190;
-  serde_json 1.0.154. jsonschema 0.17, dirs 5, thiserror 1 held.
+- **Lockfile** — xxhash-rust 0.8.19; libc 0.2.190; serde_json 1.0.154.
+  uuid held at 1.26.1 (1.28.0 needs rustc 1.89). jsonschema 0.17, dirs 5,
+  thiserror 1 held.
 
 #### Breaking Changes
 

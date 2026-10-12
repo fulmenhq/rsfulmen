@@ -24,10 +24,10 @@ embed is v0.4.19.
 - **goneat** pin `v0.6.0` → `v0.6.2` (merged in #18).
 - **Estate-wide darwin/amd64 drop** — goneat v0.6.2+ ships no
   `darwin/amd64` asset. Intel macOS cannot bootstrap that pin.
-- `Cargo.lock` refresh within current direct-dep ranges (uuid 1.28.0,
-  xxhash-rust 0.8.19, libc 0.2.190, serde_json 1.0.154). Held:
-  jsonschema 0.17, dirs 5, thiserror 1, rstest 0.18, unicode-width 0.1,
-  zip 2, sha2 0.10, signal-hook 0.3, base64 0.22.
+- `Cargo.lock` refresh within current direct-dep ranges (xxhash-rust
+  0.8.19, libc 0.2.190, serde_json 1.0.154). Held: uuid 1.26.1 (1.28.0
+  needs rustc 1.89), jsonschema 0.17, dirs 5, thiserror 1, rstest 0.18,
+  unicode-width 0.1, zip 2, sha2 0.10, signal-hook 0.3, base64 0.22.
 - **`deny.toml`** — explicit license allow list so `cargo deny check`
   licenses passes. `RUSTSEC-2024-0449` (unmaintained `unsafe-libyaml`
   via `serde_yaml_ng`) is ignored; no compatible drop-in without a YAML
