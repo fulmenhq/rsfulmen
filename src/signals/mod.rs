@@ -1348,4 +1348,316 @@ mod tests {
 
         assert!(hit.load(Ordering::SeqCst));
     }
+
+    #[test]
+    fn multiple_handlers_run_in_registration_order() {
+        let manager = SignalManager::new();
+        let order = Arc::new(Mutex::new(Vec::new()));
+
+        let o1 = Arc::clone(&order);
+        let _g1 = manager
+            .handle(sigterm_number(), move || {
+                o1.lock().expect("order").push(1usize);
+                Ok(())
+            })
+            .expect("register first");
+
+        let o2 = Arc::clone(&order);
+        let _g2 = manager
+            .handle(sigterm_number(), move || {
+                o2.lock().expect("order").push(2usize);
+                Ok(())
+            })
+            .expect("register second");
+
+        manager.dispatch_signal(sigterm_number(), &mut None);
+        assert_eq!(*order.lock().expect("order"), vec![1, 2]);
+    }
+
+    #[test]
+    fn handler_error_does_not_stop_later_handlers() {
+        let manager = SignalManager::new();
+        let later = Arc::new(AtomicUsize::new(0));
+
+        let _g1 = manager
+            .handle(sigterm_number(), || Err("boom".into()))
+            .expect("register failing handler");
+
+        let later_c = Arc::clone(&later);
+        let _g2 = manager
+            .handle(sigterm_number(), move || {
+                later_c.fetch_add(1, Ordering::SeqCst);
+                Ok(())
+            })
+            .expect("register later handler");
+
+        manager.dispatch_signal(sigterm_number(), &mut None);
+        assert_eq!(later.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn handler_panic_skips_later_handlers_and_shutdown() {
+        let manager = SignalManager::new();
+        let later = Arc::new(AtomicUsize::new(0));
+        let shutdown = Arc::new(AtomicUsize::new(0));
+
+        let _g1 = manager
+            .handle(sigterm_number(), || panic!("handler panic"))
+            .expect("register panicking handler");
+
+        let later_c = Arc::clone(&later);
+        let _g2 = manager
+            .handle(sigterm_number(), move || {
+                later_c.fetch_add(1, Ordering::SeqCst);
+                Ok(())
+            })
+            .expect("register later handler");
+
+        let shutdown_c = Arc::clone(&shutdown);
+        manager.on_shutdown(move || {
+            shutdown_c.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        });
+
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            manager.dispatch_signal(sigterm_number(), &mut None);
+        }));
+        assert!(result.is_err(), "dispatch should unwind");
+        assert_eq!(later.load(Ordering::SeqCst), 0);
+        assert_eq!(shutdown.load(Ordering::SeqCst), 0);
+    }
+
+    #[test]
+    fn rapid_sighup_is_not_coalesced() {
+        let manager = SignalManager::new();
+        let hits = Arc::new(AtomicUsize::new(0));
+        let hits_c = Arc::clone(&hits);
+        manager.on_reload(move || {
+            hits_c.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        });
+
+        manager.dispatch_signal(sighup_number(), &mut None);
+        manager.dispatch_signal(sighup_number(), &mut None);
+        assert_eq!(hits.load(Ordering::SeqCst), 2);
+    }
+
+    #[test]
+    fn double_sigterm_runs_shutdown_hooks_once() {
+        let manager = SignalManager::new();
+        let hits = Arc::new(AtomicUsize::new(0));
+        let hits_c = Arc::clone(&hits);
+        manager.on_shutdown(move || {
+            hits_c.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        });
+
+        manager.dispatch_signal(sigterm_number(), &mut None);
+        manager.dispatch_signal(sigterm_number(), &mut None);
+        assert_eq!(hits.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn redispatch_from_shutdown_hook_sees_empty_chain() {
+        let manager = SignalManager::new();
+        let hits = Arc::new(AtomicUsize::new(0));
+
+        let hits_inner = Arc::clone(&hits);
+        let manager_inner = manager.clone();
+        manager.on_shutdown(move || {
+            hits_inner.fetch_add(1, Ordering::SeqCst);
+            manager_inner.dispatch_signal(sigterm_number(), &mut None);
+            Ok(())
+        });
+
+        let hits_late = Arc::clone(&hits);
+        manager.on_shutdown(move || {
+            hits_late.fetch_add(10, Ordering::SeqCst);
+            Ok(())
+        });
+
+        manager.dispatch_signal(sigterm_number(), &mut None);
+        // LIFO: +10 then +1 (which re-dispatches an already-taken chain).
+        assert_eq!(hits.load(Ordering::SeqCst), 11);
+    }
+
+    #[test]
+    fn handle_from_inside_handler_does_not_deadlock() {
+        let manager = SignalManager::new();
+        let stored: Arc<Mutex<Option<SignalRegistration>>> = Arc::new(Mutex::new(None));
+        let stored_c = Arc::clone(&stored);
+        let manager_c = manager.clone();
+
+        let _outer = manager
+            .handle(sigterm_number(), move || {
+                let inner = manager_c
+                    .handle(sigterm_number(), || Ok(()))
+                    .expect("inner register during dispatch");
+                *stored_c.lock().expect("stored") = Some(inner);
+                Ok(())
+            })
+            .expect("outer register");
+
+        manager.dispatch_signal(sigterm_number(), &mut None);
+        assert!(
+            stored.lock().expect("stored").is_some(),
+            "inner registration should complete"
+        );
+    }
+
+    #[test]
+    fn handle_unknown_signal_number_errors() {
+        let manager = SignalManager::new();
+        let err = match manager.handle(i32::MAX, || Ok(())) {
+            Ok(_) => panic!("unknown signal should not register"),
+            Err(e) => e,
+        };
+        assert!(matches!(err, SignalManagerError::UnknownSignal(_)));
+    }
+
+    #[test]
+    fn listen_rejects_second_caller() {
+        let manager = SignalManager::new();
+        let injector = testing::SignalInjector::new(&manager);
+        let manager_listen = manager.clone();
+        let listener = thread::spawn(move || manager_listen.listen());
+
+        injector
+            .wait_for_listen(Duration::from_secs(1))
+            .expect("listener should start");
+
+        let err = manager.listen().expect_err("second listen");
+        assert!(matches!(err, SignalManagerError::ListenAlreadyRunning));
+
+        manager.stop();
+        listener
+            .join()
+            .expect("listener thread should join")
+            .expect("listener should exit cleanly");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_unsupported_signal_is_noop_registration() {
+        let manager = SignalManager::new();
+        assert!(!manager.supports(SIGHUP));
+        let guard = manager
+            .handle(SIGHUP, || Ok(()))
+            .expect("Windows returns a noop registration, not an error");
+        drop(guard);
+    }
+
+    #[test]
+    fn shutdown_hook_error_does_not_stop_later_hooks() {
+        let manager = SignalManager::new();
+        let later = Arc::new(AtomicUsize::new(0));
+
+        manager.on_shutdown(|| Err("first hook failed".into()));
+
+        let later_c = Arc::clone(&later);
+        manager.on_shutdown(move || {
+            later_c.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        });
+
+        // LIFO: later hook (+1) runs first, then the erroring hook. Both must run.
+        manager.dispatch_signal(sigterm_number(), &mut None);
+        assert_eq!(later.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn reload_hook_error_does_not_stop_later_hooks() {
+        let manager = SignalManager::new();
+        let later = Arc::new(AtomicUsize::new(0));
+
+        manager.on_reload(|| Err("reload failed".into()));
+
+        let later_c = Arc::clone(&later);
+        manager.on_reload(move || {
+            later_c.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        });
+
+        manager.dispatch_signal(sighup_number(), &mut None);
+        assert_eq!(later.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn first_sigint_with_double_tap_runs_shutdown_without_force_exit() {
+        let manager = SignalManager::new();
+        manager.enable_double_tap(DoubleTapConfig {
+            window: Duration::from_secs(2),
+            message: String::new(),
+            exit_code: 99,
+        });
+
+        let hits = Arc::new(AtomicUsize::new(0));
+        let hits_c = Arc::clone(&hits);
+        manager.on_shutdown(move || {
+            hits_c.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        });
+
+        manager.dispatch_signal(sigint_number(), &mut None);
+        assert_eq!(hits.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn second_sigint_after_double_tap_window_does_not_force_exit() {
+        let manager = SignalManager::new();
+        manager.enable_double_tap(DoubleTapConfig {
+            window: Duration::from_millis(20),
+            message: String::new(),
+            exit_code: 99,
+        });
+
+        let mut first_sigint_at = None;
+        manager.dispatch_signal(sigint_number(), &mut first_sigint_at);
+        assert!(first_sigint_at.is_some());
+
+        thread::sleep(Duration::from_millis(50));
+        // Window expired: second SIGINT must not call process::exit.
+        manager.dispatch_signal(sigint_number(), &mut first_sigint_at);
+    }
+
+    #[test]
+    fn handler_registered_after_listen_receives_injected_signal() {
+        let manager = SignalManager::new();
+        let injector = testing::SignalInjector::new(&manager);
+        let manager_listen = manager.clone();
+        let listener = thread::spawn(move || manager_listen.listen());
+
+        injector
+            .wait_for_listen(Duration::from_secs(1))
+            .expect("listener should start");
+
+        let usr2 = get_signal_number("SIGUSR2").unwrap_or(SIGUSR2);
+        let hits = Arc::new(AtomicUsize::new(0));
+        let hits_c = Arc::clone(&hits);
+        let _guard = manager
+            .handle(usr2, move || {
+                hits_c.fetch_add(1, Ordering::SeqCst);
+                Ok(())
+            })
+            .expect("register after listen");
+
+        injector.inject(usr2).expect("inject");
+
+        let deadline = Instant::now() + Duration::from_secs(1);
+        while hits.load(Ordering::SeqCst) == 0 && Instant::now() < deadline {
+            thread::sleep(Duration::from_millis(10));
+        }
+
+        manager.stop();
+        listener
+            .join()
+            .expect("listener thread should join")
+            .expect("listener should exit cleanly");
+
+        assert_eq!(
+            hits.load(Ordering::SeqCst),
+            1,
+            "injected signal must reach a handler registered after listen()"
+        );
+    }
 }

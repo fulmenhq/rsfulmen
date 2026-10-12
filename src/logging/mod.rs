@@ -710,6 +710,19 @@ mod tests {
     }
 
     #[test]
+    fn test_default_structured_logger_does_not_redact() {
+        let buf = SharedBuffer::new();
+        let log = logger_with_buffer("app", Severity::Trace, Profile::Structured, &buf);
+        log.info("login", &[("password", "hunter2")]);
+        let output = buf.contents();
+        assert!(
+            output.contains("hunter2"),
+            "structured default chain must also emit secrets: {output}"
+        );
+        assert!(!output.contains(DEFAULT_REDACTION_REPLACEMENT));
+    }
+
+    #[test]
     fn test_new_with_config() {
         let config = LoggerConfig {
             name: "custom".to_string(),

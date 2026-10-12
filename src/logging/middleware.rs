@@ -436,6 +436,26 @@ mod tests {
     }
 
     #[test]
+    fn throttle_burst_two_then_drop() {
+        let mw = ThrottleMiddleware::new(0.0, 2);
+        let mut a = rec("a", &[]);
+        let mut b = rec("b", &[]);
+        let mut c = rec("c", &[]);
+        assert_eq!(mw.process(&mut a), MiddlewareAction::Emit);
+        assert_eq!(mw.process(&mut b), MiddlewareAction::Emit);
+        assert_eq!(mw.process(&mut c), MiddlewareAction::Drop);
+    }
+
+    #[test]
+    fn throttle_burst_zero_clamps_to_one() {
+        let mw = ThrottleMiddleware::new(0.0, 0);
+        let mut a = rec("a", &[]);
+        let mut b = rec("b", &[]);
+        assert_eq!(mw.process(&mut a), MiddlewareAction::Emit);
+        assert_eq!(mw.process(&mut b), MiddlewareAction::Drop);
+    }
+
+    #[test]
     fn chain_redacts_then_correlates() {
         let chain = MiddlewareChain::new()
             .with(RedactSecretsMiddleware::defaults().unwrap())
