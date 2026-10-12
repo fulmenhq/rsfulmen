@@ -42,7 +42,7 @@ endif
 .PHONY: version version-set version-propagate version-bump-major version-bump-minor version-bump-patch version-bump-calver
 .PHONY: check-all quality precommit prepush lifecycle msrv-check deny
 .PHONY: release-check release-prepare release-build release-clean
-.PHONY: release-provenance-check release-guard-tag-version release-tag release-verify-tag
+.PHONY: release-provenance-check release-guard-tag-version release-tag release-verify-tag release-publish
 .PHONY: doc
 
 # Default target
@@ -95,10 +95,15 @@ help: ## Show this help message
 	@echo "  release-guard-tag-version - Guard: ensure tag matches VERSION"
 	@echo "  release-tag               - Create and verify a signed git tag"
 	@echo "  release-verify-tag        - Verify the signed git tag"
+	@echo "  release-publish           - Publish GitHub release with attestation assets"
 	@echo ""
 	@echo "Required env for release-tag / release-verify-tag:"
 	@echo "  RSFULMEN_TAGGER_NAME      - annotated-tag tagger name"
 	@echo "  RSFULMEN_TAGGER_EMAIL     - annotated-tag tagger email"
+	@echo ""
+	@echo "Required env for release-publish:"
+	@echo "  RSFULMEN_MINISIGN_PUB     - minisign public key; attestation is verified before upload"
+	@echo "  RSFULMEN_RELEASE_TAG      - optional tag override (must match VERSION)"
 	@echo ""
 
 # Bootstrap targets
@@ -360,6 +365,9 @@ release-verify-tag: ## Verify the signed git tag for VERSION (requires RSFULMEN_
 	@test -n "$(RSFULMEN_TAGGER_NAME)" || (echo "error: RSFULMEN_TAGGER_NAME is required (see RELEASE_CHECKLIST.md)" && exit 1)
 	@test -n "$(RSFULMEN_TAGGER_EMAIL)" || (echo "error: RSFULMEN_TAGGER_EMAIL is required (see RELEASE_CHECKLIST.md)" && exit 1)
 	@./scripts/release-verify-tag.sh
+
+release-publish: release-guard-tag-version ## Publish GitHub release with minisign attestation assets
+	@./scripts/release-publish.sh
 
 # Hook targets
 precommit: ## Run pre-commit hooks (fast, critical issues only)

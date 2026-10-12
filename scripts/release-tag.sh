@@ -209,7 +209,7 @@ EOF
 	echo "  git push origin main"
 	echo "  git push origin $tag"
 	if [ -f "dist/release/${tag}.tag.txt.minisig" ]; then
-		echo "  # Optional: upload dist/release/${tag}.tag.txt* as release assets"
+		echo "  make release-publish"
 	fi
 }
 
