@@ -1,8 +1,7 @@
 //! Canonical hashing with integrity verification.
 //!
 //! This module provides a uniform API for computing and verifying content
-//! hashes using either the fast xxHash3-128 algorithm (default) or
-//! cryptographic SHA-256.
+//! hashes using xxHash3-128 (default), SHA-256, CRC-32, or CRC-32C.
 //!
 //! Digests are formatted with a canonical `algorithm:hex` prefix so they
 //! can be persisted, compared, and exchanged with other Fulmen SDK
@@ -53,18 +52,28 @@ const DEFAULT_BUFFER_SIZE: usize = 8192;
 /// The default algorithm is [`Algorithm::Xxh3_128`] — a fast,
 /// non-cryptographic hash suitable for content-addressable storage.
 /// Use [`Algorithm::Sha256`] when a cryptographic guarantee is required.
+///
+/// This enum is `#[non_exhaustive]`: the FulHash catalog can grow. Downstream
+/// `match` arms must include a wildcard. Serde tags are the canonical
+/// catalog ids (`xxh3-128`, `sha256`, `crc32`, `crc32c`), not Rust variant
+/// names.
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize,
 )]
+#[non_exhaustive]
 pub enum Algorithm {
     /// xxHash3-128 — fast, non-cryptographic (default).
     #[default]
+    #[serde(rename = "xxh3-128")]
     Xxh3_128,
     /// SHA-256 — cryptographic.
+    #[serde(rename = "sha256")]
     Sha256,
     /// CRC-32 (IEEE / ISO-HDLC) — archive interoperability.
+    #[serde(rename = "crc32")]
     Crc32,
     /// CRC-32C (Castagnoli) — cloud / hardware-accelerated checksums.
+    #[serde(rename = "crc32c")]
     Crc32c,
 }
 
@@ -438,7 +447,7 @@ pub fn format_digest(digest: &Digest) -> String {
 pub fn parse_digest(s: &str) -> Result<Digest, FulhashError> {
     let Some((algo_str, hex_str)) = s.split_once(':') else {
         return Err(FulhashError::InvalidDigestFormat(format!(
-            "missing ':' separator in '{s}'"
+            "missing ':' separator in '{s}' (expected format algorithm:hex)"
         )));
     };
 
@@ -1090,28 +1099,320 @@ mod tests {
     }
 
     #[test]
-    fn test_crucible_fixtures_xxh3_and_sha256() {
-        // hello-world from config/crucible-rs/library/fulhash/fixtures.yaml
-        let hello = b"Hello, World!";
-        assert_eq!(
-            format_digest(&hash(hello, Some(Algorithm::Xxh3_128)).unwrap()),
-            "xxh3-128:531df2844447dd5077db03842cd75395"
-        );
-        assert_eq!(
-            format_digest(&hash(hello, Some(Algorithm::Sha256)).unwrap()),
-            "sha256:dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f"
-        );
-        let empty = b"";
-        assert_eq!(
-            format_digest(&hash(empty, Some(Algorithm::Xxh3_128)).unwrap()),
-            "xxh3-128:99aa06d3014798d86001c324468d497f"
-        );
+    fn test_algorithm_serde_uses_canonical_tags() {
+        let cases = [
+            (Algorithm::Xxh3_128, "xxh3-128"),
+            (Algorithm::Sha256, "sha256"),
+            (Algorithm::Crc32, "crc32"),
+            (Algorithm::Crc32c, "crc32c"),
+        ];
+        for (algo, tag) in cases {
+            let encoded = serde_yaml::to_string(&algo).unwrap();
+            assert!(
+                encoded.contains(tag),
+                "serde must emit catalog tag {tag}, got {encoded}"
+            );
+            let back: Algorithm = serde_yaml::from_str(&encoded).unwrap();
+            assert_eq!(back, algo);
+            let rust_name = format!("{algo:?}");
+            assert!(
+                !encoded.contains(&rust_name),
+                "serde must not emit the Rust variant name {rust_name}"
+            );
+        }
+    }
 
-        let many = multi_hash(hello, &[Algorithm::Xxh3_128, Algorithm::Sha256]).unwrap();
-        assert_eq!(
-            format_digest(&many[&Algorithm::Xxh3_128]),
-            "xxh3-128:531df2844447dd5077db03842cd75395"
-        );
+    #[test]
+    fn test_multi_hash_reader_short_reads_empty_and_partial_error() {
+        struct ShortRead<'a> {
+            data: &'a [u8],
+            pos: usize,
+        }
+        impl Read for ShortRead<'_> {
+            fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+                if self.pos >= self.data.len() {
+                    return Ok(0);
+                }
+                let n = 1.min(buf.len());
+                buf[..n].copy_from_slice(&self.data[self.pos..self.pos + n]);
+                self.pos += n;
+                Ok(n)
+            }
+        }
+
+        struct PartialThenError {
+            remaining: usize,
+        }
+        impl Read for PartialThenError {
+            fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+                if self.remaining == 0 {
+                    return Err(std::io::Error::other("injected mid-stream failure"));
+                }
+                let n = 3.min(self.remaining).min(buf.len());
+                buf[..n].fill(b'x');
+                self.remaining -= n;
+                Ok(n)
+            }
+        }
+
+        let data = b"short-read body";
+        let algos = [
+            Algorithm::Xxh3_128,
+            Algorithm::Sha256,
+            Algorithm::Crc32,
+            Algorithm::Crc32c,
+        ];
+        let short = multi_hash_reader(&mut ShortRead { data, pos: 0 }, &algos).unwrap();
+        let expected = multi_hash(data, &algos).unwrap();
+        assert_eq!(short, expected);
+
+        let empty = multi_hash_reader(std::io::empty(), &algos).unwrap();
+        assert_eq!(empty, multi_hash(b"", &algos).unwrap());
+
+        let err = multi_hash_reader(&mut PartialThenError { remaining: 8 }, &algos)
+            .expect_err("partial digest must not be returned as success");
+        assert!(matches!(err, FulhashError::IoError { .. }), "{err:?}");
+    }
+
+    #[test]
+    fn test_multi_hash_reader_large_generated_stream() {
+        let chunk = vec![0xABu8; 8192];
+        let mut data = Vec::new();
+        for _ in 0..12 {
+            data.extend_from_slice(&chunk);
+        }
+        assert!(data.len() > DEFAULT_BUFFER_SIZE);
+
+        struct SliceRead<'a> {
+            data: &'a [u8],
+            pos: usize,
+        }
+        impl Read for SliceRead<'_> {
+            fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+                let n = (self.data.len() - self.pos).min(1024).min(buf.len());
+                buf[..n].copy_from_slice(&self.data[self.pos..self.pos + n]);
+                self.pos += n;
+                Ok(n)
+            }
+        }
+
+        let algos = [
+            Algorithm::Xxh3_128,
+            Algorithm::Sha256,
+            Algorithm::Crc32,
+            Algorithm::Crc32c,
+        ];
+        let streamed = multi_hash_reader(
+            &mut SliceRead {
+                data: &data,
+                pos: 0,
+            },
+            &algos,
+        )
+        .unwrap();
+        assert_eq!(streamed, multi_hash(&data, &algos).unwrap());
+    }
+
+    #[derive(serde::Deserialize)]
+    struct FulhashFixtureFile {
+        fixtures: Vec<ScalarFixture>,
+        streaming_fixtures: Vec<StreamFixture>,
+        error_fixtures: Vec<ErrorFixture>,
+        format_fixtures: Vec<FormatFixture>,
+    }
+
+    #[derive(serde::Deserialize)]
+    struct ScalarFixture {
+        name: String,
+        #[serde(default)]
+        input: Option<String>,
+        #[serde(default)]
+        input_bytes: Option<Vec<u8>>,
+        #[serde(default)]
+        xxh3_128: Option<String>,
+        #[serde(default)]
+        sha256: Option<String>,
+        #[serde(default)]
+        crc32: Option<String>,
+        #[serde(default)]
+        crc32c: Option<String>,
+    }
+
+    #[derive(serde::Deserialize)]
+    struct StreamFixture {
+        name: String,
+        chunks: Vec<StreamChunk>,
+        #[serde(default)]
+        expected_xxh3_128: Option<String>,
+        #[serde(default)]
+        expected_sha256: Option<String>,
+    }
+
+    #[derive(serde::Deserialize)]
+    struct StreamChunk {
+        #[serde(default)]
+        value: Option<String>,
+        #[serde(default)]
+        size: Option<usize>,
+        #[serde(default)]
+        pattern: Option<String>,
+    }
+
+    #[derive(serde::Deserialize)]
+    struct ErrorFixture {
+        name: String,
+        #[serde(default)]
+        algorithm: Option<String>,
+        #[serde(default)]
+        checksum: Option<String>,
+        #[serde(default)]
+        error_message_contains: Vec<String>,
+    }
+
+    #[derive(serde::Deserialize)]
+    struct FormatFixture {
+        name: String,
+        #[serde(default)]
+        algorithm: Option<String>,
+        #[serde(default)]
+        hex: Option<String>,
+        #[serde(default)]
+        expected_formatted: Option<String>,
+        #[serde(default)]
+        formatted: Option<String>,
+        #[serde(default)]
+        expected_algorithm: Option<String>,
+        #[serde(default)]
+        expected_hex: Option<String>,
+    }
+
+    fn load_fulhash_fixtures() -> FulhashFixtureFile {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("config/crucible-rs/library/fulhash/fixtures.yaml");
+        let raw = std::fs::read_to_string(&path).expect("read fixtures.yaml");
+        serde_yaml::from_str(&raw).expect("parse fixtures.yaml")
+    }
+
+    fn fixture_bytes(fx: &ScalarFixture) -> Vec<u8> {
+        if let Some(bytes) = &fx.input_bytes {
+            bytes.clone()
+        } else {
+            fx.input.as_deref().unwrap_or("").as_bytes().to_vec()
+        }
+    }
+
+    fn expand_stream_chunks(chunks: &[StreamChunk]) -> Vec<u8> {
+        let mut out = Vec::new();
+        for chunk in chunks {
+            if let Some(value) = &chunk.value {
+                out.extend_from_slice(value.as_bytes());
+                continue;
+            }
+            let size = chunk.size.expect("generated chunk needs size");
+            let fill = match chunk.pattern.as_deref() {
+                Some("repeating-A") => b'A',
+                Some("repeating-B") => b'B',
+                Some("repeating-C") => b'C',
+                other => panic!("unsupported stream pattern {other:?}"),
+            };
+            out.extend(std::iter::repeat_n(fill, size));
+        }
+        out
+    }
+
+    #[test]
+    fn test_crucible_fixtures_all_scalar_streaming_error_and_format() {
+        let file = load_fulhash_fixtures();
+        assert!(!file.fixtures.is_empty());
+        assert!(!file.streaming_fixtures.is_empty());
+
+        for fx in &file.fixtures {
+            let data = fixture_bytes(fx);
+            let pairs = [
+                (fx.xxh3_128.as_deref(), Algorithm::Xxh3_128),
+                (fx.sha256.as_deref(), Algorithm::Sha256),
+                (fx.crc32.as_deref(), Algorithm::Crc32),
+                (fx.crc32c.as_deref(), Algorithm::Crc32c),
+            ];
+            let present: Vec<_> = pairs.iter().filter(|(v, _)| v.is_some()).collect();
+            assert!(
+                !present.is_empty(),
+                "fixture {} has no algorithm results",
+                fx.name
+            );
+            for (expected, algo) in pairs {
+                if let Some(expected) = expected {
+                    assert_eq!(
+                        format_digest(&hash(&data, Some(algo)).unwrap()),
+                        expected,
+                        "scalar fixture {} {:?}",
+                        fx.name,
+                        algo
+                    );
+                }
+            }
+        }
+
+        for fx in &file.streaming_fixtures {
+            let data = expand_stream_chunks(&fx.chunks);
+            if let Some(expected) = &fx.expected_xxh3_128 {
+                assert_eq!(
+                    format_digest(&hash(&data, Some(Algorithm::Xxh3_128)).unwrap()),
+                    expected.as_str(),
+                    "stream fixture {} xxh3",
+                    fx.name
+                );
+            }
+            if let Some(expected) = &fx.expected_sha256 {
+                assert_eq!(
+                    format_digest(&hash(&data, Some(Algorithm::Sha256)).unwrap()),
+                    expected.as_str(),
+                    "stream fixture {} sha256",
+                    fx.name
+                );
+            }
+        }
+
+        for fx in &file.error_fixtures {
+            if let Some(algo) = &fx.algorithm {
+                let err = parse_digest(&format!("{algo}:00")).expect_err(&fx.name);
+                let msg = err.to_string();
+                for needle in &fx.error_message_contains {
+                    assert!(
+                        msg.contains(needle),
+                        "{} missing {needle:?} in {msg}",
+                        fx.name
+                    );
+                }
+            }
+            if let Some(checksum) = &fx.checksum {
+                let err = parse_digest(checksum).expect_err(&fx.name);
+                let msg = err.to_string();
+                for needle in &fx.error_message_contains {
+                    assert!(
+                        msg.contains(needle),
+                        "{} missing {needle:?} in {msg}",
+                        fx.name
+                    );
+                }
+            }
+        }
+
+        for fx in &file.format_fixtures {
+            if let (Some(algo), Some(hex), Some(formatted)) =
+                (&fx.algorithm, &fx.hex, &fx.expected_formatted)
+            {
+                let digest = parse_digest(&format!("{algo}:{hex}")).expect(&fx.name);
+                assert_eq!(format_digest(&digest), formatted.as_str(), "{}", fx.name);
+            }
+            if let (Some(formatted), Some(algo), Some(hex)) =
+                (&fx.formatted, &fx.expected_algorithm, &fx.expected_hex)
+            {
+                let digest = parse_digest(formatted).expect(&fx.name);
+                assert_eq!(digest.algorithm.tag(), algo.as_str(), "{}", fx.name);
+                assert_eq!(&format_digest(&digest)[algo.len() + 1..], hex.as_str());
+            }
+        }
     }
 
     #[test]
