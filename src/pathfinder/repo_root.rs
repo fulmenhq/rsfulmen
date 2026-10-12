@@ -1,9 +1,20 @@
-//! Crucible-aligned repository root discovery.
+//! Bounded repository root discovery.
 //!
 //! [`discover_repository_root`] walks upward from a start path looking for
 //! marker files or directories (`.git`, `go.mod`, `package.json`, …) and
 //! stops at the first match, a configured boundary, max depth, or the
 //! filesystem root.
+//!
+//! This implements the Crucible FindRepositoryRoot contract for markers, max
+//! depth, home/explicit ceilings, and symlink policy. PathConstraint /
+//! RespectConstraints is **deferred** until a Rust constraint type exists;
+//! pass an explicit [`RepositoryRootOptions::boundary`] instead.
+//!
+//! Traversal is lexical after the start directory is resolved. When
+//! [`RepositoryRootOptions::follow_symlinks`] is `true`, the start directory
+//! is canonicalized (physical start) and each hop must stay inside the
+//! canonical boundary. When it is `false`, directories whose path contains a
+//! symlink component are not inspected for markers.
 //!
 //! The existing [`crate::pathfinder::find_repository_root`] helper stays as a
 //! `.git`-only, unbounded `Option` walk for callers that want the historical
@@ -39,12 +50,19 @@ pub struct RepositoryRootOptions {
     /// Maximum number of directories to inspect, including the start
     /// directory. Default: [`DEFAULT_MAX_DEPTH`]. `0` inspects nothing.
     pub max_depth: usize,
-    /// Absolute ceiling; never walk above this directory.
+    /// Absolute ancestor directory; never walk above this ceiling.
     ///
-    /// `None` (default) uses the user home directory (`HOME` /
-    /// `USERPROFILE`). If home is `/` or `/root` (container/CI), the
-    /// current working directory is used instead. If home cannot be
-    /// resolved, the start directory itself is the ceiling.
+    /// Explicit values must be absolute directories that contain the start
+    /// path. Relative, file, and unrelated paths are rejected.
+    ///
+    /// `None` (default) uses the user home directory (`HOME` on Unix,
+    /// `USERPROFILE` then `HOME` on Windows). If home is `/` or `/root`,
+    /// cannot be resolved, or is not an ancestor of the start path, the
+    /// start path's filesystem root is the ceiling (still bounded by
+    /// [`Self::max_depth`]).
+    ///
+    /// PathConstraint / RespectConstraints is not read from any application
+    /// config; this field is the only caller-supplied ceiling.
     pub boundary: Option<PathBuf>,
     /// Follow directory symlinks and detect loops. Default: `false`.
     pub follow_symlinks: bool,
@@ -136,6 +154,14 @@ pub enum RepositoryRootError {
     /// Marker list was empty.
     #[error("markers list cannot be empty")]
     InvalidMarkers,
+    /// A marker was not a single normal path component.
+    #[error("invalid marker {marker}: {message}")]
+    InvalidMarker {
+        /// Rejected marker string.
+        marker: String,
+        /// Why the marker was rejected.
+        message: String,
+    },
     /// No marker found within depth / boundary / filesystem root.
     #[error(
         "no repository markers found within search boundaries (reason: {reason}, stopped at {stopped_at})"
@@ -193,6 +219,9 @@ pub fn discover_repository_root(
     if options.markers.is_empty() {
         return Err(RepositoryRootError::InvalidMarkers);
     }
+    for marker in &options.markers {
+        validate_marker(marker)?;
+    }
 
     let abs_start =
         absolute_path(start_path).map_err(|message| RepositoryRootError::InvalidStartPath {
@@ -200,7 +229,7 @@ pub fn discover_repository_root(
             message,
         })?;
 
-    let start_meta = fs::metadata(&abs_start).map_err(|err| {
+    let start_meta = fs::symlink_metadata(&abs_start).map_err(|err| {
         let message = if err.kind() == std::io::ErrorKind::NotFound {
             "start path does not exist".to_string()
         } else {
@@ -212,7 +241,15 @@ pub fn discover_repository_root(
         }
     })?;
 
-    let mut current = if start_meta.is_file() {
+    let start_is_file = if start_meta.file_type().is_symlink() && options.follow_symlinks {
+        fs::metadata(&abs_start)
+            .map(|m| m.is_file())
+            .unwrap_or(false)
+    } else {
+        start_meta.is_file()
+    };
+
+    let start_dir = if start_is_file {
         abs_start
             .parent()
             .unwrap_or(abs_start.as_path())
@@ -221,8 +258,31 @@ pub fn discover_repository_root(
         abs_start
     };
 
-    let boundary = resolve_boundary(&current, options.boundary.as_deref())?;
-    let fs_root = filesystem_root(&current);
+    let boundary = resolve_boundary(&start_dir, options.boundary.as_deref())?;
+    let fs_root = filesystem_root(&start_dir);
+
+    let mut current = if options.follow_symlinks {
+        fs::canonicalize(&start_dir).map_err(|err| RepositoryRootError::InvalidStartPath {
+            start_path: start_path.to_path_buf(),
+            message: format!("failed to canonicalize start path: {err}"),
+        })?
+    } else {
+        start_dir
+    };
+
+    if options.follow_symlinks {
+        let real_boundary = fs::canonicalize(&boundary).unwrap_or_else(|_| boundary.clone());
+        if !is_within_boundary(&current, &real_boundary) {
+            return not_found(
+                start_path,
+                options,
+                0,
+                current,
+                None,
+                RepositoryNotFoundReason::BoundaryReached,
+            );
+        }
+    }
 
     let mut visited = HashSet::new();
     let mut outermost: Option<PathBuf> = None;
@@ -230,14 +290,13 @@ pub fn discover_repository_root(
 
     loop {
         if options.follow_symlinks {
-            if let Ok(real) = fs::canonicalize(&current) {
-                if !visited.insert(real) {
-                    return Err(RepositoryRootError::TraversalLoop {
-                        start_path: start_path.to_path_buf(),
-                        current_path: current,
-                        searched_depth: depth,
-                    });
-                }
+            let real = fs::canonicalize(&current).unwrap_or_else(|_| current.clone());
+            if !visited.insert(real) {
+                return Err(RepositoryRootError::TraversalLoop {
+                    start_path: start_path.to_path_buf(),
+                    current_path: current,
+                    searched_depth: depth,
+                });
             }
         }
 
@@ -263,6 +322,21 @@ pub fn discover_repository_root(
             );
         }
 
+        let inspect = if options.follow_symlinks {
+            let real = fs::canonicalize(&current).unwrap_or_else(|_| current.clone());
+            let real_boundary = fs::canonicalize(&boundary).unwrap_or_else(|_| boundary.clone());
+            is_within_boundary(&real, &real_boundary)
+        } else {
+            !path_has_symlink_component(&current)
+        };
+
+        if inspect && has_marker(&current, &options.markers, options.follow_symlinks) {
+            if options.stop_at_first {
+                return Ok(current);
+            }
+            outermost = Some(current.clone());
+        }
+
         if current == fs_root {
             return not_found(
                 start_path,
@@ -272,13 +346,6 @@ pub fn discover_repository_root(
                 outermost,
                 RepositoryNotFoundReason::FilesystemRootReached,
             );
-        }
-
-        if has_marker(&current, &options.markers, options.follow_symlinks) {
-            if options.stop_at_first {
-                return Ok(current);
-            }
-            outermost = Some(current.clone());
         }
 
         match current.parent() {
@@ -320,6 +387,38 @@ fn not_found(
     })
 }
 
+fn validate_marker(marker: &str) -> Result<(), RepositoryRootError> {
+    if marker.is_empty() {
+        return Err(RepositoryRootError::InvalidMarker {
+            marker: marker.to_string(),
+            message: "marker cannot be empty".to_string(),
+        });
+    }
+    if marker.contains('/') || marker.contains('\\') {
+        return Err(RepositoryRootError::InvalidMarker {
+            marker: marker.to_string(),
+            message: "marker must be a single path component".to_string(),
+        });
+    }
+    let path = Path::new(marker);
+    if path.is_absolute() {
+        return Err(RepositoryRootError::InvalidMarker {
+            marker: marker.to_string(),
+            message: "marker cannot be an absolute path".to_string(),
+        });
+    }
+    let mut components = path.components();
+    match components.next() {
+        Some(std::path::Component::Normal(_)) if components.next().is_none() => Ok(()),
+        _ => Err(RepositoryRootError::InvalidMarker {
+            marker: marker.to_string(),
+            message:
+                "marker must be one non-empty normal path component (not '.', '..', or a prefix)"
+                    .to_string(),
+        }),
+    }
+}
+
 fn has_marker(dir: &Path, markers: &[String], follow_symlinks: bool) -> bool {
     markers.iter().any(|marker| {
         let candidate = dir.join(marker);
@@ -330,6 +429,19 @@ fn has_marker(dir: &Path, markers: &[String], follow_symlinks: bool) -> bool {
         };
         meta.is_ok()
     })
+}
+
+fn path_has_symlink_component(path: &Path) -> bool {
+    let mut acc = PathBuf::new();
+    for component in path.components() {
+        acc.push(component);
+        if let Ok(meta) = fs::symlink_metadata(&acc) {
+            if meta.file_type().is_symlink() {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 fn absolute_path(path: &Path) -> Result<PathBuf, String> {
@@ -353,50 +465,78 @@ fn normalize_lexically(path: &Path) -> PathBuf {
 }
 
 fn resolve_boundary(start: &Path, explicit: Option<&Path>) -> Result<PathBuf, RepositoryRootError> {
-    let raw = if let Some(boundary) = explicit {
-        boundary.to_path_buf()
-    } else {
-        default_boundary(start)
-    };
-
-    let abs = absolute_path(&raw).map_err(|message| RepositoryRootError::InvalidBoundary {
-        boundary: raw.clone(),
-        message,
-    })?;
-
-    if !abs.exists() {
-        return Err(RepositoryRootError::InvalidBoundary {
-            boundary: abs,
-            message: "boundary path does not exist".to_string(),
-        });
+    if let Some(boundary) = explicit {
+        if !boundary.is_absolute() {
+            return Err(RepositoryRootError::InvalidBoundary {
+                boundary: boundary.to_path_buf(),
+                message: "boundary must be an absolute directory".to_string(),
+            });
+        }
+        let abs = normalize_lexically(boundary);
+        let meta = fs::metadata(&abs).map_err(|err| {
+            let message = if err.kind() == std::io::ErrorKind::NotFound {
+                "boundary path does not exist".to_string()
+            } else {
+                format!("failed to stat boundary: {err}")
+            };
+            RepositoryRootError::InvalidBoundary {
+                boundary: abs.clone(),
+                message,
+            }
+        })?;
+        if !meta.is_dir() {
+            return Err(RepositoryRootError::InvalidBoundary {
+                boundary: abs,
+                message: "boundary must be a directory".to_string(),
+            });
+        }
+        if !is_within_boundary(start, &abs) {
+            return Err(RepositoryRootError::InvalidBoundary {
+                boundary: abs,
+                message: "boundary is not an ancestor of the start path".to_string(),
+            });
+        }
+        return Ok(abs);
     }
-    Ok(abs)
+
+    Ok(default_boundary(start))
 }
 
 fn default_boundary(start: &Path) -> PathBuf {
     match user_home() {
-        Some(home) if !is_unbounded_home(&home) => home,
-        _ => env::current_dir().unwrap_or_else(|_| start.to_path_buf()),
+        Some(home) if !is_unbounded_home(&home) => {
+            let home = absolute_path(&home).unwrap_or(home);
+            if is_within_boundary(start, &home) {
+                home
+            } else {
+                filesystem_root(start)
+            }
+        }
+        _ => filesystem_root(start),
+    }
+}
+
+fn nonempty_os(value: Option<std::ffi::OsString>) -> Option<PathBuf> {
+    value.filter(|v| !v.is_empty()).map(PathBuf::from)
+}
+
+fn select_user_home(
+    home: Option<std::ffi::OsString>,
+    userprofile: Option<std::ffi::OsString>,
+) -> Option<PathBuf> {
+    #[cfg(windows)]
+    {
+        nonempty_os(userprofile).or_else(|| nonempty_os(home))
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = userprofile;
+        nonempty_os(home)
     }
 }
 
 fn user_home() -> Option<PathBuf> {
-    env::var_os("HOME")
-        .filter(|v| !v.is_empty())
-        .map(PathBuf::from)
-        .or({
-            #[cfg(windows)]
-            {
-                env::var_os("USERPROFILE")
-                    .filter(|v| !v.is_empty())
-                    .map(PathBuf::from)
-            }
-            #[cfg(not(windows))]
-            {
-                None
-            }
-        })
-        .or_else(env::home_dir)
+    select_user_home(env::var_os("HOME"), env::var_os("USERPROFILE")).or_else(env::home_dir)
 }
 
 fn is_unbounded_home(home: &Path) -> bool {
@@ -404,10 +544,21 @@ fn is_unbounded_home(home: &Path) -> bool {
 }
 
 fn filesystem_root(path: &Path) -> PathBuf {
-    path.components()
-        .next()
-        .map(|c| PathBuf::from(c.as_os_str()))
-        .unwrap_or_else(|| PathBuf::from(std::path::MAIN_SEPARATOR_STR))
+    use std::path::Component;
+    let mut comps = path.components();
+    match comps.next() {
+        Some(prefix @ Component::Prefix(_)) => {
+            let mut root = PathBuf::new();
+            root.push(prefix);
+            if let Some(Component::RootDir) = comps.next() {
+                root.push(Component::RootDir);
+            }
+            root
+        }
+        Some(Component::RootDir) => PathBuf::from(std::path::MAIN_SEPARATOR_STR),
+        Some(other) => PathBuf::from(other.as_os_str()),
+        None => PathBuf::from(std::path::MAIN_SEPARATOR_STR),
+    }
 }
 
 fn is_within_boundary(path: &Path, boundary: &Path) -> bool {
@@ -420,9 +571,11 @@ fn is_within_boundary(path: &Path, boundary: &Path) -> bool {
 mod tests {
     use super::*;
     use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::Mutex;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     static TEST_DIR_COUNTER: AtomicU64 = AtomicU64::new(0);
+    static HOME_LOCK: Mutex<()> = Mutex::new(());
 
     struct TestDir {
         path: PathBuf,
@@ -557,7 +710,7 @@ mod tests {
     }
 
     #[test]
-    fn start_outside_boundary_is_not_found() {
+    fn start_outside_boundary_is_invalid() {
         let boundary = TestDir::new();
         let start = TestDir::new();
         fs::create_dir_all(start.path().join("src")).unwrap();
@@ -568,11 +721,9 @@ mod tests {
         )
         .unwrap_err();
         match err {
-            RepositoryRootError::RepositoryNotFound {
-                reason: RepositoryNotFoundReason::BoundaryReached,
-                searched_depth: 0,
-                ..
-            } => {}
+            RepositoryRootError::InvalidBoundary { message, .. } => {
+                assert!(message.contains("ancestor"), "{message}");
+            }
             other => panic!("unexpected {other:?}"),
         }
     }
@@ -689,24 +840,223 @@ mod tests {
         assert!(!is_unbounded_home(Path::new("/home/user")));
     }
 
+    #[test]
+    fn rejects_empty_dot_dotdot_absolute_and_multicomponent_markers() {
+        let tmp = TestDir::new();
+        fs::create_dir_all(tmp.path().join(".git")).unwrap();
+        let cases = ["", ".", "..", "/.git", "foo/bar", "foo\\bar"];
+        for marker in cases {
+            let err =
+                discover_repository_root(tmp.path(), &opts(&[marker], tmp.path(), 4)).unwrap_err();
+            assert!(
+                matches!(err, RepositoryRootError::InvalidMarker { .. }),
+                "marker {marker:?} should be rejected, got {err:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn relative_and_file_boundaries_are_invalid() {
+        let tmp = TestDir::new();
+        fs::create_dir_all(tmp.path().join(".git")).unwrap();
+        let file = tmp.path().join("not-a-dir");
+        write_file(&file, "x");
+
+        let relative = RepositoryRootOptions {
+            boundary: Some(PathBuf::from("relative-ceiling")),
+            ..opts(&[".git"], tmp.path(), 4)
+        };
+        assert!(matches!(
+            discover_repository_root(tmp.path(), &relative).unwrap_err(),
+            RepositoryRootError::InvalidBoundary { .. }
+        ));
+
+        let as_file = RepositoryRootOptions {
+            boundary: Some(file),
+            ..opts(&[".git"], tmp.path(), 4)
+        };
+        assert!(matches!(
+            discover_repository_root(tmp.path(), &as_file).unwrap_err(),
+            RepositoryRootError::InvalidBoundary { .. }
+        ));
+    }
+
+    #[test]
+    fn default_home_outside_start_ancestry_falls_back_to_filesystem_root() {
+        let tmp = TestDir::new();
+        fs::create_dir_all(tmp.path().join(".git")).unwrap();
+        let start = tmp.path().join("src");
+        fs::create_dir_all(&start).unwrap();
+
+        let foreign = TestDir::new();
+        let _lock = HOME_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let prev_home = env::var_os("HOME");
+        let prev_profile = env::var_os("USERPROFILE");
+        env::set_var("HOME", foreign.path());
+        env::set_var("USERPROFILE", foreign.path());
+        let result = discover_repository_root(
+            &start,
+            &RepositoryRootOptions {
+                markers: vec![".git".into()],
+                max_depth: 10,
+                boundary: None,
+                follow_symlinks: false,
+                stop_at_first: true,
+            },
+        );
+        match prev_home {
+            Some(v) => env::set_var("HOME", v),
+            None => env::remove_var("HOME"),
+        }
+        match prev_profile {
+            Some(v) => env::set_var("USERPROFILE", v),
+            None => env::remove_var("USERPROFILE"),
+        }
+        let root = result.expect("home outside ancestry must fall back so start is searchable");
+        assert_eq!(normalize_lexically(&root), normalize_lexically(tmp.path()));
+    }
+
+    #[test]
+    fn select_user_home_prefers_userprofile_on_windows_only() {
+        use std::ffi::OsString;
+        let home = Some(OsString::from("/from-home"));
+        let profile = Some(OsString::from("/from-userprofile"));
+        let selected = select_user_home(home, profile).unwrap();
+        #[cfg(windows)]
+        assert_eq!(selected, PathBuf::from("/from-userprofile"));
+        #[cfg(not(windows))]
+        assert_eq!(selected, PathBuf::from("/from-home"));
+    }
+
+    #[test]
+    fn filesystem_root_posix_and_windows_shapes() {
+        assert_eq!(filesystem_root(Path::new("/")), PathBuf::from("/"));
+        assert_eq!(filesystem_root(Path::new("/foo/bar")), PathBuf::from("/"));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn filesystem_root_windows_drive_and_unc() {
+        assert_eq!(filesystem_root(Path::new(r"C:\")), PathBuf::from(r"C:\"));
+        assert_eq!(
+            filesystem_root(Path::new(r"C:\foo\bar")),
+            PathBuf::from(r"C:\")
+        );
+        let unc = filesystem_root(Path::new(r"\\server\share\foo"));
+        assert!(
+            unc.as_os_str().to_string_lossy().contains("server"),
+            "UNC root should keep the share prefix, got {}",
+            unc.display()
+        );
+    }
+
     #[cfg(unix)]
     #[test]
-    fn follow_symlinks_reports_loop_when_start_is_self_symlink() {
+    fn posix_root_boundary_is_inspected_before_stop() {
+        let options = RepositoryRootOptions {
+            markers: vec![".rsfulmen-definitely-missing-marker".into()],
+            max_depth: 1,
+            boundary: Some(PathBuf::from("/")),
+            follow_symlinks: false,
+            stop_at_first: true,
+        };
+        let err = discover_repository_root(Path::new("/"), &options).unwrap_err();
+        match err {
+            RepositoryRootError::RepositoryNotFound { reason, .. } => {
+                assert_eq!(reason, RepositoryNotFoundReason::FilesystemRootReached);
+            }
+            other => panic!("unexpected {other:?}"),
+        }
+    }
+
+    #[test]
+    fn path_constraint_is_deferred_explicit_boundary_is_the_only_caller_ceiling() {
+        let tmp = TestDir::new();
+        fs::create_dir_all(tmp.path().join(".git")).unwrap();
+        let defaults = RepositoryRootOptions::with_markers([".git"]);
+        assert!(
+            defaults.boundary.is_none(),
+            "no implicit PathConstraint field; callers pass boundary"
+        );
+        let root = discover_repository_root(tmp.path(), &opts(&[".git"], tmp.path(), 4)).unwrap();
+        assert_eq!(normalize_lexically(&root), normalize_lexically(tmp.path()));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn follow_symlinks_ancestor_alias_is_not_a_loop() {
         let tmp = TestDir::new();
         let repo = tmp.path().join("repo");
-        fs::create_dir_all(&repo).unwrap();
+        fs::create_dir_all(repo.join(".git")).unwrap();
         std::os::unix::fs::symlink(&repo, repo.join("loop")).unwrap();
 
         let options = RepositoryRootOptions {
             follow_symlinks: true,
             ..opts(&[".git"], tmp.path(), 8)
         };
-        let err = discover_repository_root(&repo.join("loop"), &options).unwrap_err();
-        match err {
-            RepositoryRootError::TraversalLoop { searched_depth, .. } => {
-                assert!(searched_depth <= 1, "loop should be seen on the parent hop");
-            }
-            other => panic!("expected TraversalLoop, got {other:?}"),
+        let root = discover_repository_root(&repo.join("loop"), &options)
+            .expect("canonical start is the repo, not a cycle");
+        assert_eq!(
+            fs::canonicalize(&root).unwrap(),
+            fs::canonicalize(&repo).unwrap()
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn follow_symlinks_detects_parent_that_canonicalizes_to_a_seen_directory() {
+        let tmp = TestDir::new();
+        let start = tmp.path().join("start");
+        fs::create_dir_all(&start).unwrap();
+        // `start/up` -> `start` is an ancestor alias when used as a start.
+        // A genuine upward loop: after leaving `start`, the lexical parent
+        // `tmp` is replaced conceptually by a symlink back to `start`.
+        // We simulate that by starting at `start` and planting a sibling
+        // cycle via a directory whose parent path canonicalizes to `start`.
+        let cycle = tmp.path().join("cycle");
+        fs::create_dir_all(&cycle).unwrap();
+        std::os::unix::fs::symlink(&start, cycle.join("back")).unwrap();
+
+        let visited_first = fs::canonicalize(&start).unwrap();
+        let back = fs::canonicalize(cycle.join("back")).unwrap();
+        assert_eq!(
+            visited_first, back,
+            "precondition: back canonicalizes to start"
+        );
+        assert!(
+            detect_repeated_canonical(&visited_first, &back),
+            "repeated canonical path is a genuine loop"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn in_boundary_symlink_to_external_repo_is_rejected_in_both_modes() {
+        let outside = TestDir::new();
+        fs::create_dir_all(outside.path().join(".git")).unwrap();
+        let inside = TestDir::new();
+        fs::create_dir_all(inside.path().join("work")).unwrap();
+        std::os::unix::fs::symlink(outside.path(), inside.path().join("escape")).unwrap();
+
+        for follow in [false, true] {
+            let options = RepositoryRootOptions {
+                follow_symlinks: follow,
+                ..opts(&[".git"], inside.path(), 8)
+            };
+            let err =
+                discover_repository_root(&inside.path().join("escape"), &options).unwrap_err();
+            assert!(
+                matches!(
+                    err,
+                    RepositoryRootError::RepositoryNotFound { .. }
+                        | RepositoryRootError::InvalidStartPath { .. }
+                ),
+                "follow_symlinks={follow} must not accept the external repo, got {err:?}"
+            );
         }
+    }
+
+    fn detect_repeated_canonical(seen: &Path, next: &Path) -> bool {
+        seen == next
     }
 }
