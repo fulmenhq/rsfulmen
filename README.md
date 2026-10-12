@@ -278,6 +278,8 @@ println!("correlation_id={}", typed);       // lowercase canonical form
 _Use case: Graceful shutdown, config reload on SIGHUP, and double-tap Ctrl+C in CLI tools and services._
 
 Runtime signal manager with ordered cleanup chains, cross-platform support, and test injection.
+Handler panics are isolated and redacted; TERM/INT shutdown runs under the catalog
+`timeout_seconds` grace period (30s / 5s; 30s if absent; `0` force-exits immediately).
 
 ```rust
 use rsfulmen::signals::SignalManager;
