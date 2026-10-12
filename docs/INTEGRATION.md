@@ -148,8 +148,9 @@ Safe discovery with glob include/exclude, traversal protection, and repository
 root detection.
 
 `find_repository_root` is the historical `.git`-only unbounded `Option` walk.
-`discover_repository_root` is the Crucible-aligned API: markers, max depth
-(default 10), home-directory ceiling, and structured errors.
+`discover_repository_root` is the bounded marker API: markers, max depth
+(default 10), home or explicit ancestor ceiling, and structured errors.
+PathConstraint / RespectConstraints is deferred; pass `boundary` instead.
 
 ```rust
 use rsfulmen::pathfinder::{
