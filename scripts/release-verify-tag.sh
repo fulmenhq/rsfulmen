@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/release-tagger.sh
+. "${script_dir}/lib/release-tagger.sh"
+
 repo_root() {
 	git rev-parse --show-toplevel
 }
@@ -17,6 +21,8 @@ main() {
 	local root
 	root="$(repo_root)"
 	cd "$root"
+
+	require_tagger_env
 
 	local version
 	version="$(read_version)"
@@ -38,6 +44,7 @@ main() {
 
 	echo "→ Verifying tag signature: $tag"
 	git verify-tag "$tag" >/dev/null
+	verify_tag_identity "$tag"
 	echo "✅ Tag verified: $tag"
 
 	# Optional: verify minisign sidecar signature for the tag attestation.

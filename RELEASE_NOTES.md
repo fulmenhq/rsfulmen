@@ -4,6 +4,50 @@ This document tracks release notes for rsfulmen releases.
 
 > **Convention**: Keep only the latest 3 releases here to prevent file bloat. Older releases are archived in `docs/releases/`.
 
+## [0.2.1] - 2026-10-12
+
+### goneat v0.6.2, tagger env, deny licenses
+
+**Release Type**: Patch / Maintenance Release
+
+#### Overview
+
+Records goneat v0.6.2 (#18), refreshes `Cargo.lock` within current ranges,
+requires signed-tag tagger env, and adds `deny.toml` so `cargo deny check`
+licenses passes. MSRV remains 1.88. Embedded Crucible is v0.4.19.
+
+#### Highlights
+
+- **Estate-wide darwin/amd64 drop** — goneat v0.6.2+ has no `darwin/amd64`
+  asset. Intel macOS cannot bootstrap that pin (estate-wide, not rsfulmen
+  binaries; this crate does not ship binaries).
+- **`RSFULMEN_TAGGER_NAME` / `RSFULMEN_TAGGER_EMAIL`** — required for
+  `make release-tag` and `make release-verify-tag`. Tag object is stamped
+  and verified against env. No identities committed.
+- **`deny.toml`** — license allow list; fixes the #18 licenses failure.
+- **Lockfile** — xxhash-rust 0.8.19; libc 0.2.190; serde_json 1.0.154.
+  uuid held at 1.26.1 (1.28.0 needs rustc 1.89). jsonschema 0.17, dirs 5,
+  thiserror 1 held.
+
+#### Breaking Changes
+
+None for the crate API.
+
+#### Testing
+
+- `cargo fmt --all -- --check`
+- `cargo clippy --locked --all-targets --all-features -- -D warnings`
+- `cargo test --locked --all-features`
+- `cargo deny check`
+- `make precommit` / `make prepush`
+
+#### Requirements
+
+- **Rust**: 1.88+ (MSRV, unchanged)
+- **Crucible**: v0.4.19 (embedded)
+
+---
+
 ## [0.2.0] - 2026-09-02
 
 ### Stamp-only host identity, producer, goneat v0.6.0
@@ -95,44 +139,3 @@ sha256 or xxh3-128.
 
 - **Rust**: 1.88+ (MSRV, unchanged)
 - **Crucible**: v0.4.19 (embedded)
-
----
-
-## [0.1.5] - 2026-06-05
-
-### Branch/PR workflow, Crucible v0.4.13, dependency hygiene
-
-**Release Type**: Process & Maintenance Release
-
-#### Overview
-
-A process and maintenance release. rsfulmen adopts a branch/PR development workflow (replacing the original micro-team direct-push model), syncs Crucible v0.4.13, and clears dependency and tooling tech debt. No new modules, no public API changes, no breaking changes.
-
-#### Highlights
-
-- **Development workflow** — Moved from direct-push-to-`main` (micro-team) to a branch/PR workflow. Branch protection to follow.
-- **Guardian-free hooks** — Removed the guardian browser-intercept on commit and push (obsolete under branch review); hooks regenerated via `goneat hooks generate`.
-- **goneat v0.5.13** — Pin bumped from v0.5.1; resolves a format check/apply engine divergence and an `ssot sync` metadata-indentation issue surfaced during this cycle.
-- **Crucible v0.4.13 sync** — `devlead`/`devrev`/`qa` role-prompt enrichment (role v1.0.0 -> v1.0.1), upstream schema slimming, and mechanical YAML normalization.
-- **serde_yaml_ng migration** — Migrated off the deprecated/archived `serde_yaml` to the maintained, API-compatible `serde_yaml_ng` 0.10 (aliased; no source changes).
-- **`.goneatignore`** — Excludes deliberately-malformed negative-test fixtures synced from Crucible from goneat assess.
-
-#### Bug Fixes
-
-- **Flaky appidentity test isolation** — `TestDir` temp dirs could collide under parallel test threads (shared `{pid}-{nanos}`), causing one test to read another's `.fulmen/app.yaml`. Fixed with an `AtomicU64` sequence counter (mirrors the v0.1.4 pathfinder fix).
-
-#### Breaking Changes
-
-None. No public API changes.
-
-#### Testing
-
-- `make check-all` — 362 unit tests, 74 doc tests
-- `goneat assess` (format, lint, security) — 100% health
-
-#### Requirements
-
-- **Rust**: 1.88+ (MSRV, unchanged)
-- **Crucible**: v0.4.13 (embedded)
-
----

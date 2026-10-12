@@ -93,6 +93,10 @@ help: ## Show this help message
 	@echo "  release-tag               - Create and verify a signed git tag"
 	@echo "  release-verify-tag        - Verify the signed git tag"
 	@echo ""
+	@echo "Required env for release-tag / release-verify-tag:"
+	@echo "  RSFULMEN_TAGGER_NAME      - annotated-tag tagger name"
+	@echo "  RSFULMEN_TAGGER_EMAIL     - annotated-tag tagger email"
+	@echo ""
 
 # Bootstrap targets
 bootstrap: ## Install dependencies and external tools
@@ -339,10 +343,14 @@ release-provenance-check: ## Verify Crucible SSOT provenance files exist
 release-guard-tag-version: ## Guard: ensure tag matches VERSION (CI-friendly)
 	@./scripts/release-guard-tag-version.sh
 
-release-tag: ## Create and verify a signed git tag for VERSION
+release-tag: ## Create and verify a signed git tag for VERSION (requires RSFULMEN_TAGGER_NAME / RSFULMEN_TAGGER_EMAIL)
+	@test -n "$(RSFULMEN_TAGGER_NAME)" || (echo "error: RSFULMEN_TAGGER_NAME is required (see RELEASE_CHECKLIST.md)" && exit 1)
+	@test -n "$(RSFULMEN_TAGGER_EMAIL)" || (echo "error: RSFULMEN_TAGGER_EMAIL is required (see RELEASE_CHECKLIST.md)" && exit 1)
 	@./scripts/release-tag.sh
 
-release-verify-tag: ## Verify the signed git tag for VERSION
+release-verify-tag: ## Verify the signed git tag for VERSION (requires RSFULMEN_TAGGER_NAME / RSFULMEN_TAGGER_EMAIL)
+	@test -n "$(RSFULMEN_TAGGER_NAME)" || (echo "error: RSFULMEN_TAGGER_NAME is required (see RELEASE_CHECKLIST.md)" && exit 1)
+	@test -n "$(RSFULMEN_TAGGER_EMAIL)" || (echo "error: RSFULMEN_TAGGER_EMAIL is required (see RELEASE_CHECKLIST.md)" && exit 1)
 	@./scripts/release-verify-tag.sh
 
 # Hook targets
