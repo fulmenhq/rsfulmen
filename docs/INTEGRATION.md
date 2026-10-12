@@ -157,12 +157,46 @@ assert!(fulhash::verify(b"hello", &digest));
 Runtime signal manager: ordered cleanup, reload on SIGHUP, optional double-tap
 Ctrl+C. Unix uses `signal-hook`; Windows uses `ctrlc`.
 
+Handler panics are isolated (`catch_unwind` + `AssertUnwindSafe`). The payload
+is logged after redaction (`key=value` secret assignments; plus logging-crate
+pattern redaction when the `logging` feature is on). Later handlers still run,
+and TERM/INT **always** enter the shutdown chain.
+
+Shutdown hooks run under the catalog `timeout_seconds` grace period:
+
+| Signal | Catalog `timeout_seconds` | Runtime |
+| --- | --- | --- |
+| SIGTERM | 30 | wait 30s for hooks, then force-exit (143) |
+| SIGINT | 5 | wait 5s for hooks, then force-exit (130) |
+| field absent | — | **30s** default (`DEFAULT_SHUTDOWN_GRACE`) |
+| `0` | immediate | force-exit immediately; hooks are not run |
+
+Override with `SignalManager::set_shutdown_grace`. The production force-exit
+path is `process::exit`; tests/embedders can intercept it with
+`set_force_exit`.
+
+`POST /admin/signal` is a request helper, not a server. Auth, TLS, and 429
+rate-limit stay with the caller. The JSON adapter
+(`SignalManager::handle_admin_signal_http`) needs the `json` feature
+(pulled by `logging` and other JSON modules). `foundry-core` alone keeps the
+typed `handle_admin_signal_request` path and stays free of `serde_json`.
+
 ```rust
+use std::time::Duration;
 use rsfulmen::signals::SignalManager;
 
-let mut manager = SignalManager::new();
+let manager = SignalManager::new();
 manager.on_shutdown(|| { /* cleanup */ Ok(()) });
 manager.on_reload(|| { /* reread config */ Ok(()) });
+// Optional: override catalog grace (None restores catalog / 30s default).
+manager.set_shutdown_grace(Some(Duration::from_secs(15)));
+
+// Typed body (foundry-core). HTTP adapter is feature `json`.
+let _ = manager.handle_admin_signal_request(rsfulmen::signals::SignalEndpointRequest {
+    signal: "HUP".into(),
+    reason: Some("reload".into()),
+    correlation_id: None,
+});
 ```
 
 ### Crucible metadata (`crucible`)
@@ -196,11 +230,16 @@ than hard-coding the pin in application logic.
 
 ### CLI
 
+Redaction is fully supported and **off by default**. `new_cli` / `new` use an
+empty middleware chain. Enable it by attaching `RedactSecretsMiddleware` first:
+
 ```rust
-use rsfulmen::logging::{self, Severity};
+use rsfulmen::logging::{self, MiddlewareChain, RedactSecretsMiddleware, Severity};
 
 fn main() {
     let log = logging::new_cli("my-tool", Severity::Info);
+    let chain = MiddlewareChain::new().with(RedactSecretsMiddleware::defaults().unwrap());
+    let log = log.with_middleware_chain(chain);
     if let Err(err) = run(&log) {
         log.error("command failed", &[("error", &err.to_string())]);
         std::process::exit(1);

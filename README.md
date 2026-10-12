@@ -278,6 +278,8 @@ println!("correlation_id={}", typed);       // lowercase canonical form
 _Use case: Graceful shutdown, config reload on SIGHUP, and double-tap Ctrl+C in CLI tools and services._
 
 Runtime signal manager with ordered cleanup chains, cross-platform support, and test injection.
+Handler panics are isolated and redacted; TERM/INT shutdown runs under the catalog
+`timeout_seconds` grace period (30s / 5s; 30s if absent; `0` force-exits immediately).
 
 ```rust
 use rsfulmen::signals::SignalManager;
@@ -345,10 +347,15 @@ println!("{}", id.name);
 
 _Use case: Structured logging with human-readable (`Simple`) or JSON (`Structured`) profiles matching the Crucible observability standard._
 
-```rust
-use rsfulmen::logging::{self, Severity};
+Redaction is **fully supported and off by default** (empty middleware chain). Enable it explicitly:
 
-let log = logging::new_cli("myapp", Severity::Info);
+```rust
+use rsfulmen::logging::{self, MiddlewareChain, RedactSecretsMiddleware, Severity};
+
+let log = logging::new_cli("myapp", Severity::Info); // no redaction
+let log = log.with_middleware_chain(
+    MiddlewareChain::new().with(RedactSecretsMiddleware::defaults().unwrap()),
+);
 log.info("service started", &[("port", "8080")]);
 ```
 
@@ -496,7 +503,8 @@ rsfulmen = { version = "0.1", default-features = false, features = ["schema-vali
 | `fulencode`           | encode/decode/detect/normalize/BOM            | Adds `base64` + `unicode-normalization`      |
 | `config`              | `rsfulmen::config` (XDG paths)                | std-only (no `dirs`)                         |
 | `appidentity`         | `rsfulmen::appidentity`                       | `.fulmen/app.yaml` discovery (adds `serde_json`) |
-| `logging`             | `rsfulmen::logging`                           | Simple/Structured profiles (adds `serde_json`) |
+| `json`                | `serde_json`                                  | Named so HTTP `/admin/signal` can `cfg` it     |
+| `logging`             | `rsfulmen::logging`                           | Simple/Structured + opt-in middleware (adds `json` + `regex`) |
 | `fulhash`             | `rsfulmen::fulhash`                           | xxh3-128 + SHA-256 (adds `xxhash-rust`/`sha2`/`hex`) |
 | `pathfinder`          | `rsfulmen::pathfinder`                        | Safe FS discovery (adds `walkdir`/`glob`)    |
 | `fulpack`             | `rsfulmen::fulpack`                           | Archive ops info/scan/create/extract/verify (adds `tar`/`flate2`/`zip`) |

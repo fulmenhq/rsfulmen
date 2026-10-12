@@ -3,8 +3,16 @@
 //! This module preserves the catalog API from `rsfulmen::foundry::signals` and
 //! adds a runtime manager for handler dispatch, shutdown/reload chains,
 //! `/admin/signal` endpoint utilities, and deterministic test injection.
+//!
+//! Handler panics are isolated (`catch_unwind`): the payload is logged after
+//! redaction, later handlers still run, and TERM/INT always enter the shutdown
+//! chain. Shutdown hooks run under the catalog `timeout_seconds` grace period
+//! (30s for SIGTERM, 5s for SIGINT; 30s when the field is absent; `0` takes
+//! the force-exit path immediately). Force-exit is `process::exit` unless a
+//! test/embedder installs [`SignalManager::set_force_exit`].
 
 use std::collections::HashMap;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{mpsc, Arc, Condvar, Mutex, Weak};
 use std::thread;
@@ -42,6 +50,30 @@ pub type ReloadFn = dyn Fn() -> SignalResult + Send + Sync + 'static;
 
 /// Logger callback used for `/admin/signal` endpoint request events.
 pub type EndpointLogFn = dyn Fn(&SignalEndpointLogEvent) + Send + Sync + 'static;
+
+/// Logger callback for runtime events (handler panic, grace expiry).
+pub type RuntimeLogFn = dyn Fn(&SignalRuntimeLogEvent) + Send + Sync + 'static;
+
+/// Force-exit callback. Production default is [`std::process::exit`].
+pub type ForceExitFn = dyn Fn(i32) + Send + Sync + 'static;
+
+/// Shutdown grace used when the catalog omits `timeout_seconds` (SIGTERM).
+pub const DEFAULT_SHUTDOWN_GRACE: Duration = Duration::from_secs(30);
+
+/// Replacement written over secret-shaped panic / timeout log text.
+const RUNTIME_REDACTION_REPLACEMENT: &str = "[REDACTED]";
+
+/// Field names redacted in `key=value` / `key:value` runtime log lines.
+const RUNTIME_SECRET_KEYS: &[&str] = &[
+    "password",
+    "token",
+    "secret",
+    "authorization",
+    "apikey",
+    "api_key",
+    "access_token",
+    "refresh_token",
+];
 
 /// Errors returned by [`SignalManager`] operations.
 #[derive(Debug, thiserror::Error)]
@@ -206,6 +238,33 @@ pub struct SignalEndpointLogEvent {
     pub error: Option<String>,
 }
 
+/// Kind of a [`SignalRuntimeLogEvent`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SignalRuntimeLogKind {
+    /// A registered signal handler panicked.
+    HandlerPanic,
+    /// A shutdown hook panicked.
+    ShutdownHookPanic,
+    /// A reload hook panicked.
+    ReloadHookPanic,
+    /// Shutdown hooks did not finish before `timeout_seconds`.
+    ShutdownGraceExpired,
+}
+
+/// Structured runtime log event (panic isolation, grace expiry).
+///
+/// `message` is already redacted (`key=value` secret assignments; plus
+/// logging-crate pattern redaction when the `logging` feature is enabled).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SignalRuntimeLogEvent {
+    /// Event kind.
+    pub kind: SignalRuntimeLogKind,
+    /// Platform signal number when known.
+    pub signal: Option<i32>,
+    /// Redacted human-readable detail.
+    pub message: String,
+}
+
 #[derive(Clone)]
 struct RegisteredHandler {
     id: u64,
@@ -225,6 +284,9 @@ struct Inner {
     inject_tx: mpsc::Sender<i32>,
     inject_rx: Mutex<mpsc::Receiver<i32>>,
     endpoint_logger: Mutex<Option<Arc<EndpointLogFn>>>,
+    runtime_logger: Mutex<Option<Arc<RuntimeLogFn>>>,
+    force_exit: Mutex<Option<Arc<ForceExitFn>>>,
+    shutdown_grace_override: Mutex<Option<Duration>>,
 }
 
 impl Inner {
@@ -307,6 +369,9 @@ impl SignalManager {
                 inject_tx,
                 inject_rx: Mutex::new(inject_rx),
                 endpoint_logger: Mutex::new(None),
+                runtime_logger: Mutex::new(None),
+                force_exit: Mutex::new(None),
+                shutdown_grace_override: Mutex::new(None),
             }),
         }
     }
@@ -359,6 +424,10 @@ impl SignalManager {
     }
 
     /// Append a shutdown hook (executed in LIFO order).
+    ///
+    /// Hooks run under the catalog `timeout_seconds` grace period (see
+    /// [`catalog_shutdown_grace`] / [`SignalManager::set_shutdown_grace`]).
+    /// A hook panic is isolated and does not skip later hooks.
     pub fn on_shutdown<F>(&self, hook: F)
     where
         F: FnOnce() -> SignalResult + Send + 'static,
@@ -424,6 +493,78 @@ impl SignalManager {
             .endpoint_logger
             .lock()
             .expect("endpoint logger mutex poisoned unexpectedly");
+        *lock = None;
+    }
+
+    /// Install a callback for handler-panic and grace-expiry events.
+    ///
+    /// Messages are redacted before the callback runs. Without a callback the
+    /// same line is written to stderr.
+    pub fn set_runtime_logger<F>(&self, logger: F)
+    where
+        F: Fn(&SignalRuntimeLogEvent) + Send + Sync + 'static,
+    {
+        let mut lock = self
+            .inner
+            .runtime_logger
+            .lock()
+            .expect("runtime logger mutex poisoned unexpectedly");
+        *lock = Some(Arc::new(logger));
+    }
+
+    /// Remove the runtime event logger callback.
+    pub fn clear_runtime_logger(&self) {
+        let mut lock = self
+            .inner
+            .runtime_logger
+            .lock()
+            .expect("runtime logger mutex poisoned unexpectedly");
+        *lock = None;
+    }
+
+    /// Override catalog `timeout_seconds` for TERM/INT shutdown.
+    ///
+    /// `None` restores catalog-or-default lookup. `Some(Duration::ZERO)` takes
+    /// the force-exit path immediately (hooks are not run).
+    pub fn set_shutdown_grace(&self, grace: Option<Duration>) {
+        let mut lock = self
+            .inner
+            .shutdown_grace_override
+            .lock()
+            .expect("shutdown grace mutex poisoned unexpectedly");
+        *lock = grace;
+    }
+
+    /// Grace period that would apply if `signal` triggered shutdown.
+    pub fn shutdown_grace_for(&self, signal: i32) -> Duration {
+        let override_grace = self
+            .inner
+            .shutdown_grace_override
+            .lock()
+            .expect("shutdown grace mutex poisoned unexpectedly");
+        override_grace.unwrap_or_else(|| catalog_shutdown_grace(signal))
+    }
+
+    /// Replace `process::exit` on grace expiry (and tests that must not abort).
+    pub fn set_force_exit<F>(&self, hook: F)
+    where
+        F: Fn(i32) + Send + Sync + 'static,
+    {
+        let mut lock = self
+            .inner
+            .force_exit
+            .lock()
+            .expect("force_exit mutex poisoned unexpectedly");
+        *lock = Some(Arc::new(hook));
+    }
+
+    /// Restore the production force-exit path (`process::exit`).
+    pub fn clear_force_exit(&self) {
+        let mut lock = self
+            .inner
+            .force_exit
+            .lock()
+            .expect("force_exit mutex poisoned unexpectedly");
         *lock = None;
     }
 
@@ -548,6 +689,60 @@ impl SignalManager {
         });
 
         SignalEndpointResponse::Accepted(accepted)
+    }
+
+    /// Thin HTTP adapter for `POST /admin/signal`.
+    ///
+    /// No server crate: the caller supplies method, path, and body. Returns
+    /// `(status_code, json_body)`. Other methods/paths are 405/404.
+    ///
+    /// Authentication, TLS, and rate-limit (401/403/429) stay with the caller.
+    /// Requires the `json` feature (`serde_json`); `foundry-core` alone does
+    /// not enable this method.
+    #[cfg(feature = "json")]
+    pub fn handle_admin_signal_http(
+        &self,
+        method: &str,
+        path: &str,
+        body: &[u8],
+        metadata: SignalEndpointMetadata,
+    ) -> (u16, String) {
+        let path = path.split('?').next().unwrap_or(path);
+        if path != "/admin/signal" {
+            return (
+                404,
+                r#"{"status":"error","error":"not_found","message":"not found"}"#.to_string(),
+            );
+        }
+        if !method.eq_ignore_ascii_case("POST") {
+            return (
+                405,
+                r#"{"status":"error","error":"method_not_allowed","message":"POST required"}"#
+                    .to_string(),
+            );
+        }
+        let request = match serde_json::from_slice::<SignalEndpointRequest>(body) {
+            Ok(req) => req,
+            Err(err) => {
+                let resp = SignalEndpointErrorResponse {
+                    status: "error".to_string(),
+                    error: "invalid_json".to_string(),
+                    message: err.to_string(),
+                };
+                return (
+                    400,
+                    serde_json::to_string(&resp).unwrap_or_else(|_| "{}".to_string()),
+                );
+            }
+        };
+        let response = self.handle_admin_signal_request_with_metadata(request, metadata);
+        let status = response.status_code();
+        let body = match response {
+            SignalEndpointResponse::Accepted(ok) => serde_json::to_string(&ok),
+            SignalEndpointResponse::Error(err) => serde_json::to_string(&err),
+        }
+        .unwrap_or_else(|_| "{}".to_string());
+        (status, body)
     }
 
     /// Check whether a signal is supported on the current platform.
@@ -685,7 +880,7 @@ impl SignalManager {
         }
 
         if signal == sigint_number() || signal == sigterm_number() {
-            self.run_shutdown_chain();
+            self.run_shutdown_chain(signal);
             self.stop();
         }
     }
@@ -727,11 +922,21 @@ impl SignalManager {
         };
 
         for entry in handlers {
-            let _ = (entry.handler)();
+            match catch_unwind(AssertUnwindSafe(|| (entry.handler)())) {
+                Ok(_) => {}
+                Err(payload) => {
+                    let detail = panic_payload_to_string(payload);
+                    self.emit_runtime_log(SignalRuntimeLogEvent {
+                        kind: SignalRuntimeLogKind::HandlerPanic,
+                        signal: Some(signal),
+                        message: format!("handler panicked: {detail}"),
+                    });
+                }
+            }
         }
     }
 
-    fn run_shutdown_chain(&self) {
+    fn run_shutdown_chain(&self, signal: i32) {
         let hooks = {
             let mut chain = self
                 .inner
@@ -741,8 +946,51 @@ impl SignalManager {
             std::mem::take(&mut *chain)
         };
 
-        for hook in hooks.into_iter().rev() {
-            let _ = hook();
+        let grace = self.shutdown_grace_for(signal);
+        let exit_code = signal_by_platform_number(signal)
+            .map(|sig| sig.exit_code)
+            .unwrap_or(EXIT_SIGTERM);
+
+        if grace == Duration::ZERO {
+            self.emit_runtime_log(SignalRuntimeLogEvent {
+                kind: SignalRuntimeLogKind::ShutdownGraceExpired,
+                signal: Some(signal),
+                message: "shutdown grace is zero; taking force-exit path".to_string(),
+            });
+            self.invoke_force_exit(exit_code);
+            return;
+        }
+
+        let (done_tx, done_rx) = mpsc::channel();
+        let manager = self.clone();
+        thread::spawn(move || {
+            for hook in hooks.into_iter().rev() {
+                match catch_unwind(AssertUnwindSafe(hook)) {
+                    Ok(_) => {}
+                    Err(payload) => {
+                        let detail = panic_payload_to_string(payload);
+                        manager.emit_runtime_log(SignalRuntimeLogEvent {
+                            kind: SignalRuntimeLogKind::ShutdownHookPanic,
+                            signal: Some(signal),
+                            message: format!("shutdown hook panicked: {detail}"),
+                        });
+                    }
+                }
+            }
+            let _ = done_tx.send(());
+        });
+
+        match done_rx.recv_timeout(grace) {
+            Ok(()) => {}
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                self.emit_runtime_log(SignalRuntimeLogEvent {
+                    kind: SignalRuntimeLogKind::ShutdownGraceExpired,
+                    signal: Some(signal),
+                    message: format!("shutdown hooks exceeded grace {grace:?}"),
+                });
+                self.invoke_force_exit(exit_code);
+            }
+            Err(mpsc::RecvTimeoutError::Disconnected) => {}
         }
     }
 
@@ -755,8 +1003,32 @@ impl SignalManager {
             .clone();
 
         for hook in chain {
-            let _ = hook();
+            match catch_unwind(AssertUnwindSafe(|| hook())) {
+                Ok(_) => {}
+                Err(payload) => {
+                    let detail = panic_payload_to_string(payload);
+                    self.emit_runtime_log(SignalRuntimeLogEvent {
+                        kind: SignalRuntimeLogKind::ReloadHookPanic,
+                        signal: Some(sighup_number()),
+                        message: format!("reload hook panicked: {detail}"),
+                    });
+                }
+            }
         }
+    }
+
+    fn invoke_force_exit(&self, code: i32) {
+        let hook = self
+            .inner
+            .force_exit
+            .lock()
+            .expect("force_exit mutex poisoned unexpectedly")
+            .clone();
+        if let Some(hook) = hook {
+            hook(code);
+            return;
+        }
+        std::process::exit(code);
     }
 
     pub(crate) fn inject(&self, signal: i32) -> Result<(), SignalManagerError> {
@@ -799,6 +1071,127 @@ impl SignalManager {
             logger(&event);
         }
     }
+
+    fn emit_runtime_log(&self, mut event: SignalRuntimeLogEvent) {
+        event.message = redact_runtime_message(&event.message);
+        let logger = self
+            .inner
+            .runtime_logger
+            .lock()
+            .expect("runtime logger mutex poisoned unexpectedly")
+            .clone();
+
+        if let Some(logger) = logger {
+            logger(&event);
+            return;
+        }
+        eprintln!(
+            "rsfulmen signals: {} {}",
+            runtime_log_kind_label(event.kind),
+            event.message
+        );
+    }
+}
+
+/// Catalog `timeout_seconds` for `signal`, or [`DEFAULT_SHUTDOWN_GRACE`] when
+/// the field is absent. `0` means no grace (force-exit immediately).
+pub fn catalog_shutdown_grace(signal: i32) -> Duration {
+    match signal_by_platform_number(signal).and_then(|sig| sig.timeout_seconds) {
+        Some(0) => Duration::ZERO,
+        Some(secs) => Duration::from_secs(u64::from(secs)),
+        None => DEFAULT_SHUTDOWN_GRACE,
+    }
+}
+
+fn runtime_log_kind_label(kind: SignalRuntimeLogKind) -> &'static str {
+    match kind {
+        SignalRuntimeLogKind::HandlerPanic => "handler_panic",
+        SignalRuntimeLogKind::ShutdownHookPanic => "shutdown_hook_panic",
+        SignalRuntimeLogKind::ReloadHookPanic => "reload_hook_panic",
+        SignalRuntimeLogKind::ShutdownGraceExpired => "shutdown_grace_expired",
+    }
+}
+
+fn panic_payload_to_string(payload: Box<dyn std::any::Any + Send>) -> String {
+    if let Some(s) = payload.downcast_ref::<&str>() {
+        (*s).to_string()
+    } else if let Some(s) = payload.downcast_ref::<String>() {
+        s.clone()
+    } else {
+        "non-string panic payload".to_string()
+    }
+}
+
+fn redact_runtime_message(raw: &str) -> String {
+    #[cfg(feature = "logging")]
+    let out = redact_with_logging_middleware(raw);
+    #[cfg(not(feature = "logging"))]
+    let out = raw.to_string();
+    redact_secret_assignments(&out)
+}
+
+#[cfg(feature = "logging")]
+fn redact_with_logging_middleware(raw: &str) -> String {
+    use crate::logging::{LogRecord, Middleware, RedactSecretsMiddleware, Severity};
+
+    let Ok(mw) = RedactSecretsMiddleware::defaults() else {
+        return raw.to_string();
+    };
+    let mut record = LogRecord {
+        timestamp: String::new(),
+        severity: Severity::Error,
+        message: raw.to_string(),
+        logger: "signals".to_string(),
+        component: None,
+        fields: Vec::new(),
+        correlation_id: None,
+        redaction_flags: Vec::new(),
+        throttle_bucket: None,
+    };
+    let _ = mw.process(&mut record);
+    record.message
+}
+
+fn redact_secret_assignments(raw: &str) -> String {
+    let chars: Vec<char> = raw.chars().collect();
+    let lower: Vec<char> = raw.to_ascii_lowercase().chars().collect();
+    let mut keys: Vec<Vec<char>> = RUNTIME_SECRET_KEYS
+        .iter()
+        .map(|k| k.chars().collect())
+        .collect();
+    keys.sort_by_key(|k| std::cmp::Reverse(k.len()));
+
+    let mut out = String::new();
+    let mut i = 0;
+    while i < chars.len() {
+        let mut val_start = None;
+        for key in &keys {
+            let end = i + key.len();
+            if end < lower.len()
+                && lower[i..end] == key[..]
+                && (i == 0 || !lower[i - 1].is_ascii_alphanumeric())
+                && (lower[end] == '=' || lower[end] == ':')
+            {
+                val_start = Some(end + 1);
+                break;
+            }
+        }
+        if let Some(start) = val_start {
+            for c in &chars[i..start] {
+                out.push(*c);
+            }
+            out.push_str(RUNTIME_REDACTION_REPLACEMENT);
+            let mut j = start;
+            while j < chars.len() && !chars[j].is_whitespace() {
+                j += 1;
+            }
+            i = j;
+        } else {
+            out.push(chars[i]);
+            i += 1;
+        }
+    }
+    out
 }
 
 impl Default for SignalManager {
@@ -1293,5 +1686,499 @@ mod tests {
             .expect("listener should exit cleanly");
 
         assert!(hit.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn multiple_handlers_run_in_registration_order() {
+        let manager = SignalManager::new();
+        let order = Arc::new(Mutex::new(Vec::new()));
+
+        let o1 = Arc::clone(&order);
+        let _g1 = manager
+            .handle(sigterm_number(), move || {
+                o1.lock().expect("order").push(1usize);
+                Ok(())
+            })
+            .expect("register first");
+
+        let o2 = Arc::clone(&order);
+        let _g2 = manager
+            .handle(sigterm_number(), move || {
+                o2.lock().expect("order").push(2usize);
+                Ok(())
+            })
+            .expect("register second");
+
+        manager.dispatch_signal(sigterm_number(), &mut None);
+        assert_eq!(*order.lock().expect("order"), vec![1, 2]);
+    }
+
+    #[test]
+    fn handler_error_does_not_stop_later_handlers() {
+        let manager = SignalManager::new();
+        let later = Arc::new(AtomicUsize::new(0));
+
+        let _g1 = manager
+            .handle(sigterm_number(), || Err("boom".into()))
+            .expect("register failing handler");
+
+        let later_c = Arc::clone(&later);
+        let _g2 = manager
+            .handle(sigterm_number(), move || {
+                later_c.fetch_add(1, Ordering::SeqCst);
+                Ok(())
+            })
+            .expect("register later handler");
+
+        manager.dispatch_signal(sigterm_number(), &mut None);
+        assert_eq!(later.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn handler_panic_in_middle_continues_and_shuts_down() {
+        let manager = SignalManager::new();
+        manager.set_force_exit(|_| {});
+        manager.set_runtime_logger(|_| {});
+        let order = Arc::new(Mutex::new(Vec::new()));
+        let shutdown = Arc::new(AtomicUsize::new(0));
+
+        let o1 = Arc::clone(&order);
+        let _g1 = manager
+            .handle(sigterm_number(), move || {
+                o1.lock().expect("order").push(1usize);
+                Ok(())
+            })
+            .expect("register first");
+
+        let _g2 = manager
+            .handle(sigterm_number(), || panic!("handler panic in middle"))
+            .expect("register panicking handler");
+
+        let o3 = Arc::clone(&order);
+        let _g3 = manager
+            .handle(sigterm_number(), move || {
+                o3.lock().expect("order").push(3usize);
+                Ok(())
+            })
+            .expect("register later handler");
+
+        let shutdown_c = Arc::clone(&shutdown);
+        manager.on_shutdown(move || {
+            shutdown_c.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        });
+
+        manager.dispatch_signal(sigterm_number(), &mut None);
+        assert_eq!(*order.lock().expect("order"), vec![1, 3]);
+        assert_eq!(shutdown.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn handler_panic_payload_is_logged_and_redacted() {
+        let manager = SignalManager::new();
+        manager.set_force_exit(|_| {});
+        let events = Arc::new(Mutex::new(Vec::<SignalRuntimeLogEvent>::new()));
+        let captured = Arc::clone(&events);
+        manager.set_runtime_logger(move |event| {
+            captured.lock().expect("events").push(event.clone());
+        });
+
+        let _g = manager
+            .handle(sigterm_number(), || panic!("boom password=hunter2"))
+            .expect("register panicking handler");
+
+        manager.dispatch_signal(sigterm_number(), &mut None);
+
+        let events = events.lock().expect("events");
+        let panic_logs: Vec<_> = events
+            .iter()
+            .filter(|e| e.kind == SignalRuntimeLogKind::HandlerPanic)
+            .collect();
+        assert_eq!(panic_logs.len(), 1);
+        assert!(
+            panic_logs[0].message.contains("boom"),
+            "payload should be logged: {}",
+            panic_logs[0].message
+        );
+        assert!(
+            !panic_logs[0].message.contains("hunter2"),
+            "secret leaked: {}",
+            panic_logs[0].message
+        );
+        assert!(
+            panic_logs[0]
+                .message
+                .contains(RUNTIME_REDACTION_REPLACEMENT),
+            "expected redaction marker: {}",
+            panic_logs[0].message
+        );
+    }
+
+    #[test]
+    fn rapid_sighup_is_not_coalesced() {
+        let manager = SignalManager::new();
+        let hits = Arc::new(AtomicUsize::new(0));
+        let hits_c = Arc::clone(&hits);
+        manager.on_reload(move || {
+            hits_c.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        });
+
+        manager.dispatch_signal(sighup_number(), &mut None);
+        manager.dispatch_signal(sighup_number(), &mut None);
+        assert_eq!(hits.load(Ordering::SeqCst), 2);
+    }
+
+    #[test]
+    fn double_sigterm_runs_shutdown_hooks_once() {
+        let manager = SignalManager::new();
+        let hits = Arc::new(AtomicUsize::new(0));
+        let hits_c = Arc::clone(&hits);
+        manager.on_shutdown(move || {
+            hits_c.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        });
+
+        manager.dispatch_signal(sigterm_number(), &mut None);
+        manager.dispatch_signal(sigterm_number(), &mut None);
+        assert_eq!(hits.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn redispatch_from_shutdown_hook_sees_empty_chain() {
+        let manager = SignalManager::new();
+        let hits = Arc::new(AtomicUsize::new(0));
+
+        let hits_inner = Arc::clone(&hits);
+        let manager_inner = manager.clone();
+        manager.on_shutdown(move || {
+            hits_inner.fetch_add(1, Ordering::SeqCst);
+            manager_inner.dispatch_signal(sigterm_number(), &mut None);
+            Ok(())
+        });
+
+        let hits_late = Arc::clone(&hits);
+        manager.on_shutdown(move || {
+            hits_late.fetch_add(10, Ordering::SeqCst);
+            Ok(())
+        });
+
+        manager.dispatch_signal(sigterm_number(), &mut None);
+        // LIFO: +10 then +1 (which re-dispatches an already-taken chain).
+        assert_eq!(hits.load(Ordering::SeqCst), 11);
+    }
+
+    #[test]
+    fn handle_from_inside_handler_does_not_deadlock() {
+        let manager = SignalManager::new();
+        let stored: Arc<Mutex<Option<SignalRegistration>>> = Arc::new(Mutex::new(None));
+        let stored_c = Arc::clone(&stored);
+        let manager_c = manager.clone();
+
+        let _outer = manager
+            .handle(sigterm_number(), move || {
+                let inner = manager_c
+                    .handle(sigterm_number(), || Ok(()))
+                    .expect("inner register during dispatch");
+                *stored_c.lock().expect("stored") = Some(inner);
+                Ok(())
+            })
+            .expect("outer register");
+
+        manager.dispatch_signal(sigterm_number(), &mut None);
+        assert!(
+            stored.lock().expect("stored").is_some(),
+            "inner registration should complete"
+        );
+    }
+
+    #[test]
+    fn handle_unknown_signal_number_errors() {
+        let manager = SignalManager::new();
+        let err = match manager.handle(i32::MAX, || Ok(())) {
+            Ok(_) => panic!("unknown signal should not register"),
+            Err(e) => e,
+        };
+        assert!(matches!(err, SignalManagerError::UnknownSignal(_)));
+    }
+
+    #[test]
+    fn listen_rejects_second_caller() {
+        let manager = SignalManager::new();
+        let injector = testing::SignalInjector::new(&manager);
+        let manager_listen = manager.clone();
+        let listener = thread::spawn(move || manager_listen.listen());
+
+        injector
+            .wait_for_listen(Duration::from_secs(1))
+            .expect("listener should start");
+
+        let err = manager.listen().expect_err("second listen");
+        assert!(matches!(err, SignalManagerError::ListenAlreadyRunning));
+
+        manager.stop();
+        listener
+            .join()
+            .expect("listener thread should join")
+            .expect("listener should exit cleanly");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_unsupported_signal_is_noop_registration() {
+        let manager = SignalManager::new();
+        assert!(!manager.supports(SIGHUP));
+        let guard = manager
+            .handle(SIGHUP, || Ok(()))
+            .expect("Windows returns a noop registration, not an error");
+        drop(guard);
+    }
+
+    #[test]
+    fn shutdown_hook_error_does_not_stop_later_hooks() {
+        let manager = SignalManager::new();
+        let later = Arc::new(AtomicUsize::new(0));
+
+        manager.on_shutdown(|| Err("first hook failed".into()));
+
+        let later_c = Arc::clone(&later);
+        manager.on_shutdown(move || {
+            later_c.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        });
+
+        // LIFO: later hook (+1) runs first, then the erroring hook. Both must run.
+        manager.dispatch_signal(sigterm_number(), &mut None);
+        assert_eq!(later.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn reload_hook_error_does_not_stop_later_hooks() {
+        let manager = SignalManager::new();
+        let later = Arc::new(AtomicUsize::new(0));
+
+        manager.on_reload(|| Err("reload failed".into()));
+
+        let later_c = Arc::clone(&later);
+        manager.on_reload(move || {
+            later_c.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        });
+
+        manager.dispatch_signal(sighup_number(), &mut None);
+        assert_eq!(later.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn first_sigint_with_double_tap_runs_shutdown_without_force_exit() {
+        let manager = SignalManager::new();
+        manager.enable_double_tap(DoubleTapConfig {
+            window: Duration::from_secs(2),
+            message: String::new(),
+            exit_code: 99,
+        });
+
+        let hits = Arc::new(AtomicUsize::new(0));
+        let hits_c = Arc::clone(&hits);
+        manager.on_shutdown(move || {
+            hits_c.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        });
+
+        manager.dispatch_signal(sigint_number(), &mut None);
+        assert_eq!(hits.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn second_sigint_after_double_tap_window_does_not_force_exit() {
+        let manager = SignalManager::new();
+        manager.enable_double_tap(DoubleTapConfig {
+            window: Duration::from_millis(20),
+            message: String::new(),
+            exit_code: 99,
+        });
+
+        let mut first_sigint_at = None;
+        manager.dispatch_signal(sigint_number(), &mut first_sigint_at);
+        assert!(first_sigint_at.is_some());
+
+        thread::sleep(Duration::from_millis(50));
+        // Window expired: second SIGINT must not call process::exit.
+        manager.dispatch_signal(sigint_number(), &mut first_sigint_at);
+    }
+
+    #[test]
+    fn handler_registered_after_listen_receives_injected_signal() {
+        let manager = SignalManager::new();
+        let injector = testing::SignalInjector::new(&manager);
+        let manager_listen = manager.clone();
+        let listener = thread::spawn(move || manager_listen.listen());
+
+        injector
+            .wait_for_listen(Duration::from_secs(1))
+            .expect("listener should start");
+
+        let usr2 = get_signal_number("SIGUSR2").unwrap_or(SIGUSR2);
+        let hits = Arc::new(AtomicUsize::new(0));
+        let hits_c = Arc::clone(&hits);
+        let _guard = manager
+            .handle(usr2, move || {
+                hits_c.fetch_add(1, Ordering::SeqCst);
+                Ok(())
+            })
+            .expect("register after listen");
+
+        injector.inject(usr2).expect("inject");
+
+        let deadline = Instant::now() + Duration::from_secs(1);
+        while hits.load(Ordering::SeqCst) == 0 && Instant::now() < deadline {
+            thread::sleep(Duration::from_millis(10));
+        }
+
+        manager.stop();
+        listener
+            .join()
+            .expect("listener thread should join")
+            .expect("listener should exit cleanly");
+
+        assert_eq!(
+            hits.load(Ordering::SeqCst),
+            1,
+            "injected signal must reach a handler registered after listen()"
+        );
+    }
+
+    #[test]
+    fn catalog_timeout_seconds_term_int_zero_and_absent() {
+        assert_eq!(
+            catalog_shutdown_grace(sigterm_number()),
+            Duration::from_secs(30)
+        );
+        assert_eq!(
+            catalog_shutdown_grace(sigint_number()),
+            Duration::from_secs(5)
+        );
+        let quit = get_signal_number("SIGQUIT").unwrap_or(SIGQUIT);
+        assert_eq!(catalog_shutdown_grace(quit), Duration::ZERO);
+        let usr1 = get_signal_number("SIGUSR1").unwrap_or(SIGUSR1);
+        assert_eq!(
+            catalog_shutdown_grace(usr1),
+            DEFAULT_SHUTDOWN_GRACE,
+            "absent timeout_seconds uses the SIGTERM default"
+        );
+    }
+
+    #[test]
+    fn manager_grace_override_none_restores_catalog() {
+        let manager = SignalManager::new();
+        assert_eq!(
+            manager.shutdown_grace_for(sigterm_number()),
+            Duration::from_secs(30)
+        );
+        manager.set_shutdown_grace(Some(Duration::from_millis(10)));
+        assert_eq!(
+            manager.shutdown_grace_for(sigterm_number()),
+            Duration::from_millis(10)
+        );
+        manager.set_shutdown_grace(None);
+        assert_eq!(
+            manager.shutdown_grace_for(sigterm_number()),
+            Duration::from_secs(30)
+        );
+    }
+
+    #[test]
+    fn shutdown_hook_completes_within_grace() {
+        let manager = SignalManager::new();
+        manager.set_shutdown_grace(Some(Duration::from_secs(2)));
+        let forced = Arc::new(AtomicUsize::new(0));
+        let forced_c = Arc::clone(&forced);
+        manager.set_force_exit(move |_| {
+            forced_c.fetch_add(1, Ordering::SeqCst);
+        });
+
+        let hits = Arc::new(AtomicUsize::new(0));
+        let hits_c = Arc::clone(&hits);
+        manager.on_shutdown(move || {
+            hits_c.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        });
+
+        manager.dispatch_signal(sigterm_number(), &mut None);
+        assert_eq!(hits.load(Ordering::SeqCst), 1);
+        assert_eq!(forced.load(Ordering::SeqCst), 0);
+    }
+
+    #[test]
+    fn shutdown_hook_exceeding_grace_takes_force_exit() {
+        let manager = SignalManager::new();
+        manager.set_shutdown_grace(Some(Duration::from_millis(40)));
+        manager.set_runtime_logger(|_| {});
+        let forced = Arc::new(AtomicUsize::new(0));
+        let forced_code = Arc::new(Mutex::new(None::<i32>));
+        let forced_c = Arc::clone(&forced);
+        let code_c = Arc::clone(&forced_code);
+        manager.set_force_exit(move |code| {
+            forced_c.fetch_add(1, Ordering::SeqCst);
+            *code_c.lock().expect("code") = Some(code);
+        });
+
+        manager.on_shutdown(|| {
+            thread::sleep(Duration::from_millis(250));
+            Ok(())
+        });
+
+        manager.dispatch_signal(sigterm_number(), &mut None);
+        assert_eq!(forced.load(Ordering::SeqCst), 1);
+        assert_eq!(
+            *forced_code.lock().expect("code"),
+            Some(EXIT_SIGTERM),
+            "force-exit should use catalog SIGTERM exit code"
+        );
+    }
+
+    #[test]
+    fn shutdown_grace_zero_takes_force_exit_without_hooks() {
+        let manager = SignalManager::new();
+        manager.set_shutdown_grace(Some(Duration::ZERO));
+        manager.set_runtime_logger(|_| {});
+        let forced = Arc::new(AtomicUsize::new(0));
+        let forced_c = Arc::clone(&forced);
+        manager.set_force_exit(move |_| {
+            forced_c.fetch_add(1, Ordering::SeqCst);
+        });
+
+        let hits = Arc::new(AtomicUsize::new(0));
+        let hits_c = Arc::clone(&hits);
+        manager.on_shutdown(move || {
+            hits_c.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        });
+
+        manager.dispatch_signal(sigterm_number(), &mut None);
+        assert_eq!(forced.load(Ordering::SeqCst), 1);
+        assert_eq!(
+            hits.load(Ordering::SeqCst),
+            0,
+            "zero grace skips hooks (catalog immediate-exit semantics)"
+        );
+    }
+
+    #[test]
+    fn shutdown_grace_expiry_is_logged() {
+        let manager = SignalManager::new();
+        manager.set_shutdown_grace(Some(Duration::ZERO));
+        manager.set_force_exit(|_| {});
+        let events = Arc::new(Mutex::new(Vec::<SignalRuntimeLogEvent>::new()));
+        let captured = Arc::clone(&events);
+        manager.set_runtime_logger(move |event| {
+            captured.lock().expect("events").push(event.clone());
+        });
+
+        manager.dispatch_signal(sigterm_number(), &mut None);
+        let events = events.lock().expect("events");
+        assert!(events
+            .iter()
+            .any(|e| e.kind == SignalRuntimeLogKind::ShutdownGraceExpired));
     }
 }
