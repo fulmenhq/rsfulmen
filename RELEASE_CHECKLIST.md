@@ -9,14 +9,16 @@ This checklist follows the shared ecosystem pattern (gofulmen/pyfulmen/tsfulmen/
 
 - `RSFULMEN_RELEASE_TAG`: optional override tag (recommended for manual release commands; e.g. `v0.1.30`)
   - If unset, scripts default to `v$(cat VERSION)`.
+  - `make release-publish` accepts it only when `make release-guard-tag-version` passes (the tag must match `VERSION`).
+- `RSFULMEN_RELEASE_DIST`: optional directory for attestation assets (default `dist/release`)
 - `RSFULMEN_TAGGER_NAME`: **required** annotated-tag tagger name for `make release-tag` and `make release-verify-tag`
 - `RSFULMEN_TAGGER_EMAIL`: **required** annotated-tag tagger email for those targets; must be a verified email on the GitHub account that holds the signing public key
 - `RSFULMEN_GPG_HOMEDIR`: recommended dedicated signing keyring directory (separate from personal `~/.gnupg`)
 - `RSFULMEN_PGP_KEY_ID`: optional key id/email/fingerprint for signing
 - `RSFULMEN_MINISIGN_KEY`: optional minisign secret key path (creates a sidecar signature for the tag attestation)
-- `RSFULMEN_MINISIGN_PUB`: optional minisign public key path (verifies the sidecar signature)
+- `RSFULMEN_MINISIGN_PUB`: minisign public key path. Optional for `make release-tag` / `make release-verify-tag`. Required by `make release-publish` so the attestation is verified before upload.
 - `RSFULMEN_ALLOW_NON_MAIN=1`: optional override to tag from a non-`main` branch (not recommended)
-- `RSFULMEN_ALLOW_UNTAGGED=1`: skip tag requirement in guard check (for local dry-runs only)
+- `RSFULMEN_ALLOW_UNTAGGED=1`: skip tag requirement in guard check (for local dry-runs only). `make release-publish` rejects this override.
 
 Note: `RSFULMEN_RELEASE_TAG` is not a secret and typically isn't stored in encrypted env bundles.
 
@@ -114,9 +116,16 @@ Note: `RSFULMEN_RELEASE_TAG` is not a secret and typically isn't stored in encry
     gh api repos/fulmenhq/rsfulmen/git/tags/$TAG_SHA --jq .verification
     ```
   - [ ] **GitHub Web UI (note)**: a green "Verified" badge only appears if the signing public key is uploaded to the GitHub account and `RSFULMEN_TAGGER_EMAIL` matches a verified email on that account. Otherwise GitHub may show "Unverified" even though `git tag -v` succeeds.
-- [ ] Optional: publish minisign attestation (if enabled):
-  - `make release-tag` can produce `dist/release/vX.Y.Z.tag.txt` + `.minisig` when `RSFULMEN_MINISIGN_KEY` and `RSFULMEN_MINISIGN_PUB` are set.
-  - These files are **not uploaded automatically**; to distribute them, attach them to a GitHub Release (or another artifact channel):
+- [ ] Publish the GitHub release with the minisign attestation:
+  - `make release-tag` writes `dist/release/vX.Y.Z.tag.txt` and `.minisig` when `RSFULMEN_MINISIGN_KEY` and `RSFULMEN_MINISIGN_PUB` are set.
+  - `make release-publish` runs `make release-guard-tag-version`, verifies the attestation with `RSFULMEN_MINISIGN_PUB`, and creates the release. It fails before `gh` if any required asset is missing or empty:
+    - `CHANGELOG.md` (release notes)
+    - `dist/release/<tag>.tag.txt`
+    - `dist/release/<tag>.tag.txt.minisig`
+    ```bash
+    make release-publish
+    ```
+    Equivalent upload, once those checks have passed:
     ```bash
     gh release create v$(cat VERSION) --notes-file CHANGELOG.md dist/release/v$(cat VERSION).tag.txt dist/release/v$(cat VERSION).tag.txt.minisig
     ```
