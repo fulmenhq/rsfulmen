@@ -339,6 +339,70 @@ pub fn get_signal_from_exit(code: i32) -> Option<i32> {
     }
 }
 
+/// One BSD `sysexits.h` mapping from the catalog `bsd_compatibility` table.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BsdMapping {
+    /// BSD numeric code.
+    pub bsd_code: i32,
+    /// BSD symbolic name (e.g. `EX_USAGE`).
+    pub bsd_name: String,
+    /// Fulmen exit code this maps to.
+    pub fulmen_code: i32,
+    /// Fulmen symbolic name.
+    pub fulmen_name: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct BsdCompatibility {
+    mappings: Vec<RawBsdMapping>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RawBsdMapping {
+    bsd_code: i32,
+    bsd_name: String,
+    fulmen_code: i32,
+    fulmen_name: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct BsdCatalog {
+    bsd_compatibility: BsdCompatibility,
+}
+
+static BSD_MAPPINGS: Lazy<Vec<BsdMapping>> = Lazy::new(|| {
+    let catalog: BsdCatalog = serde_yaml::from_str(EXIT_CODES_YAML)
+        .expect("Failed to parse bsd_compatibility from exit-codes catalog");
+    catalog
+        .bsd_compatibility
+        .mappings
+        .into_iter()
+        .map(|m| BsdMapping {
+            bsd_code: m.bsd_code,
+            bsd_name: m.bsd_name,
+            fulmen_code: m.fulmen_code,
+            fulmen_name: m.fulmen_name,
+        })
+        .collect()
+});
+
+/// Map a BSD `sysexits.h` code to the Fulmen code recorded in the catalog.
+///
+/// Unknown BSD codes return `None`. Conflicts (e.g. EX_OSERR 71 vs
+/// `EXIT_AUTHORIZATION_FAILED` 71) follow the catalog's pragmatic mapping,
+/// not the numeric coincidence.
+pub fn map_bsd_to_fulmen(bsd_code: i32) -> Option<i32> {
+    BSD_MAPPINGS
+        .iter()
+        .find(|m| m.bsd_code == bsd_code)
+        .map(|m| m.fulmen_code)
+}
+
+/// Catalog BSD compatibility rows.
+pub fn list_bsd_mappings() -> &'static [BsdMapping] {
+    &BSD_MAPPINGS
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -436,5 +500,64 @@ mod tests {
         assert_eq!(ExitCategory::from_code(64), Some(ExitCategory::Usage));
         assert_eq!(ExitCategory::from_code(124), Some(ExitCategory::Shell));
         assert_eq!(ExitCategory::from_code(143), Some(ExitCategory::Signals));
+    }
+
+    #[test]
+    fn test_bsd_catalog_mappings() {
+        assert_eq!(map_bsd_to_fulmen(64), Some(64));
+        assert_eq!(map_bsd_to_fulmen(71), Some(33), "EX_OSERR is not Fulmen 71");
+        assert_eq!(map_bsd_to_fulmen(74), Some(54));
+        assert_eq!(map_bsd_to_fulmen(75), Some(34));
+        assert_eq!(map_bsd_to_fulmen(0), None);
+        assert_eq!(map_bsd_to_fulmen(99), None);
+        assert!(list_bsd_mappings().len() >= 4);
+    }
+
+    #[test]
+    fn test_exit_codes_snapshot_parity() {
+        #[derive(Deserialize)]
+        struct SnapCode {
+            name: String,
+            category: String,
+        }
+        #[derive(Deserialize)]
+        struct Snapshot {
+            codes: std::collections::BTreeMap<String, SnapCode>,
+        }
+
+        const SNAPSHOT: &str =
+            include_str!("../../config/crucible-rs/library/foundry/exit-codes.snapshot.json");
+        let snap: Snapshot = serde_yaml::from_str(SNAPSHOT).expect("exit-codes snapshot");
+
+        for (code_str, expected) in &snap.codes {
+            let code: i32 = code_str.parse().expect("snapshot code key");
+            let got = lookup_exit_code(code)
+                .unwrap_or_else(|| panic!("catalog missing snapshot code {code}"));
+            assert_eq!(got.name, expected.name, "name for {code}");
+            let category = match expected.category.as_str() {
+                "standard" => ExitCategory::Standard,
+                "networking" => ExitCategory::Networking,
+                "configuration" => ExitCategory::Configuration,
+                "runtime" => ExitCategory::Runtime,
+                "usage" => ExitCategory::Usage,
+                "permissions" => ExitCategory::Permissions,
+                "data" => ExitCategory::Data,
+                "security" => ExitCategory::Security,
+                "observability" => ExitCategory::Observability,
+                "testing" => ExitCategory::Testing,
+                "shell" => ExitCategory::Shell,
+                "signals" => ExitCategory::Signals,
+                other => panic!("unknown snapshot category {other}"),
+            };
+            assert_eq!(got.category, category, "category for {code}");
+        }
+
+        for entry in list_exit_codes() {
+            assert!(
+                snap.codes.contains_key(&entry.code.to_string()),
+                "snapshot missing catalog code {}",
+                entry.code
+            );
+        }
     }
 }
