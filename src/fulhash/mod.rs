@@ -165,26 +165,185 @@ impl Serialize for Digest {
         #[derive(Serialize)]
         struct Wire<'a> {
             algorithm: Algorithm,
+            hex: String,
+            formatted: String,
             bytes: &'a [u8],
         }
+        let hex = hex::encode(&self.bytes);
+        let formatted = format!("{}:{hex}", self.algorithm.tag());
         Wire {
             algorithm: self.algorithm,
+            hex,
+            formatted,
             bytes: &self.bytes,
         }
         .serialize(serializer)
     }
 }
 
+/// Longest digest the catalog defines (SHA-256).
+const MAX_DIGEST_BYTES: usize = 32;
+const MAX_DIGEST_HEX: usize = MAX_DIGEST_BYTES * 2;
+
 impl<'de> Deserialize<'de> for Digest {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         #[derive(Deserialize)]
         struct Wire {
             algorithm: Algorithm,
-            bytes: Vec<u8>,
+            #[serde(default, deserialize_with = "deserialize_bounded_hex")]
+            hex: Option<String>,
+            #[serde(default, deserialize_with = "deserialize_bounded_formatted")]
+            formatted: Option<String>,
+            #[serde(default, deserialize_with = "deserialize_bounded_bytes")]
+            bytes: Option<Vec<u8>>,
         }
         let wire = Wire::deserialize(deserializer)?;
-        Digest::new(wire.algorithm, wire.bytes).map_err(serde::de::Error::custom)
+        let from_hex = match wire.hex.as_deref() {
+            Some(hex_str) => {
+                if hex_str
+                    .chars()
+                    .any(|c| !c.is_ascii_hexdigit() || c.is_ascii_uppercase())
+                {
+                    return Err(serde::de::Error::custom("digest hex must be lowercase"));
+                }
+                Some(hex::decode(hex_str).map_err(|e| serde::de::Error::custom(e.to_string()))?)
+            }
+            None => None,
+        };
+        let from_formatted = match wire.formatted.as_deref() {
+            Some(formatted) => {
+                let parsed = parse_digest(formatted).map_err(serde::de::Error::custom)?;
+                if parsed.algorithm != wire.algorithm {
+                    return Err(serde::de::Error::custom(format!(
+                        "formatted algorithm {} does not match {}",
+                        parsed.algorithm.tag(),
+                        wire.algorithm.tag()
+                    )));
+                }
+                Some(parsed.bytes)
+            }
+            None => None,
+        };
+        let bytes = match (from_hex, from_formatted, wire.bytes) {
+            (Some(a), Some(b), _) if a != b => {
+                return Err(serde::de::Error::custom(
+                    "hex and formatted digest bytes disagree",
+                ));
+            }
+            (Some(a), _, Some(c)) | (_, Some(a), Some(c)) if a != c => {
+                return Err(serde::de::Error::custom(
+                    "bytes do not match hex/formatted digest",
+                ));
+            }
+            (Some(a), _, _) | (_, Some(a), _) | (_, _, Some(a)) => a,
+            (None, None, None) => {
+                return Err(serde::de::Error::custom(
+                    "digest requires hex, formatted, or bounded bytes",
+                ));
+            }
+        };
+        Digest::new(wire.algorithm, bytes).map_err(serde::de::Error::custom)
     }
+}
+
+fn deserialize_bounded_hex<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<String>, D::Error> {
+    bounded_optional_string(
+        deserializer,
+        MAX_DIGEST_HEX,
+        "digest hex exceeds max length",
+    )
+}
+
+fn deserialize_bounded_formatted<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<String>, D::Error> {
+    bounded_optional_string(
+        deserializer,
+        MAX_DIGEST_HEX + 16,
+        "formatted digest is too long",
+    )
+}
+
+fn bounded_optional_string<'de, D: Deserializer<'de>>(
+    deserializer: D,
+    max_len: usize,
+    too_long: &'static str,
+) -> Result<Option<String>, D::Error> {
+    struct Bounded {
+        max_len: usize,
+        too_long: &'static str,
+    }
+    impl<'de> serde::de::Visitor<'de> for Bounded {
+        type Value = Option<String>;
+        fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(
+                f,
+                "an optional string of at most {} characters",
+                self.max_len
+            )
+        }
+        fn visit_none<E: serde::de::Error>(self) -> Result<Self::Value, E> {
+            Ok(None)
+        }
+        fn visit_unit<E: serde::de::Error>(self) -> Result<Self::Value, E> {
+            Ok(None)
+        }
+        fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
+            if v.len() > self.max_len {
+                return Err(serde::de::Error::custom(self.too_long));
+            }
+            Ok(Some(v.to_string()))
+        }
+        fn visit_string<E: serde::de::Error>(self, v: String) -> Result<Self::Value, E> {
+            if v.len() > self.max_len {
+                return Err(serde::de::Error::custom(self.too_long));
+            }
+            Ok(Some(v))
+        }
+    }
+    deserializer.deserialize_any(Bounded { max_len, too_long })
+}
+
+fn deserialize_bounded_bytes<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<Vec<u8>>, D::Error> {
+    struct Bounded;
+    impl<'de> serde::de::Visitor<'de> for Bounded {
+        type Value = Option<Vec<u8>>;
+        fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "at most {MAX_DIGEST_BYTES} digest bytes")
+        }
+        fn visit_none<E: serde::de::Error>(self) -> Result<Self::Value, E> {
+            Ok(None)
+        }
+        fn visit_unit<E: serde::de::Error>(self) -> Result<Self::Value, E> {
+            Ok(None)
+        }
+        fn visit_seq<A: serde::de::SeqAccess<'de>>(
+            self,
+            mut seq: A,
+        ) -> Result<Self::Value, A::Error> {
+            let hint = seq.size_hint().unwrap_or(0);
+            if hint > MAX_DIGEST_BYTES {
+                return Err(serde::de::Error::custom(format!(
+                    "digest bytes exceed {MAX_DIGEST_BYTES}"
+                )));
+            }
+            let mut out = Vec::with_capacity(hint.min(MAX_DIGEST_BYTES));
+            while let Some(byte) = seq.next_element::<u8>()? {
+                if out.len() >= MAX_DIGEST_BYTES {
+                    return Err(serde::de::Error::custom(format!(
+                        "digest bytes exceed {MAX_DIGEST_BYTES}"
+                    )));
+                }
+                out.push(byte);
+            }
+            Ok(Some(out))
+        }
+    }
+    deserializer.deserialize_any(Bounded)
 }
 
 impl fmt::Display for Digest {
@@ -899,6 +1058,51 @@ mod tests {
     }
 
     #[test]
+    fn test_digest_serde_emits_schema_fields_and_rejects_oversized() {
+        let digest = hash(b"hello", Some(Algorithm::Sha256)).unwrap();
+        let value = serde_yaml::to_value(&digest).expect("serialize digest");
+        let map = value.as_mapping().expect("digest object");
+        let algo = map
+            .get(serde_yaml::Value::from("algorithm"))
+            .and_then(|v| v.as_str());
+        assert_eq!(algo, Some("sha256"));
+        let hex = map
+            .get(serde_yaml::Value::from("hex"))
+            .and_then(|v| v.as_str())
+            .expect("hex");
+        assert_eq!(hex.len(), 64);
+        let formatted = map
+            .get(serde_yaml::Value::from("formatted"))
+            .and_then(|v| v.as_str());
+        let expected_formatted = format!("sha256:{hex}");
+        assert_eq!(formatted, Some(expected_formatted.as_str()));
+        let bytes_len = map
+            .get(serde_yaml::Value::from("bytes"))
+            .and_then(|v| v.as_sequence())
+            .map(Vec::len);
+        assert_eq!(bytes_len, Some(32));
+        let round: Digest = serde_yaml::from_value(value).expect("schema round-trip");
+        assert_eq!(round, digest);
+
+        let oversized_hex = "aa".repeat(10_000);
+        let too_long =
+            format!("algorithm: sha256\nhex: {oversized_hex}\nformatted: sha256:{oversized_hex}\n");
+        assert!(
+            serde_yaml::from_str::<Digest>(&too_long).is_err(),
+            "oversized hex must not be retained"
+        );
+
+        let oversized_bytes = format!(
+            "algorithm: sha256\nbytes: [{}]\n",
+            vec!["0"; 10_000].join(", ")
+        );
+        assert!(
+            serde_yaml::from_str::<Digest>(&oversized_bytes).is_err(),
+            "oversized bytes must stop before retaining a huge Vec"
+        );
+    }
+
+    #[test]
     fn test_parse_digest_rejects_empty_hex() {
         let err = parse_digest("sha256:").expect_err("should reject empty hex");
         assert!(
@@ -1393,6 +1597,10 @@ mod tests {
         #[serde(default)]
         expected_sha256: Option<String>,
         #[serde(default)]
+        expected_crc32: Option<String>,
+        #[serde(default)]
+        expected_crc32c: Option<String>,
+        #[serde(default)]
         #[allow(dead_code)]
         notes: Option<String>,
     }
@@ -1453,6 +1661,71 @@ mod tests {
             .join("config/crucible-rs/library/fulhash/fixtures.yaml");
         let raw = std::fs::read_to_string(&path).expect("read fixtures.yaml");
         serde_yaml::from_str(&raw).expect("parse fixtures.yaml")
+    }
+
+    #[test]
+    fn test_crc_streaming_oracles_drive_both_reader_apis() {
+        #[derive(serde::Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct CrcStreamFile {
+            #[allow(dead_code)]
+            version: String,
+            streaming_fixtures: Vec<StreamFixture>,
+        }
+        let path =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/fulhash/crc-streaming.yaml");
+        let file: CrcStreamFile =
+            serde_yaml::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        assert_eq!(file.streaming_fixtures.len(), 2);
+        for fx in &file.streaming_fixtures {
+            let data = expand_stream_chunks(&fx.chunks);
+            let chunks = stream_chunk_bytes(&fx.chunks);
+            let pairs = [
+                (fx.expected_crc32.as_deref(), Algorithm::Crc32),
+                (fx.expected_crc32c.as_deref(), Algorithm::Crc32c),
+            ];
+            for (expected, algo) in pairs {
+                let expected = expected.expect("crc streaming row must pin an expected digest");
+                assert_eq!(
+                    format_digest(&hash(&data, Some(algo)).unwrap()),
+                    expected,
+                    "{} block {:?}",
+                    fx.name,
+                    algo
+                );
+                let streamed = hash_reader(
+                    ExactChunks {
+                        chunks: chunks.clone(),
+                        index: 0,
+                    },
+                    Some(HashOptions {
+                        algorithm: algo,
+                        buffer_size: 64,
+                    }),
+                )
+                .unwrap();
+                assert_eq!(
+                    format_digest(&streamed),
+                    expected,
+                    "{} hash_reader {:?}",
+                    fx.name,
+                    algo
+                );
+            }
+            let multi = multi_hash_reader(
+                ExactChunks { chunks, index: 0 },
+                &[Algorithm::Crc32, Algorithm::Crc32c],
+            )
+            .unwrap();
+            assert_eq!(
+                format_digest(&multi[&Algorithm::Crc32]),
+                fx.expected_crc32.as_deref().unwrap()
+            );
+            assert_eq!(
+                format_digest(&multi[&Algorithm::Crc32c]),
+                fx.expected_crc32c.as_deref().unwrap()
+            );
+        }
     }
 
     #[test]
