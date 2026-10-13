@@ -3,21 +3,21 @@ name: CI
   push:
     branches: [main]
   pull_request:
-    branches: [main]
 permissions:
   contents: read
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
-  # Image rustup lives in /opt (root). UID 1001 cannot install 1.98/1.88 there.
-  RUSTUP_HOME: /tmp/rsfulmen-rustup
-  CARGO_HOME: /tmp/rsfulmen-cargo
 # fulmen-toolbox v0.5.9 glibc runner (goneat v0.6.3). Digest from
 # SHA256SUMS-goneat-tools-runner-glibc on that release.
 jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    env:
+      # Image rustup lives in /opt (root). UID 1001 cannot install 1.98/1.88 there.
+      RUSTUP_HOME: /tmp/rsfulmen-rustup
+      CARGO_HOME: /tmp/rsfulmen-cargo
     container:
       image: ghcr.io/fulmenhq/goneat-tools-runner-glibc:v0.5.9@sha256:412a315241a59fc0313f4e79f182f7f373a04f194174c61b439cf8ba26174d54
       options: --user 1001
@@ -63,6 +63,9 @@ jobs:
   feature-matrix:
     name: Feature Matrix
     runs-on: ubuntu-latest
+    env:
+      RUSTUP_HOME: /tmp/rsfulmen-rustup
+      CARGO_HOME: /tmp/rsfulmen-cargo
     container:
       image: ghcr.io/fulmenhq/goneat-tools-runner-glibc:v0.5.9@sha256:412a315241a59fc0313f4e79f182f7f373a04f194174c61b439cf8ba26174d54
       options: --user 1001
@@ -120,6 +123,9 @@ jobs:
   msrv:
     name: MSRV (1.88)
     runs-on: ubuntu-latest
+    env:
+      RUSTUP_HOME: /tmp/rsfulmen-rustup
+      CARGO_HOME: /tmp/rsfulmen-cargo
     container:
       image: ghcr.io/fulmenhq/goneat-tools-runner-glibc:v0.5.9@sha256:412a315241a59fc0313f4e79f182f7f373a04f194174c61b439cf8ba26174d54
       options: --user 1001
@@ -144,6 +150,9 @@ jobs:
   cargo-deny:
     name: cargo deny
     runs-on: ubuntu-latest
+    env:
+      RUSTUP_HOME: /tmp/rsfulmen-rustup
+      CARGO_HOME: /tmp/rsfulmen-cargo
     container:
       image: ghcr.io/fulmenhq/goneat-tools-runner-glibc:v0.5.9@sha256:412a315241a59fc0313f4e79f182f7f373a04f194174c61b439cf8ba26174d54
       options: --user 1001
@@ -156,3 +165,55 @@ jobs:
         uses: dtolnay/rust-toolchain@1.98.0
       - name: cargo deny (licenses bans advisories sources)
         run: cargo deny --all-features check licenses bans advisories sources
+  # Estate 5-way native matrix (storageprims / forgebolt labels).
+  # Linux container jobs above keep goneat + cargo-deny; these jobs
+  # prove the crate on each desktop/server OS and architecture.
+  platform_smoke:
+    name: platform-smoke (${{ matrix.target }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - runner: ubuntu-latest-arm64-s
+            target: aarch64-unknown-linux-gnu
+          - runner: macos-15
+            target: aarch64-apple-darwin
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+          - runner: windows-latest-arm64-s
+            target: aarch64-pc-windows-msvc
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@1.98.0
+        with:
+          components: rustfmt, clippy
+      - name: Verify native host
+        run: |
+          set -euo pipefail
+          host=$(rustc -vV | awk '/^host:/{print $2}')
+          test "$host" = "${{ matrix.target }}"
+      - name: Test
+        run: cargo test --locked --all-features
+      - name: Build
+        run: cargo build --locked --all-features
+  platforms:
+    name: platforms
+    if: always()
+    needs: platform_smoke
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Require all native platforms
+        run: test "${{ needs.platform_smoke.result }}" = "success"
