@@ -545,7 +545,8 @@ fn path_is_under_root(abs: &Path, root: &Path) -> bool {
 
 /// Strip `\\?\` / `\\?\UNC\` prefixes and fold ASCII case so `file://`
 /// paths (`C:\...`) match `fs::canonicalize` roots (`\\?\C:\...`).
-#[cfg(windows)]
+/// Compiled on every target so Windows-only type errors fail Linux CI.
+#[cfg_attr(not(windows), allow(dead_code))]
 fn comparable_windows_path(path: &Path) -> PathBuf {
     use std::path::{Component, Prefix};
     let mut out = PathBuf::new();
@@ -557,11 +558,11 @@ fn comparable_windows_path(path: &Path) -> PathBuf {
                 }
                 Prefix::VerbatimUNC(server, share) | Prefix::UNC(server, share) => {
                     out.push(r"\\");
-                    out.push(server.to_string_lossy().to_ascii_lowercase().as_ref());
-                    out.push(share.to_string_lossy().to_ascii_lowercase().as_ref());
+                    out.push(server.to_string_lossy().to_ascii_lowercase());
+                    out.push(share.to_string_lossy().to_ascii_lowercase());
                 }
                 Prefix::Verbatim(rest) | Prefix::DeviceNS(rest) => {
-                    out.push(rest.to_string_lossy().to_ascii_lowercase().as_ref());
+                    out.push(rest.to_string_lossy().to_ascii_lowercase());
                 }
             },
             Component::RootDir => out.push(std::path::MAIN_SEPARATOR_STR),
@@ -570,7 +571,7 @@ fn comparable_windows_path(path: &Path) -> PathBuf {
                 let _ = out.pop();
             }
             Component::Normal(part) => {
-                out.push(part.to_string_lossy().to_ascii_lowercase().as_ref());
+                out.push(part.to_string_lossy().to_ascii_lowercase());
             }
         }
     }
