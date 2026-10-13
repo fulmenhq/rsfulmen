@@ -308,28 +308,32 @@ mod tests {
 
     #[test]
     fn process_env_guard_serializes_reader_until_writer_drops() {
-        use std::sync::{Arc, Barrier};
+        use std::sync::{Arc, Barrier, TryLockError};
 
         const KEY: &str = "RSFULMEN_TEST_PROCESS_ENV_BARRIER";
         let before = std::env::var_os(KEY);
-        let start = Arc::new(Barrier::new(2));
-        let writer_start = start.clone();
+        let writer_holding = Arc::new(Barrier::new(2));
+        let reader_saw_hold = Arc::new(Barrier::new(2));
+        let w_hold = writer_holding.clone();
+        let w_seen = reader_saw_hold.clone();
         let writer = std::thread::spawn(move || {
             let mut guard = ProcessEnvGuard::acquire();
             guard.set(KEY, "writer-temp");
-            writer_start.wait();
-            assert_eq!(
-                std::env::var_os(KEY).as_deref(),
-                Some(std::ffi::OsStr::new("writer-temp"))
-            );
+            w_hold.wait();
+            w_seen.wait();
         });
-        start.wait();
+        writer_holding.wait();
+        match process_env_lock().try_lock() {
+            Err(TryLockError::WouldBlock) => {}
+            other => panic!("reader must not acquire while the writer holds, got {other:?}"),
+        }
+        reader_saw_hold.wait();
+        writer.join().expect("writer thread");
         let _reader = ProcessEnvGuard::acquire();
         assert_eq!(
             std::env::var_os(KEY),
             before,
             "reader must observe the restored value after the writer drops"
         );
-        writer.join().expect("writer thread");
     }
 }
