@@ -1330,6 +1330,7 @@ mod tests {
     }
 
     #[derive(serde::Deserialize)]
+    #[serde(deny_unknown_fields)]
     #[allow(dead_code)]
     struct FulhashFixtureFile {
         fixtures: Vec<ScalarFixture>,
@@ -1452,6 +1453,23 @@ mod tests {
             .join("config/crucible-rs/library/fulhash/fixtures.yaml");
         let raw = std::fs::read_to_string(&path).expect("read fixtures.yaml");
         serde_yaml::from_str(&raw).expect("parse fixtures.yaml")
+    }
+
+    #[test]
+    fn test_fulhash_fixture_file_rejects_unknown_top_level_key() {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("config/crucible-rs/library/fulhash/fixtures.yaml");
+        let raw = std::fs::read_to_string(&path).expect("read fixtures.yaml");
+        let mutated = format!("{raw}\ncrc_streaming_fixtures: []\n");
+        let err = match serde_yaml::from_str::<FulhashFixtureFile>(&mutated) {
+            Err(err) => err,
+            Ok(_) => panic!("unknown top-level fixture section must fail"),
+        };
+        let msg = err.to_string();
+        assert!(
+            msg.contains("unknown field") || msg.contains("crc_streaming_fixtures"),
+            "{msg}"
+        );
     }
 
     fn fixture_bytes(fx: &ScalarFixture) -> Vec<u8> {
