@@ -1,4 +1,8 @@
 //! Signed-tag scripts require RSFULMEN_TAGGER_NAME / RSFULMEN_TAGGER_EMAIL.
+//!
+//! The scripts are POSIX shell and are not invoked on Windows.
+
+#![cfg(unix)]
 
 use std::path::PathBuf;
 use std::process::Command;

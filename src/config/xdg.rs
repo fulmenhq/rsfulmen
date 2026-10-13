@@ -175,17 +175,34 @@ mod tests {
         move |key| map.get(key).map(|v| OsString::from(*v))
     }
 
+    fn platform_home() -> PathBuf {
+        #[cfg(windows)]
+        {
+            PathBuf::from(r"C:\Users\me")
+        }
+        #[cfg(not(windows))]
+        {
+            PathBuf::from("/home/me")
+        }
+    }
+
     #[test]
     fn xdg_absolute_overrides_win() {
+        // Path::is_absolute is platform-specific: `/tmp/cfg` is relative on
+        // Windows (no drive/UNC prefix), so fixtures must be host-absolute.
+        #[cfg(windows)]
+        let (cfg, data, cache) = (r"C:\tmp\cfg", r"C:\tmp\data", r"C:\tmp\cache");
+        #[cfg(not(windows))]
+        let (cfg, data, cache) = ("/tmp/cfg", "/tmp/data", "/tmp/cache");
         let env = HashMap::from([
-            ("XDG_CONFIG_HOME", "/tmp/cfg"),
-            ("XDG_DATA_HOME", "/tmp/data"),
-            ("XDG_CACHE_HOME", "/tmp/cache"),
+            ("XDG_CONFIG_HOME", cfg),
+            ("XDG_DATA_HOME", data),
+            ("XDG_CACHE_HOME", cache),
         ]);
-        let dirs = from_env(lookup(&env), Some(PathBuf::from("/home/me")));
-        assert_eq!(dirs.config_home, PathBuf::from("/tmp/cfg"));
-        assert_eq!(dirs.data_home, PathBuf::from("/tmp/data"));
-        assert_eq!(dirs.cache_home, PathBuf::from("/tmp/cache"));
+        let dirs = from_env(lookup(&env), Some(platform_home()));
+        assert_eq!(dirs.config_home, PathBuf::from(cfg));
+        assert_eq!(dirs.data_home, PathBuf::from(data));
+        assert_eq!(dirs.cache_home, PathBuf::from(cache));
     }
 
     #[test]
@@ -194,7 +211,7 @@ mod tests {
             ("XDG_CONFIG_HOME", "relative-config"),
             ("XDG_DATA_HOME", ""),
         ]);
-        let dirs = from_env(lookup(&env), Some(PathBuf::from("/home/me")));
+        let dirs = from_env(lookup(&env), Some(platform_home()));
         assert!(dirs.config_home.is_absolute() || dirs.config_home == Path::new("."));
         assert_ne!(dirs.config_home, Path::new("relative-config"));
         assert_ne!(dirs.data_home.as_os_str(), "");
@@ -264,5 +281,14 @@ mod tests {
             xdg_override(Some(OsString::from("/abs"))),
             Some(PathBuf::from("/abs"))
         );
+        #[cfg(windows)]
+        {
+            assert_eq!(
+                xdg_override(Some(OsString::from(r"C:\abs"))),
+                Some(PathBuf::from(r"C:\abs"))
+            );
+            // Unix-style paths are not absolute on Windows.
+            assert!(xdg_override(Some(OsString::from("/tmp/cfg"))).is_none());
+        }
     }
 }

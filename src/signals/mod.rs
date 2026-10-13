@@ -1391,6 +1391,26 @@ mod tests {
 
     use std::sync::atomic::{AtomicUsize, Ordering};
 
+    /// Win32 `ctrlc` fallback is process-global. Parallel `listen()` tests
+    /// otherwise trip `WINDOWS_FALLBACK_ACTIVE` and time out in `wait_for_listen`.
+    #[cfg(windows)]
+    static WINDOWS_LISTEN_TEST_LOCK: Mutex<()> = Mutex::new(());
+
+    fn lock_windows_listen() -> Option<std::sync::MutexGuard<'static, ()>> {
+        #[cfg(windows)]
+        {
+            Some(
+                WINDOWS_LISTEN_TEST_LOCK
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner()),
+            )
+        }
+        #[cfg(not(windows))]
+        {
+            None
+        }
+    }
+
     #[test]
     fn shutdown_chain_lifo_order() {
         let manager = SignalManager::new();
@@ -1659,6 +1679,7 @@ mod tests {
 
     #[test]
     fn injector_basic_shutdown_dispatch() {
+        let _listen_lock = lock_windows_listen();
         let manager = SignalManager::new();
         let injector = testing::SignalInjector::new(&manager);
 
@@ -1904,6 +1925,7 @@ mod tests {
 
     #[test]
     fn listen_rejects_second_caller() {
+        let _listen_lock = lock_windows_listen();
         let manager = SignalManager::new();
         let injector = testing::SignalInjector::new(&manager);
         let manager_listen = manager.clone();
@@ -1921,6 +1943,34 @@ mod tests {
             .join()
             .expect("listener thread should join")
             .expect("listener should exit cleanly");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_listen_can_start_after_previous_listener_stops() {
+        let _listen_lock = lock_windows_listen();
+
+        let first = SignalManager::new();
+        let inj1 = testing::SignalInjector::new(&first);
+        let first_c = first.clone();
+        let t1 = thread::spawn(move || first_c.listen());
+        inj1.wait_for_listen(Duration::from_secs(1))
+            .expect("first listener should start");
+        first.stop();
+        t1.join()
+            .expect("first listener thread should join")
+            .expect("first listener should exit cleanly");
+
+        let second = SignalManager::new();
+        let inj2 = testing::SignalInjector::new(&second);
+        let second_c = second.clone();
+        let t2 = thread::spawn(move || second_c.listen());
+        inj2.wait_for_listen(Duration::from_secs(1))
+            .expect("second listen after first stop");
+        second.stop();
+        t2.join()
+            .expect("second listener thread should join")
+            .expect("second listener should exit cleanly");
     }
 
     #[cfg(windows)]
@@ -2009,6 +2059,7 @@ mod tests {
 
     #[test]
     fn handler_registered_after_listen_receives_injected_signal() {
+        let _listen_lock = lock_windows_listen();
         let manager = SignalManager::new();
         let injector = testing::SignalInjector::new(&manager);
         let manager_listen = manager.clone();
@@ -2018,17 +2069,27 @@ mod tests {
             .wait_for_listen(Duration::from_secs(1))
             .expect("listener should start");
 
-        let usr2 = get_signal_number("SIGUSR2").unwrap_or(SIGUSR2);
+        // SIGUSR2 is unsupported on Windows (`handle` returns a noop). Use a
+        // catalog-supported number so the late registration is actually stored.
+        #[cfg(windows)]
+        let signal = sigterm_number();
+        #[cfg(not(windows))]
+        let signal = get_signal_number("SIGUSR2").unwrap_or(SIGUSR2);
+        assert!(
+            manager.supports(signal),
+            "late-registration test requires a supported signal"
+        );
+
         let hits = Arc::new(AtomicUsize::new(0));
         let hits_c = Arc::clone(&hits);
         let _guard = manager
-            .handle(usr2, move || {
+            .handle(signal, move || {
                 hits_c.fetch_add(1, Ordering::SeqCst);
                 Ok(())
             })
             .expect("register after listen");
 
-        injector.inject(usr2).expect("inject");
+        injector.inject(signal).expect("inject");
 
         let deadline = Instant::now() + Duration::from_secs(1);
         while hits.load(Ordering::SeqCst) == 0 && Instant::now() < deadline {

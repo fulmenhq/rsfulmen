@@ -1,4 +1,10 @@
 //! `release-publish.sh` must fail before `gh` when the guard or assets are absent.
+//!
+//! The script and the fake `gh` shim are POSIX-only, so this crate is compiled
+//! only on Unix. Without this gate, `cargo test --all-features` fails on
+//! Windows (`std::os::unix` is missing).
+
+#![cfg(unix)]
 
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
