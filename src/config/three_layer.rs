@@ -411,32 +411,6 @@ nested:
 
     #[test]
     fn load_three_layer_user_null_then_runtime_restore() {
-        use std::ffi::{OsStr, OsString};
-
-        struct EnvGuard {
-            previous: Vec<(String, Option<OsString>)>,
-        }
-        impl EnvGuard {
-            fn set(values: &[(&str, &OsStr)]) -> Self {
-                let mut previous = Vec::with_capacity(values.len());
-                for (key, value) in values {
-                    previous.push(((*key).to_string(), std::env::var_os(key)));
-                    std::env::set_var(key, value);
-                }
-                Self { previous }
-            }
-        }
-        impl Drop for EnvGuard {
-            fn drop(&mut self) {
-                for (key, previous) in self.previous.iter().rev() {
-                    match previous {
-                        Some(value) => std::env::set_var(key, value),
-                        None => std::env::remove_var(key),
-                    }
-                }
-            }
-        }
-
         let tmp = tempfile::tempdir().expect("tempdir");
         let config_home = tmp.path().join("config");
         let app_name = format!(
@@ -451,11 +425,9 @@ nested:
         // restored. `notes` is a real defaults key that stays deleted.
         fs::write(&user_path, "key: null\nlast_updated: null\nnotes: null\n").unwrap();
 
-        let _lock = crate::acquire_process_env_lock();
-        let _guard = EnvGuard::set(&[
-            ("XDG_CONFIG_HOME", config_home.as_os_str()),
-            ("APPDATA", config_home.as_os_str()),
-        ]);
+        let mut env = crate::ProcessEnvGuard::acquire();
+        env.set("XDG_CONFIG_HOME", &config_home);
+        env.set("APPDATA", &config_home);
 
         let base = ThreeLayerOptions {
             app_name,
@@ -510,6 +482,7 @@ nested:
 
     #[test]
     fn test_load_three_layer_defaults_only_with_runtime_overrides() {
+        let _env = crate::ProcessEnvGuard::acquire();
         // Use a unique app name + non-existent config file to avoid pulling any user config.
         let options = ThreeLayerOptions {
             app_name: format!("rsfulmen-test-{}", std::process::id()),
@@ -532,6 +505,7 @@ nested:
     #[cfg(feature = "schema-validation")]
     #[test]
     fn test_schema_validation_failure_returns_error() {
+        let _env = crate::ProcessEnvGuard::acquire();
         // Deliberately validate an unrelated config against the mime-types schema.
         let options = ThreeLayerOptions {
             app_name: format!("rsfulmen-test-{}", std::process::id()),
@@ -548,6 +522,7 @@ nested:
     #[cfg(not(feature = "schema-validation"))]
     #[test]
     fn test_schema_validation_unavailable_feature_gate() {
+        let _env = crate::ProcessEnvGuard::acquire();
         let options = ThreeLayerOptions {
             app_name: format!("rsfulmen-test-{}", std::process::id()),
             defaults_path: "terminal/v1.0.0/terminal-overrides-defaults.yaml".to_string(),

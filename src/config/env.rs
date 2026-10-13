@@ -319,14 +319,6 @@ impl std::fmt::Display for ParseBoolError {
 
 impl std::error::Error for ParseBoolError {}
 
-/// Process-wide lock for tests that mutate environment variables.
-///
-/// Shared with every other crate test that reads or writes process env.
-#[cfg(test)]
-pub(crate) fn process_env_lock() -> &'static std::sync::Mutex<()> {
-    crate::process_env_lock()
-}
-
 #[cfg(test)]
 mod tests {
     use std::ffi::OsString;
@@ -366,11 +358,6 @@ mod tests {
                 }
             }
         }
-    }
-
-    #[test]
-    fn process_env_lock_is_crate_wide() {
-        assert!(std::ptr::eq(process_env_lock(), crate::process_env_lock()));
     }
 
     #[test]

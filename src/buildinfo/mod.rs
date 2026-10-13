@@ -331,7 +331,7 @@ mod tests {
     use super::*;
 
     fn with_clean_env<F: FnOnce()>(f: F) {
-        let _g = crate::acquire_process_env_lock();
+        let mut guard = crate::ProcessEnvGuard::acquire();
         for k in [
             ENV_VERSION,
             ENV_COMMIT,
@@ -340,20 +340,9 @@ mod tests {
             ENV_RUNTIME,
             ENV_PLATFORM,
         ] {
-            // SAFETY: the crate-wide process env lock serializes these tests.
-            unsafe { env::remove_var(k) };
+            guard.remove(k);
         }
         f();
-        for k in [
-            ENV_VERSION,
-            ENV_COMMIT,
-            ENV_BUILD_DATE,
-            ENV_DIRTY,
-            ENV_RUNTIME,
-            ENV_PLATFORM,
-        ] {
-            unsafe { env::remove_var(k) };
-        }
     }
 
     #[test]

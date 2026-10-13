@@ -196,6 +196,8 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const CRUCIBLE_VERSION: &str = "v0.4.19";
 
 /// Crate-wide lock for tests that read or mutate the process environment.
+///
+/// Prefer [`ProcessEnvGuard`] so changed keys are restored on unwind.
 #[cfg(test)]
 pub(crate) fn process_env_lock() -> &'static std::sync::Mutex<()> {
     static LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
@@ -209,6 +211,61 @@ pub(crate) fn acquire_process_env_lock() -> std::sync::MutexGuard<'static, ()> {
     process_env_lock()
         .lock()
         .unwrap_or_else(|error| error.into_inner())
+}
+
+/// Holds the process-env lock and restores every key this guard changed.
+///
+/// `Drop` runs on unwind, so a panicked writer cannot leak values to later
+/// tests. Poison recovery still applies via [`acquire_process_env_lock`].
+#[cfg(test)]
+pub(crate) struct ProcessEnvGuard {
+    _lock: std::sync::MutexGuard<'static, ()>,
+    previous: Vec<(std::ffi::OsString, Option<std::ffi::OsString>)>,
+}
+
+#[cfg(test)]
+impl ProcessEnvGuard {
+    pub(crate) fn acquire() -> Self {
+        Self {
+            _lock: acquire_process_env_lock(),
+            previous: Vec::new(),
+        }
+    }
+
+    fn remember(&mut self, key: &std::ffi::OsStr) {
+        if !self.previous.iter().any(|(k, _)| k == key) {
+            self.previous
+                .push((key.to_os_string(), std::env::var_os(key)));
+        }
+    }
+
+    pub(crate) fn set(
+        &mut self,
+        key: impl AsRef<std::ffi::OsStr>,
+        value: impl AsRef<std::ffi::OsStr>,
+    ) {
+        let key = key.as_ref();
+        self.remember(key);
+        std::env::set_var(key, value);
+    }
+
+    pub(crate) fn remove(&mut self, key: impl AsRef<std::ffi::OsStr>) {
+        let key = key.as_ref();
+        self.remember(key);
+        std::env::remove_var(key);
+    }
+}
+
+#[cfg(test)]
+impl Drop for ProcessEnvGuard {
+    fn drop(&mut self) {
+        for (key, previous) in self.previous.drain(..).rev() {
+            match previous {
+                Some(value) => std::env::set_var(&key, value),
+                None => std::env::remove_var(&key),
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -236,20 +293,43 @@ mod tests {
     }
 
     #[test]
-    fn process_env_lock_recovers_after_panic_and_restores_env() {
+    fn process_env_guard_restores_env_after_panic() {
         const KEY: &str = "RSFULMEN_TEST_PROCESS_ENV_LOCK";
+        let before = std::env::var_os(KEY);
         let panicked = std::panic::catch_unwind(|| {
-            let _guard = acquire_process_env_lock();
-            std::env::set_var(KEY, "during-panic");
+            let mut guard = ProcessEnvGuard::acquire();
+            guard.set(KEY, "during-panic");
             panic!("intentional lock poison");
         });
         assert!(panicked.is_err());
-        let _guard = acquire_process_env_lock();
+        let _reader = ProcessEnvGuard::acquire();
+        assert_eq!(std::env::var_os(KEY), before);
+    }
+
+    #[test]
+    fn process_env_guard_serializes_reader_until_writer_drops() {
+        use std::sync::{Arc, Barrier};
+
+        const KEY: &str = "RSFULMEN_TEST_PROCESS_ENV_BARRIER";
+        let before = std::env::var_os(KEY);
+        let start = Arc::new(Barrier::new(2));
+        let writer_start = start.clone();
+        let writer = std::thread::spawn(move || {
+            let mut guard = ProcessEnvGuard::acquire();
+            guard.set(KEY, "writer-temp");
+            writer_start.wait();
+            assert_eq!(
+                std::env::var_os(KEY).as_deref(),
+                Some(std::ffi::OsStr::new("writer-temp"))
+            );
+        });
+        start.wait();
+        let _reader = ProcessEnvGuard::acquire();
         assert_eq!(
-            std::env::var_os(KEY).as_deref(),
-            Some(std::ffi::OsStr::new("during-panic"))
+            std::env::var_os(KEY),
+            before,
+            "reader must observe the restored value after the writer drops"
         );
-        std::env::remove_var(KEY);
-        assert!(std::env::var_os(KEY).is_none());
+        writer.join().expect("writer thread");
     }
 }
