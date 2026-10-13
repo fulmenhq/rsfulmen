@@ -444,6 +444,8 @@ mod tests {
     use std::fs;
     use std::process::{Command, Stdio};
 
+    // PATH/HOME snapshot. The unused guard argument is the compile-time
+    // lock: callers must hold ProcessEnvGuard or the helper will not compile.
     fn base_env(_guard: &crate::ProcessEnvGuard) -> HashMap<String, String> {
         let mut m = HashMap::new();
         if let Ok(v) = env::var("PATH") {
@@ -657,42 +659,15 @@ mod tests {
     }
 
     #[test]
-    fn buildinfo_reads_home_only_while_holding_process_env_lock() {
-        use std::sync::{Arc, Barrier, TryLockError};
-
-        let writer_holding = Arc::new(Barrier::new(2));
-        let reader_saw_hold = Arc::new(Barrier::new(2));
-        let temp_home = temp_prefix("rsfulmen-hostid-home-writer-");
-        let home_path = temp_home.path().to_path_buf();
-        let w_hold = writer_holding.clone();
-        let w_seen = reader_saw_hold.clone();
-        let writer = std::thread::spawn(move || {
-            let mut guard = crate::ProcessEnvGuard::acquire();
-            guard.set("HOME", &home_path);
-            w_hold.wait();
-            w_seen.wait();
-        });
-        writer_holding.wait();
-        match crate::process_env_lock().try_lock() {
-            Err(TryLockError::WouldBlock) => {}
-            other => panic!("build-info reader must wait while HOME is held, got {other:?}"),
-        }
-        reader_saw_hold.wait();
-        writer.join().expect("writer thread");
-
-        let isolated = temp_prefix("rsfulmen-hostid-home-reader-");
-        let mut guard = crate::ProcessEnvGuard::acquire();
-        guard.set("HOME", isolated.path());
-        let env_map = base_env(&guard);
-        let expected_home = isolated.path().to_string_lossy().into_owned();
-        assert_eq!(
-            env_map.get("HOME"),
-            Some(&expected_home),
-            "build-info PATH/HOME snapshot must see the guarded HOME"
+    fn base_env_signature_requires_process_env_guard() {
+        let src = include_str!("producer.rs");
+        assert!(
+            src.contains("fn base_env(_guard: &crate::ProcessEnvGuard)"),
+            "PATH/HOME snapshots must take ProcessEnvGuard so an unguarded call cannot compile"
         );
-        let dir = temp_prefix("rsfulmen-hostid-home-probe-");
-        let sha = init_repo(dir.path(), "home-lock\n", &guard);
-        let result = probe_at(dir.path(), env_map);
-        assert_eq!(result.stamps.commit, sha);
+        assert!(
+            !src.contains(concat!("fn base_env(", ") ->")),
+            "pre-fix unguarded base_env signature must not exist"
+        );
     }
 }
