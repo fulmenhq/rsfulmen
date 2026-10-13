@@ -2069,17 +2069,27 @@ mod tests {
             .wait_for_listen(Duration::from_secs(1))
             .expect("listener should start");
 
-        let usr2 = get_signal_number("SIGUSR2").unwrap_or(SIGUSR2);
+        // SIGUSR2 is unsupported on Windows (`handle` returns a noop). Use a
+        // catalog-supported number so the late registration is actually stored.
+        #[cfg(windows)]
+        let signal = sigterm_number();
+        #[cfg(not(windows))]
+        let signal = get_signal_number("SIGUSR2").unwrap_or(SIGUSR2);
+        assert!(
+            manager.supports(signal),
+            "late-registration test requires a supported signal"
+        );
+
         let hits = Arc::new(AtomicUsize::new(0));
         let hits_c = Arc::clone(&hits);
         let _guard = manager
-            .handle(usr2, move || {
+            .handle(signal, move || {
                 hits_c.fetch_add(1, Ordering::SeqCst);
                 Ok(())
             })
             .expect("register after listen");
 
-        injector.inject(usr2).expect("inject");
+        injector.inject(signal).expect("inject");
 
         let deadline = Instant::now() + Duration::from_secs(1);
         while hits.load(Ordering::SeqCst) == 0 && Instant::now() < deadline {
