@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **FulHash serde tags** — `Algorithm` serializes as catalog ids
+  (`xxh3-128`, `sha256`, `crc32`, `crc32c`). v0.2.1 payloads that used
+  derived tags (`Xxh3_128`, `Sha256`) still deserialize via aliases;
+  new writes emit only the catalog ids. `Algorithm` is `#[non_exhaustive]`;
+  downstream `match` arms need a wildcard. `Digest` fields are private:
+  construct with `Digest::new` or the hash APIs, and read via
+  `algorithm()` / `bytes()`. Wrong-length serde input is rejected.
+  Serialized `Digest` now emits the `digest.schema.json` fields
+  `{algorithm, hex, formatted, bytes}`; deserialization still accepts
+  the older `{algorithm, bytes}` form.
+
 ### Fixed
 
 - **Windows `file://` schema containment** — catalog roots from

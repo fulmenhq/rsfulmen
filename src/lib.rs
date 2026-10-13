@@ -21,7 +21,7 @@
 //! - **telemetry-metrics** (default) - Telemetry + metrics export
 //! - **appidentity** (default) - App identity discovery from `.fulmen/app.yaml`
 //! - **logging** (default) - Structured logging with SIMPLE/STRUCTURED profiles
-//! - **fulhash** (default) - Canonical hashing (xxh3-128 + SHA-256)
+//! - **fulhash** (default) - Canonical hashing (xxh3-128, SHA-256, CRC-32, CRC-32C)
 //! - **pathfinder** (default) - Safe filesystem discovery with glob patterns
 //! - **ascii** (default) - Terminal utilities + Unicode-aware string handling
 //! - **fulencode** (default) - Encoding/decoding, detection, normalization, BOM helpers
@@ -73,7 +73,7 @@ pub mod appidentity;
 #[cfg_attr(docsrs, doc(cfg(feature = "logging")))]
 pub mod logging;
 
-/// Canonical hashing with xxh3-128 (default) and SHA-256.
+/// Canonical hashing with xxh3-128 (default), SHA-256, CRC-32, and CRC-32C.
 ///
 /// Provides content-addressable digests in `algo:hex` format, streaming
 /// hash computation, and verification helpers.

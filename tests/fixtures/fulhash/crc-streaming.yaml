@@ -1,0 +1,22 @@
+# Local CRC streaming oracles for the catalog streaming-hello-world and
+# streaming-large-chunks inputs. The synced Crucible fixtures.yaml does not
+# yet ship crc32/crc32c stream rows; this file is the authoritative pin
+# until that catalog revision lands.
+version: 1.0.0
+streaming_fixtures:
+  - name: streaming-hello-world
+    chunks:
+      - value: 'Hello, '
+      - value: World!
+    expected_crc32: crc32:ec4ac3d0
+    expected_crc32c: crc32c:4d551068
+  - name: streaming-large-chunks
+    chunks:
+      - size: 4096
+        pattern: repeating-A
+      - size: 4096
+        pattern: repeating-B
+      - size: 4096
+        pattern: repeating-C
+    expected_crc32: crc32:1cacfe67
+    expected_crc32c: crc32c:1f112b7a
