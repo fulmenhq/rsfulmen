@@ -592,9 +592,20 @@ fn filesystem_root(path: &Path) -> PathBuf {
 }
 
 fn is_within_boundary(path: &Path, boundary: &Path) -> bool {
-    let path = strip_verbatim(&normalize_lexically(path));
-    let boundary = strip_verbatim(&normalize_lexically(boundary));
-    path_starts_with(&path, &boundary)
+    let path_n = strip_verbatim(&normalize_lexically(path));
+    let boundary_n = strip_verbatim(&normalize_lexically(boundary));
+    if path_starts_with(&path_n, &boundary_n) {
+        return true;
+    }
+    // `absolute(".")` uses getcwd (physical). HOME / an explicit ceiling may
+    // still be the symlink form. Containment uses one representation.
+    match (
+        canonicalize_for_compare(path),
+        canonicalize_for_compare(boundary),
+    ) {
+        (Ok(path), Ok(boundary)) => path_starts_with(&path, &boundary),
+        _ => false,
+    }
 }
 
 fn paths_equal(left: &Path, right: &Path) -> bool {
@@ -615,13 +626,7 @@ fn path_starts_with(path: &Path, prefix: &Path) -> bool {
 fn components_match(left: std::path::Component<'_>, right: std::path::Component<'_>) -> bool {
     #[cfg(windows)]
     {
-        use std::path::Component;
-        match (left, right) {
-            (Component::Normal(a), Component::Normal(b)) => {
-                a.to_ascii_lowercase() == b.to_ascii_lowercase()
-            }
-            (a, b) => a.as_os_str().eq_ignore_ascii_case(b.as_os_str()),
-        }
+        left.as_os_str().eq_ignore_ascii_case(right.as_os_str())
     }
     #[cfg(not(windows))]
     {
@@ -1072,18 +1077,20 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn posix_root_is_a_stop_and_is_not_inspected() {
+        // `/tmp` exists on every Unix runner. If the root-stop ran *after*
+        // has_marker, this would return Ok("/") instead of FilesystemRootReached.
         let options = RepositoryRootOptions {
-            markers: vec![".rsfulmen-definitely-missing-marker".into()],
+            markers: vec!["tmp".into()],
             max_depth: 1,
             boundary: Some(PathBuf::from("/")),
             follow_symlinks: false,
             stop_at_first: true,
         };
-        let err = discover_repository_root(Path::new("/"), &options).unwrap_err();
-        match err {
-            RepositoryRootError::RepositoryNotFound { reason, .. } => {
+        match discover_repository_root(Path::new("/"), &options) {
+            Err(RepositoryRootError::RepositoryNotFound { reason, .. }) => {
                 assert_eq!(reason, RepositoryNotFoundReason::FilesystemRootReached);
             }
+            Ok(path) => panic!("filesystem root must not be a candidate, got {path:?}"),
             other => panic!("unexpected {other:?}"),
         }
     }
@@ -1138,6 +1145,60 @@ mod tests {
             normalize_lexically(&root),
             normalize_lexically(&alias.join("repo"))
         );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn relative_start_under_symlinked_home_finds_repo() {
+        let tmp = TestDir::new();
+        let real = tmp.path().join("real");
+        fs::create_dir_all(real.join("repo/.git")).unwrap();
+        fs::create_dir_all(real.join("repo/sub")).unwrap();
+        let alias = tmp.path().join("alias");
+        std::os::unix::fs::symlink(&real, &alias).unwrap();
+        let work = alias.join("repo/sub");
+        let prev_cwd = env::current_dir().unwrap();
+        let root = with_home(&alias, || {
+            env::set_current_dir(&work).unwrap();
+            let result = discover_repository_root(Path::new("."), &default_opts());
+            env::set_current_dir(&prev_cwd).unwrap();
+            result
+        })
+        .expect("getcwd-resolved '.' must stay under a symlinked HOME");
+        env::set_current_dir(prev_cwd).ok();
+        assert_eq!(
+            fs::canonicalize(&root).unwrap(),
+            fs::canonicalize(real.join("repo")).unwrap()
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn follow_symlinks_accepts_mismatched_symlink_start_and_boundary() {
+        let tmp = TestDir::new();
+        let real = tmp.path().join("real");
+        fs::create_dir_all(real.join(".git")).unwrap();
+        fs::create_dir_all(real.join("nested")).unwrap();
+        let alias = tmp.path().join("alias");
+        std::os::unix::fs::symlink(&real, &alias).unwrap();
+
+        for (start, boundary) in [
+            (alias.join("nested"), real.clone()),
+            (real.join("nested"), alias.clone()),
+        ] {
+            let options = RepositoryRootOptions {
+                follow_symlinks: true,
+                ..opts(&[".git"], &boundary, 8)
+            };
+            let root = discover_repository_root(&start, &options).unwrap_or_else(|err| {
+                panic!("follow_symlinks start={start:?} boundary={boundary:?}: {err}")
+            });
+            assert_eq!(
+                fs::canonicalize(&root).unwrap(),
+                fs::canonicalize(&real).unwrap(),
+                "start={start:?} boundary={boundary:?}"
+            );
+        }
     }
 
     #[cfg(unix)]
