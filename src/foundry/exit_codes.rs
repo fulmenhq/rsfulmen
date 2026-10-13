@@ -455,6 +455,10 @@ static BSD_MAPPINGS: Lazy<Vec<BsdMapping>> = Lazy::new(|| {
 ///
 /// rsfulmen follows the explicit table. 76 has no table row, so it stays
 /// `None` until Crucible reconciles the two sources.
+///
+/// **Not an inverse of [`map_fulmen_to_bsd`].** The two functions read
+/// different catalog sources (`bsd_compatibility` vs per-row
+/// `bsd_equivalent`). `71 → 33` but `33 → None`; `73 → 76` but `76 → None`.
 pub fn map_bsd_to_fulmen(bsd_code: i32) -> Option<i32> {
     BSD_MAPPINGS
         .iter()
@@ -495,6 +499,9 @@ fn parse_bsd_equivalent(raw: &str) -> Option<i32> {
 /// Signal-style values (`128 + N`) and unknown codes return `None`.
 /// Partial notes such as `EX_NOPERM (partial)` still resolve to the
 /// named sysexits code.
+///
+/// **Not an inverse of [`map_bsd_to_fulmen`].** See that function for the
+/// pinned non-round-trip pairs (71/33 and 73/76).
 pub fn map_fulmen_to_bsd(fulmen_code: i32) -> Option<i32> {
     lookup_exit_code(fulmen_code)
         .and_then(|entry| entry.bsd_equivalent.as_deref())
@@ -619,6 +626,16 @@ mod tests {
         assert_eq!(map_bsd_to_fulmen(0), None);
         assert_eq!(map_bsd_to_fulmen(99), None);
 
+        assert_eq!(
+            map_fulmen_to_bsd(33),
+            None,
+            "table 71→33 is not inverted by bsd_equivalent"
+        );
+        assert_eq!(
+            map_bsd_to_fulmen(76),
+            None,
+            "row 73→76 is not inverted by bsd_compatibility"
+        );
         assert_eq!(map_fulmen_to_bsd(64), Some(64));
         assert_eq!(
             map_fulmen_to_bsd(73),

@@ -263,7 +263,12 @@ pub struct PlatformOverrides {
 }
 
 /// Signal definition from the Crucible catalog.
+///
+/// Marked `non_exhaustive` so later catalog fields can be added without
+/// breaking downstream struct literals. Construct via `lookup_signal` /
+/// `list_signals` and match with `..`.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Signal {
     /// Short identifier (e.g., "term", "int", "hup")
     pub id: String,
@@ -1548,6 +1553,15 @@ mod tests {
     // -------------------------------------------------------------------------
     // SIGINT Double-Tap Tests
     // -------------------------------------------------------------------------
+
+    #[test]
+    fn signal_struct_is_marked_non_exhaustive() {
+        let src = include_str!("signals.rs");
+        assert!(
+            src.contains("#[non_exhaustive]\npub struct Signal"),
+            "Signal must stay non_exhaustive after adding catalog fields"
+        );
+    }
 
     #[test]
     fn test_sigint_double_tap_fields() {
