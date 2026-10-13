@@ -150,7 +150,9 @@ root detection.
 `find_repository_root` is the historical `.git`-only unbounded `Option` walk.
 `discover_repository_root` is the bounded marker API: markers, max depth
 (default 10), home or explicit ancestor ceiling, and structured errors.
-PathConstraint / RespectConstraints is deferred; pass `boundary` instead.
+`HOME=/` or `/root` falls back to the current working directory. A home
+that is not an ancestor stops with `BoundaryReached`. PathConstraint /
+RespectConstraints is deferred; pass `boundary` instead.
 
 ```rust
 use rsfulmen::pathfinder::{
