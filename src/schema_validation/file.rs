@@ -1894,8 +1894,11 @@ mod tests {
     }
 
     #[cfg(windows)]
+    type SwapHookSlot = std::thread::LocalKey<std::cell::RefCell<Option<Box<dyn Fn()>>>>;
+
+    #[cfg(windows)]
     fn with_swap_hook(
-        slot: &'static std::thread::LocalKey<std::cell::RefCell<Option<Box<dyn Fn()>>>>,
+        slot: &'static SwapHookSlot,
         from: PathBuf,
         to: PathBuf,
     ) -> std::sync::Arc<std::sync::atomic::AtomicBool> {
@@ -1923,7 +1926,7 @@ mod tests {
     }
 
     #[cfg(windows)]
-    fn clear_hook(slot: &'static std::thread::LocalKey<std::cell::RefCell<Option<Box<dyn Fn()>>>>) {
+    fn clear_hook(slot: &'static SwapHookSlot) {
         slot.with(|hook| *hook.borrow_mut() = None);
     }
 
