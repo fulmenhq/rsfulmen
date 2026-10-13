@@ -90,6 +90,24 @@ pub enum ExitCategory {
 }
 
 impl ExitCategory {
+    /// Catalog category id (`standard`, `signals`, …).
+    pub fn id(self) -> &'static str {
+        match self {
+            ExitCategory::Standard => "standard",
+            ExitCategory::Networking => "networking",
+            ExitCategory::Configuration => "configuration",
+            ExitCategory::Runtime => "runtime",
+            ExitCategory::Usage => "usage",
+            ExitCategory::Permissions => "permissions",
+            ExitCategory::Data => "data",
+            ExitCategory::Security => "security",
+            ExitCategory::Observability => "observability",
+            ExitCategory::Testing => "testing",
+            ExitCategory::Shell => "shell",
+            ExitCategory::Signals => "signals",
+        }
+    }
+
     /// Get the human-readable name of the category.
     pub fn name(&self) -> &'static str {
         match self {
@@ -129,7 +147,12 @@ impl ExitCategory {
 }
 
 /// Exit code entry.
+///
+/// Marked `non_exhaustive` so later catalog fields can be added without
+/// breaking struct literals. Construct via [`lookup_exit_code`] /
+/// [`list_exit_codes`]; match with `..`.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct ExitCode {
     /// The numeric exit code
     pub code: i32,
@@ -139,6 +162,14 @@ pub struct ExitCode {
     pub description: String,
     /// The category this code belongs to
     pub category: ExitCategory,
+    /// Catalog usage context.
+    pub context: Option<String>,
+    /// Optional retry guidance (`retry` / `no_retry` / `investigate`).
+    pub retry_hint: Option<String>,
+    /// Optional BSD `sysexits.h` equivalent recorded on the row.
+    pub bsd_equivalent: Option<String>,
+    /// Optional Python-runtime note.
+    pub python_note: Option<String>,
 }
 
 // Raw types for YAML parsing
@@ -147,8 +178,10 @@ struct RawCode {
     code: i32,
     name: String,
     description: String,
-    #[allow(dead_code)]
     context: Option<String>,
+    retry_hint: Option<String>,
+    bsd_equivalent: Option<String>,
+    python_note: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -223,6 +256,10 @@ impl ExitCodeIndexes {
                     name: code.name,
                     description: code.description,
                     category,
+                    context: code.context,
+                    retry_hint: code.retry_hint,
+                    bsd_equivalent: code.bsd_equivalent,
+                    python_note: code.python_note,
                 });
                 by_code.insert(code.code, index);
             }
@@ -339,6 +376,143 @@ pub fn get_signal_from_exit(code: i32) -> Option<i32> {
     }
 }
 
+/// One BSD `sysexits.h` mapping from the catalog `bsd_compatibility` table.
+///
+/// Marked `non_exhaustive` so later catalog columns can be added without
+/// breaking struct literals.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct BsdMapping {
+    /// BSD numeric code.
+    pub bsd_code: i32,
+    /// BSD symbolic name (e.g. `EX_USAGE`).
+    pub bsd_name: String,
+    /// Fulmen exit code this maps to.
+    pub fulmen_code: i32,
+    /// Fulmen symbolic name.
+    pub fulmen_name: String,
+    /// Catalog category id for the Fulmen mapping.
+    pub category: String,
+    /// Catalog notes for the mapping.
+    pub notes: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct BsdCompatibility {
+    mappings: Vec<RawBsdMapping>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RawBsdMapping {
+    bsd_code: i32,
+    bsd_name: String,
+    fulmen_code: i32,
+    fulmen_name: String,
+    category: String,
+    notes: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct BsdCatalog {
+    bsd_compatibility: BsdCompatibility,
+}
+
+static BSD_MAPPINGS: Lazy<Vec<BsdMapping>> = Lazy::new(|| {
+    let catalog: BsdCatalog = serde_yaml::from_str(EXIT_CODES_YAML)
+        .expect("Failed to parse bsd_compatibility from exit-codes catalog");
+    catalog
+        .bsd_compatibility
+        .mappings
+        .into_iter()
+        .map(|m| BsdMapping {
+            bsd_code: m.bsd_code,
+            bsd_name: m.bsd_name,
+            fulmen_code: m.fulmen_code,
+            fulmen_name: m.fulmen_name,
+            category: m.category,
+            notes: m.notes,
+        })
+        .collect()
+});
+
+/// Map a BSD `sysexits.h` code to the Fulmen code recorded in the catalog
+/// `bsd_compatibility` table.
+///
+/// Unknown BSD codes return `None`. Conflicts (e.g. EX_OSERR 71 vs
+/// `EXIT_AUTHORIZATION_FAILED` 71) follow the catalog's pragmatic mapping,
+/// not the numeric coincidence.
+///
+/// **gofulmen divergence:** gofulmen `MapFromBSD` searches each exit row's
+/// `bsd_equivalent` instead of this table. On Crucible v0.4.19 that yields
+/// a different answer for four sysexits codes:
+///
+/// | BSD | name | this crate | gofulmen |
+/// | --- | --- | --- | --- |
+/// | 71 | `EX_OSERR` | 33 | none |
+/// | 74 | `EX_IOERR` | 54 | none |
+/// | 75 | `EX_TEMPFAIL` | 34 | none |
+/// | 76 | `EX_PROTOCOL` | none | 73 |
+///
+/// rsfulmen follows the explicit table. 76 has no table row, so it stays
+/// `None` until Crucible reconciles the two sources.
+///
+/// **Not an inverse of [`map_fulmen_to_bsd`].** The two functions read
+/// different catalog sources (`bsd_compatibility` vs per-row
+/// `bsd_equivalent`). `71 → 33` but `33 → None`; `73 → 76` but `76 → None`.
+pub fn map_bsd_to_fulmen(bsd_code: i32) -> Option<i32> {
+    BSD_MAPPINGS
+        .iter()
+        .find(|m| m.bsd_code == bsd_code)
+        .map(|m| m.fulmen_code)
+}
+
+/// Canonical `sysexits.h` name → code. Used by [`map_fulmen_to_bsd`].
+const SYSEXITS: &[(&str, i32)] = &[
+    ("EX_USAGE", 64),
+    ("EX_DATAERR", 65),
+    ("EX_NOINPUT", 66),
+    ("EX_NOUSER", 67),
+    ("EX_NOHOST", 68),
+    ("EX_UNAVAILABLE", 69),
+    ("EX_SOFTWARE", 70),
+    ("EX_OSERR", 71),
+    ("EX_OSFILE", 72),
+    ("EX_CANTCREAT", 73),
+    ("EX_IOERR", 74),
+    ("EX_TEMPFAIL", 75),
+    ("EX_PROTOCOL", 76),
+    ("EX_NOPERM", 77),
+    ("EX_CONFIG", 78),
+];
+
+fn parse_bsd_equivalent(raw: &str) -> Option<i32> {
+    let token = raw.split_whitespace().next()?;
+    SYSEXITS
+        .iter()
+        .find(|(name, _)| *name == token)
+        .map(|(_, code)| *code)
+}
+
+/// Map a Fulmen exit code to a BSD `sysexits.h` code via the row's
+/// `bsd_equivalent` field (same source as gofulmen `MapToBSD`).
+///
+/// Signal-style values (`128 + N`) and unknown codes return `None`.
+/// Partial notes such as `EX_NOPERM (partial)` still resolve to the
+/// named sysexits code.
+///
+/// **Not an inverse of [`map_bsd_to_fulmen`].** See that function for the
+/// pinned non-round-trip pairs (71/33 and 73/76).
+pub fn map_fulmen_to_bsd(fulmen_code: i32) -> Option<i32> {
+    lookup_exit_code(fulmen_code)
+        .and_then(|entry| entry.bsd_equivalent.as_deref())
+        .and_then(parse_bsd_equivalent)
+}
+
+/// Catalog BSD compatibility rows.
+pub fn list_bsd_mappings() -> &'static [BsdMapping] {
+    &BSD_MAPPINGS
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -436,5 +610,134 @@ mod tests {
         assert_eq!(ExitCategory::from_code(64), Some(ExitCategory::Usage));
         assert_eq!(ExitCategory::from_code(124), Some(ExitCategory::Shell));
         assert_eq!(ExitCategory::from_code(143), Some(ExitCategory::Signals));
+    }
+
+    #[test]
+    fn test_bsd_catalog_mappings() {
+        assert_eq!(map_bsd_to_fulmen(64), Some(64));
+        assert_eq!(map_bsd_to_fulmen(71), Some(33), "EX_OSERR is not Fulmen 71");
+        assert_eq!(map_bsd_to_fulmen(74), Some(54));
+        assert_eq!(map_bsd_to_fulmen(75), Some(34));
+        assert_eq!(
+            map_bsd_to_fulmen(76),
+            None,
+            "EX_PROTOCOL has no bsd_compatibility row; gofulmen MapFromBSD yields 73"
+        );
+        assert_eq!(map_bsd_to_fulmen(0), None);
+        assert_eq!(map_bsd_to_fulmen(99), None);
+
+        assert_eq!(
+            map_fulmen_to_bsd(33),
+            None,
+            "table 71→33 is not inverted by bsd_equivalent"
+        );
+        assert_eq!(
+            map_bsd_to_fulmen(76),
+            None,
+            "row 73→76 is not inverted by bsd_compatibility"
+        );
+        assert_eq!(map_fulmen_to_bsd(64), Some(64));
+        assert_eq!(
+            map_fulmen_to_bsd(73),
+            Some(76),
+            "EXIT_CERTIFICATE_INVALID → EX_PROTOCOL"
+        );
+        assert_eq!(map_fulmen_to_bsd(126), Some(77));
+        assert_eq!(map_fulmen_to_bsd(127), Some(69));
+        assert_eq!(
+            map_fulmen_to_bsd(130),
+            None,
+            "128 + N is not a sysexits code"
+        );
+        assert_eq!(map_fulmen_to_bsd(0), None);
+        assert_eq!(map_fulmen_to_bsd(999), None);
+        for entry in list_exit_codes() {
+            if let Some(raw) = entry.bsd_equivalent.as_deref() {
+                let mapped = map_fulmen_to_bsd(entry.code);
+                let expected = parse_bsd_equivalent(raw);
+                assert_eq!(mapped, expected, "fulmen {} {}", entry.code, raw);
+            }
+        }
+
+        #[derive(Deserialize)]
+        struct Catalog {
+            bsd_compatibility: BsdCompatibility,
+        }
+        let catalog: Catalog =
+            serde_yaml::from_str(EXIT_CODES_YAML).expect("bsd_compatibility table");
+        let got = list_bsd_mappings();
+        assert_eq!(got.len(), catalog.bsd_compatibility.mappings.len());
+        for (got, raw) in got.iter().zip(catalog.bsd_compatibility.mappings.iter()) {
+            assert_eq!(got.bsd_code, raw.bsd_code);
+            assert_eq!(got.bsd_name, raw.bsd_name);
+            assert_eq!(got.fulmen_code, raw.fulmen_code);
+            assert_eq!(got.fulmen_name, raw.fulmen_name);
+            assert_eq!(got.category, raw.category);
+            assert_eq!(got.notes, raw.notes);
+            assert!(!got.notes.is_empty(), "notes required for {}", got.bsd_name);
+        }
+    }
+
+    #[test]
+    fn test_exit_codes_snapshot_parity() {
+        #[derive(Deserialize)]
+        struct SnapCode {
+            name: String,
+            category: String,
+            description: String,
+            context: Option<String>,
+            retry_hint: Option<String>,
+            bsd_equivalent: Option<String>,
+            python_note: Option<String>,
+        }
+        #[derive(Deserialize)]
+        struct Snapshot {
+            version: String,
+            codes: std::collections::BTreeMap<String, SnapCode>,
+        }
+
+        const SNAPSHOT: &str =
+            include_str!("../../config/crucible-rs/library/foundry/exit-codes.snapshot.json");
+        let snap: Snapshot = serde_yaml::from_str(SNAPSHOT).expect("exit-codes snapshot");
+        assert_eq!(snap.version, "v1.0.0");
+        assert_eq!(
+            list_exit_codes().len(),
+            snap.codes.len(),
+            "catalog cardinality must match snapshot"
+        );
+
+        for (code_str, expected) in &snap.codes {
+            let code: i32 = code_str.parse().expect("snapshot code key");
+            let got = lookup_exit_code(code)
+                .unwrap_or_else(|| panic!("catalog missing snapshot code {code}"));
+            assert_eq!(got.name, expected.name, "name for {code}");
+            assert_eq!(got.category.id(), expected.category, "category for {code}");
+            assert_eq!(
+                got.description, expected.description,
+                "description for {code}"
+            );
+            assert_eq!(
+                got.context.as_deref().map(str::trim_end),
+                expected.context.as_deref().map(str::trim_end),
+                "context for {code}"
+            );
+            assert_eq!(got.retry_hint, expected.retry_hint, "retry_hint for {code}");
+            assert_eq!(
+                got.bsd_equivalent, expected.bsd_equivalent,
+                "bsd_equivalent for {code}"
+            );
+            assert_eq!(
+                got.python_note, expected.python_note,
+                "python_note for {code}"
+            );
+        }
+
+        for entry in list_exit_codes() {
+            assert!(
+                snap.codes.contains_key(&entry.code.to_string()),
+                "snapshot missing catalog code {}",
+                entry.code
+            );
+        }
     }
 }

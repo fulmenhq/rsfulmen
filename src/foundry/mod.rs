@@ -16,6 +16,7 @@
 //! | [`country_codes`] | ISO 3166 country codes (alpha-2, alpha-3, numeric) | ✅ |
 //! | [`http_statuses`] | HTTP status code registry | ✅ |
 //! | [`exit_codes`] | Standard exit code definitions | ✅ |
+//! | [`simplified_modes`] | Opt-in basic/severity exit-code collapse | ✅ |
 //! | [`signals`] | Signal definitions and platform support | ✅ |
 //! | [`mime_types`] | Common MIME types | ✅ (`foundry-mime-types`) |
 //! | [`patterns`] | Validated regex patterns | ✅ (`foundry-patterns`) |
@@ -42,6 +43,7 @@ pub mod country_codes;
 pub mod exit_codes;
 pub mod http_statuses;
 pub mod signals;
+pub mod simplified_modes;
 
 #[cfg(feature = "foundry-mime-types")]
 pub mod mime_types;

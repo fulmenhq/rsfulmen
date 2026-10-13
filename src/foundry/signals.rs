@@ -263,7 +263,12 @@ pub struct PlatformOverrides {
 }
 
 /// Signal definition from the Crucible catalog.
+///
+/// Marked `non_exhaustive` so later catalog fields can be added without
+/// breaking downstream struct literals. Construct via `lookup_signal` /
+/// `list_signals` and match with `..`.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Signal {
     /// Short identifier (e.g., "term", "int", "hup")
     pub id: String,
@@ -289,6 +294,10 @@ pub struct Signal {
     pub double_tap_window_seconds: Option<u32>,
     /// Double-tap hint message (SIGINT only)
     pub double_tap_message: Option<String>,
+    /// Catalog behavior id used on the second tap (SIGINT only).
+    pub double_tap_behavior: Option<String>,
+    /// Exit code used on the second tap (SIGINT only).
+    pub double_tap_exit_code: Option<i32>,
     /// Reload strategy (SIGHUP only)
     pub reload_strategy: Option<String>,
     /// Whether validation is required (SIGHUP only)
@@ -376,10 +385,8 @@ struct RawSignal {
     double_tap_window_seconds: Option<u32>,
     double_tap_message: Option<String>,
     #[serde(default)]
-    #[allow(dead_code)]
     double_tap_behavior: Option<String>,
     #[serde(default)]
-    #[allow(dead_code)]
     double_tap_exit_code: Option<i32>,
     reload_strategy: Option<String>,
     validation_required: Option<bool>,
@@ -514,6 +521,8 @@ impl SignalIndexes {
                 usage_notes: raw.usage_notes,
                 double_tap_window_seconds: raw.double_tap_window_seconds,
                 double_tap_message: raw.double_tap_message,
+                double_tap_behavior: raw.double_tap_behavior,
+                double_tap_exit_code: raw.double_tap_exit_code,
                 reload_strategy: raw.reload_strategy,
                 validation_required: raw.validation_required,
                 windows_fallback,
@@ -717,8 +726,8 @@ pub fn signal_count() -> usize {
 /// assert_eq!(resolve_signal("TERM").unwrap().name, "SIGTERM");
 /// assert_eq!(resolve_signal("term").unwrap().name, "SIGTERM");
 /// assert_eq!(resolve_signal("15").unwrap().name, "SIGTERM");
-/// assert_eq!(resolve_signal("-15").unwrap().name, "SIGTERM");
 /// assert_eq!(resolve_signal("  SIGTERM  ").unwrap().name, "SIGTERM");
+/// assert!(resolve_signal("-15").is_none());
 ///
 /// // Unknown signals return None
 /// assert!(resolve_signal("SIGFOO").is_none());
@@ -738,12 +747,12 @@ pub fn resolve_signal(name: &str) -> Option<&'static Signal> {
         return Some(signal);
     }
 
-    // Step 4: Numeric match (accepts "15" and "-15" kill-style inputs)
-    if let Ok(num) = trimmed.parse::<i32>() {
-        // `checked_abs` avoids overflow for i32::MIN
-        if let Some(num_abs) = num.checked_abs() {
-            if num_abs > 0 {
-                if let Some(signal) = lookup_signal_by_number(num_abs) {
+    // Step 4: Positive numeric match only (`"15"` → SIGTERM). Negatives are
+    // not supported (Crucible signal-resolution fixtures).
+    if trimmed.bytes().all(|b| b.is_ascii_digit()) {
+        if let Ok(num) = trimmed.parse::<i32>() {
+            if num > 0 {
+                if let Some(signal) = lookup_signal_by_number(num) {
                     return Some(signal);
                 }
             }
@@ -793,10 +802,17 @@ pub fn list_signal_names() -> Vec<&'static str> {
     CATALOG.signals.iter().map(|s| s.name.as_str()).collect()
 }
 
+/// Maximum glob pattern length accepted by [`match_signal_names`].
+///
+/// Longer patterns, including adversarial `*`-repeats, return no matches
+/// instead of recursing.
+pub const MAX_SIGNAL_GLOB_PATTERN: usize = 64;
+
 /// Return signal names matching a simple glob pattern.
 ///
 /// Supports `*` (zero or more characters) and `?` (exactly one character).
 /// Matching is case-insensitive. No regex dependencies required.
+/// Patterns longer than [`MAX_SIGNAL_GLOB_PATTERN`] return no matches.
 ///
 /// Useful for CLI discovery (e.g., `kill --signal TERM*`).
 ///
@@ -834,7 +850,7 @@ pub fn list_signal_names() -> Vec<&'static str> {
 /// ```
 pub fn match_signal_names(pattern: &str) -> Vec<&'static str> {
     let trimmed = pattern.trim();
-    if trimmed.is_empty() {
+    if trimmed.is_empty() || trimmed.chars().count() > MAX_SIGNAL_GLOB_PATTERN {
         return Vec::new();
     }
 
@@ -847,51 +863,28 @@ pub fn match_signal_names(pattern: &str) -> Vec<&'static str> {
         .collect()
 }
 
-/// Simple glob matcher supporting `*` and `?` wildcards.
-/// Case-sensitive comparison (caller should lowercase both inputs for case-insensitive).
+/// Iterative glob matcher supporting `*` and `?`.
+/// Case-sensitive comparison (caller should lowercase both inputs).
 fn glob_match(pattern: &str, text: &str) -> bool {
-    let pattern_chars: Vec<char> = pattern.chars().collect();
-    let text_chars: Vec<char> = text.chars().collect();
-    glob_match_recursive(&pattern_chars, &text_chars, 0, 0)
-}
-
-fn glob_match_recursive(pattern: &[char], text: &[char], pi: usize, ti: usize) -> bool {
-    // If we've consumed all pattern, we must have consumed all text
-    if pi == pattern.len() {
-        return ti == text.len();
-    }
-
-    let p = pattern[pi];
-
-    if p == '*' {
-        // '*' matches zero or more characters
-        // Try matching zero characters (advance pattern only)
-        if glob_match_recursive(pattern, text, pi + 1, ti) {
-            return true;
+    let p: Vec<char> = pattern.chars().collect();
+    let t: Vec<char> = text.chars().collect();
+    let (n, m) = (p.len(), t.len());
+    let mut prev = vec![false; m + 1];
+    let mut curr = vec![false; m + 1];
+    prev[0] = true;
+    for i in 1..=n {
+        curr[0] = prev[0] && p[i - 1] == '*';
+        for j in 1..=m {
+            curr[j] = match p[i - 1] {
+                '*' => prev[j] || curr[j - 1],
+                '?' => prev[j - 1],
+                c => prev[j - 1] && c == t[j - 1],
+            };
         }
-        // Try matching one character and keep '*' active
-        if ti < text.len() && glob_match_recursive(pattern, text, pi, ti + 1) {
-            return true;
-        }
-        return false;
+        std::mem::swap(&mut prev, &mut curr);
+        curr.fill(false);
     }
-
-    // We need a character to match
-    if ti == text.len() {
-        return false;
-    }
-
-    if p == '?' {
-        // '?' matches exactly one character
-        return glob_match_recursive(pattern, text, pi + 1, ti + 1);
-    }
-
-    // Literal character match
-    if p == text[ti] {
-        return glob_match_recursive(pattern, text, pi + 1, ti + 1);
-    }
-
-    false
+    prev[m]
 }
 
 /// Look up a behavior definition by ID.
@@ -1562,11 +1555,22 @@ mod tests {
     // -------------------------------------------------------------------------
 
     #[test]
+    fn signal_struct_is_marked_non_exhaustive() {
+        let src = include_str!("signals.rs").replace("\r\n", "\n");
+        assert!(
+            src.contains("#[non_exhaustive]\npub struct Signal"),
+            "Signal must stay non_exhaustive after adding catalog fields"
+        );
+    }
+
+    #[test]
     fn test_sigint_double_tap_fields() {
         let int = lookup_signal("SIGINT").expect("SIGINT should exist");
         assert_eq!(int.double_tap_window_seconds, Some(2));
         assert!(int.double_tap_message.is_some());
         assert!(int.double_tap_message.as_ref().unwrap().contains("2s"));
+        assert_eq!(int.double_tap_behavior.as_deref(), Some("immediate_exit"));
+        assert_eq!(int.double_tap_exit_code, Some(130));
     }
 
     // -------------------------------------------------------------------------
@@ -1658,7 +1662,7 @@ mod tests {
     #[test]
     fn test_resolve_signal_numeric() {
         assert_eq!(resolve_signal("15").unwrap().name, "SIGTERM");
-        assert_eq!(resolve_signal("-15").unwrap().name, "SIGTERM");
+        assert!(resolve_signal("-15").is_none());
         assert_eq!(resolve_signal("2").unwrap().name, "SIGINT");
         assert_eq!(resolve_signal("1").unwrap().name, "SIGHUP");
         assert_eq!(resolve_signal("9").unwrap().name, "SIGKILL");
@@ -1826,5 +1830,722 @@ mod tests {
         // Empty and whitespace-only patterns return empty vec
         assert!(match_signal_names("").is_empty());
         assert!(match_signal_names("   ").is_empty());
+    }
+
+    #[test]
+    fn test_signal_resolution_fixtures() {
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct ResolveCase {
+            input: String,
+            expect_name: Option<String>,
+            #[allow(dead_code)]
+            description: Option<String>,
+        }
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct ListCase {
+            expect_contains: Option<Vec<String>>,
+            expect_min_count: Option<usize>,
+            #[allow(dead_code)]
+            description: Option<String>,
+        }
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct MatchCase {
+            pattern: String,
+            expect_equals_list_signal_names: Option<bool>,
+            expect_contains: Option<Vec<String>>,
+            expect_not_contains: Option<Vec<String>>,
+            expect_min_count: Option<usize>,
+            expect_count: Option<usize>,
+            expect_empty: Option<bool>,
+            #[allow(dead_code)]
+            description: Option<String>,
+        }
+        #[derive(Deserialize)]
+        struct Fixtures {
+            #[allow(dead_code)]
+            description: Option<String>,
+            #[allow(dead_code)]
+            version: Option<String>,
+            #[serde(rename = "$schema")]
+            #[allow(dead_code)]
+            schema: Option<String>,
+            resolve_signal_tests: Vec<ResolveCase>,
+            list_signal_names_tests: Vec<ListCase>,
+            match_signal_names_tests: Vec<MatchCase>,
+        }
+
+        const YAML: &str = include_str!(
+            "../../config/crucible-rs/library/foundry/signal-resolution-fixtures.yaml"
+        );
+        let fixtures: Fixtures = serde_yaml::from_str(YAML).expect("signal resolution fixtures");
+
+        for case in fixtures.resolve_signal_tests {
+            let got = resolve_signal(&case.input).map(|s| s.name.clone());
+            assert_eq!(got, case.expect_name, "resolve_signal({:?})", case.input);
+        }
+
+        let names = list_signal_names();
+        for case in fixtures.list_signal_names_tests {
+            if let Some(min) = case.expect_min_count {
+                assert!(names.len() >= min, "list_signal_names min_count");
+            }
+            if let Some(required) = case.expect_contains {
+                for name in required {
+                    assert!(names.contains(&name.as_str()), "missing {name}");
+                }
+            }
+        }
+
+        for case in fixtures.match_signal_names_tests {
+            let pattern = case.pattern;
+            let matched = match_signal_names(&pattern);
+            if case.expect_equals_list_signal_names == Some(true) {
+                assert_eq!(matched, names, "pattern {pattern} should match all names");
+            }
+            if let Some(required) = case.expect_contains {
+                for name in required {
+                    assert!(
+                        matched.contains(&name.as_str()),
+                        "pattern {pattern} missing {name}"
+                    );
+                }
+            }
+            if let Some(forbidden) = case.expect_not_contains {
+                for name in forbidden {
+                    assert!(
+                        !matched.contains(&name.as_str()),
+                        "pattern {pattern} unexpectedly has {name}"
+                    );
+                }
+            }
+            if let Some(min) = case.expect_min_count {
+                assert!(matched.len() >= min, "pattern {pattern} min_count");
+            }
+            if let Some(count) = case.expect_count {
+                assert_eq!(matched.len(), count, "pattern {pattern} expect_count");
+            }
+            if case.expect_empty == Some(true) {
+                assert!(matched.is_empty(), "pattern {pattern} should be empty");
+            }
+        }
+    }
+
+    #[test]
+    fn test_signal_resolution_fixture_rejects_missing_pattern_and_unknown_fields() {
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct MatchCase {
+            #[allow(dead_code)]
+            pattern: String,
+        }
+        let missing = serde_yaml::from_str::<MatchCase>("expect_empty: true");
+        assert!(missing.is_err(), "pattern is required");
+        let unknown = serde_yaml::from_str::<MatchCase>("pattern: '*'\nnot_a_field: 1");
+        assert!(unknown.is_err(), "unknown fields must fail deserialization");
+    }
+
+    #[test]
+    fn match_signal_names_rejects_oversized_and_star_flood_safely() {
+        let flood = "*".repeat(100_000);
+        assert!(match_signal_names(&flood).is_empty());
+        let long_literal = "SIG".to_string() + &"X".repeat(200);
+        assert!(match_signal_names(&long_literal).is_empty());
+        let at_limit = format!("SIG{}", "T".repeat(MAX_SIGNAL_GLOB_PATTERN - 3));
+        assert_eq!(at_limit.chars().count(), MAX_SIGNAL_GLOB_PATTERN);
+        let _ = match_signal_names(&at_limit);
+        assert!(match_signal_names("SIGTERM").contains(&"SIGTERM"));
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct FixtureCatalog {
+        #[serde(rename = "$schema")]
+        #[allow(dead_code)]
+        schema: Option<String>,
+        #[allow(dead_code)]
+        description: Option<String>,
+        version: String,
+        signals: Vec<FixtureSignal>,
+        behaviors: Vec<FixtureBehavior>,
+        os_mappings: FixtureOsMappings,
+        #[serde(default)]
+        platform_support: Option<Vec<FixturePlatformSupport>>,
+        exit_codes: FixtureExitCodes,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct FixtureSignal {
+        id: String,
+        name: String,
+        unix_number: i32,
+        #[serde(default)]
+        platform_overrides: Option<FixturePlatformOverrides>,
+        #[serde(default)]
+        windows_event: Option<String>,
+        #[serde(default)]
+        windows_fallback: Option<FixtureWindowsFallback>,
+        description: String,
+        default_behavior: String,
+        exit_code: i32,
+        #[serde(default)]
+        timeout_seconds: Option<i32>,
+        #[serde(default)]
+        cleanup_actions: Option<Vec<String>>,
+        #[serde(default)]
+        double_tap_window_seconds: Option<i32>,
+        #[serde(default)]
+        double_tap_message: Option<String>,
+        #[serde(default)]
+        double_tap_behavior: Option<String>,
+        #[serde(default)]
+        double_tap_exit_code: Option<i32>,
+        #[serde(default)]
+        reload_strategy: Option<String>,
+        #[serde(default)]
+        validation_required: Option<bool>,
+        #[serde(default)]
+        usage_notes: Option<String>,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct FixturePlatformOverrides {
+        #[serde(default)]
+        darwin: Option<i32>,
+        #[serde(default)]
+        freebsd: Option<i32>,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct FixtureWindowsFallback {
+        #[serde(default)]
+        fallback_behavior: Option<String>,
+        #[serde(default)]
+        log_level: Option<String>,
+        #[serde(default)]
+        log_message: Option<String>,
+        #[serde(default)]
+        log_template: Option<String>,
+        #[serde(default)]
+        operation_hint: Option<String>,
+        #[serde(default)]
+        telemetry_event: Option<String>,
+        #[serde(default)]
+        telemetry_tags: Option<std::collections::BTreeMap<String, String>>,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct FixturePlatformSupport {
+        signal: String,
+        linux: String,
+        macos: String,
+        freebsd: String,
+        windows: String,
+        #[serde(default)]
+        fallback: Option<String>,
+        notes: String,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct FixtureBehavior {
+        id: String,
+        name: String,
+        description: String,
+        phases: Vec<FixturePhase>,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct FixturePhase {
+        name: String,
+        description: String,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct FixtureOsMappings {
+        unix: std::collections::BTreeMap<String, i32>,
+        windows: std::collections::BTreeMap<String, i32>,
+        #[serde(default)]
+        platform_overrides:
+            Option<std::collections::BTreeMap<String, std::collections::BTreeMap<String, i32>>>,
+        #[serde(default)]
+        signal_to_event: Option<std::collections::BTreeMap<String, Option<String>>>,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct FixtureExitCodes {
+        #[serde(rename = "SIGTERM")]
+        sigterm: i32,
+        #[serde(rename = "SIGINT")]
+        sigint: i32,
+        #[serde(rename = "SIGHUP")]
+        sighup: i32,
+        #[serde(rename = "SIGQUIT", default)]
+        sigquit: Option<i32>,
+        #[serde(rename = "SIGPIPE", default)]
+        sigpipe: Option<i32>,
+        #[serde(rename = "SIGALRM", default)]
+        sigalrm: Option<i32>,
+        #[serde(rename = "SIGUSR1", default)]
+        sigusr1: Option<i32>,
+        #[serde(rename = "SIGUSR2", default)]
+        sigusr2: Option<i32>,
+        #[serde(rename = "SIGKILL", default)]
+        sigkill: Option<i32>,
+        note: String,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct ParityFile {
+        #[serde(rename = "$schema")]
+        #[allow(dead_code)]
+        schema: Option<String>,
+        #[allow(dead_code)]
+        description: Option<String>,
+        #[allow(dead_code)]
+        version: Option<String>,
+        fixtures: std::collections::BTreeMap<String, ParityRow>,
+        #[allow(dead_code)]
+        test_expectations: Option<ParityExpectations>,
+        #[allow(dead_code)]
+        cross_language_usage: Option<ParityCrossLanguage>,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct ParityExpectations {
+        signal_validation: ParitySignalValidation,
+        behavior_validation: ParityBehaviorValidation,
+        os_mappings_validation: ParityOsMappingsValidation,
+        exit_code_mapping: std::collections::BTreeMap<String, i32>,
+        platform_override_signals:
+            std::collections::BTreeMap<String, std::collections::BTreeMap<String, i32>>,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct ParitySignalValidation {
+        required_fields: Vec<String>,
+        optional_fields: Vec<String>,
+        valid_behaviors: Vec<String>,
+        exit_code_range: ParityMinMax,
+        signal_number_range: ParityMinMax,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct ParityBehaviorValidation {
+        required_fields: Vec<String>,
+        phase_required_fields: Vec<String>,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct ParityOsMappingsValidation {
+        required_sections: Vec<String>,
+        optional_sections: Vec<String>,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct ParityMinMax {
+        min: i32,
+        max: i32,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct ParityCrossLanguage {
+        description: String,
+        usage: Vec<String>,
+        example_tests: Vec<String>,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct ParityRow {
+        #[allow(dead_code)]
+        description: Option<String>,
+        signals_count: usize,
+        #[serde(default)]
+        required_signals: Option<Vec<String>>,
+        #[serde(default)]
+        all_signals: Option<Vec<String>>,
+        #[serde(default)]
+        signals: Option<Vec<String>>,
+        #[serde(default)]
+        custom_signals: Option<Vec<String>>,
+        behaviors_count: usize,
+        #[serde(default)]
+        has_platform_overrides: Option<bool>,
+        #[serde(default)]
+        has_custom_handlers: Option<bool>,
+        #[serde(default)]
+        has_double_tap: Option<bool>,
+        #[serde(default)]
+        has_reload_strategy: Option<bool>,
+        #[serde(default)]
+        platform_override_signals: Option<Vec<String>>,
+    }
+
+    #[derive(Debug)]
+    enum FixtureFailure {
+        Yaml,
+        MissingRequired,
+        ExitCodeRange,
+        UnknownBehavior,
+    }
+
+    const SIGNAL_BEHAVIORS: &[&str] = &[
+        "graceful_shutdown",
+        "graceful_shutdown_with_double_tap",
+        "reload_via_restart",
+        "immediate_exit",
+        "custom",
+        "observe_only",
+    ];
+    const FALLBACK_BEHAVIORS: &[&str] = &["http_admin_endpoint", "exception_handling", "timer_api"];
+    const LOG_LEVELS: &[&str] = &["DEBUG", "INFO", "WARN", "ERROR"];
+    const UNIX_SUPPORT: &[&str] = &["native", "unsupported"];
+    const WINDOWS_SUPPORT: &[&str] = &["native", "mapped", "unsupported"];
+
+    fn parse_signal_fixture(yaml: &str) -> Result<FixtureCatalog, FixtureFailure> {
+        let catalog: FixtureCatalog =
+            serde_yaml::from_str(yaml).map_err(|_| FixtureFailure::Yaml)?;
+        for signal in &catalog.signals {
+            if !(0..=255).contains(&signal.exit_code) {
+                return Err(FixtureFailure::ExitCodeRange);
+            }
+            if !SIGNAL_BEHAVIORS.contains(&signal.default_behavior.as_str()) {
+                return Err(FixtureFailure::UnknownBehavior);
+            }
+            if signal.id.is_empty()
+                || signal.name.is_empty()
+                || signal.description.is_empty()
+                || !(1..=64).contains(&signal.unix_number)
+            {
+                return Err(FixtureFailure::MissingRequired);
+            }
+            if let Some(fallback) = &signal.windows_fallback {
+                if let Some(behavior) = &fallback.fallback_behavior {
+                    if !FALLBACK_BEHAVIORS.contains(&behavior.as_str()) {
+                        return Err(FixtureFailure::Yaml);
+                    }
+                }
+                if let Some(level) = &fallback.log_level {
+                    if !LOG_LEVELS.contains(&level.as_str()) {
+                        return Err(FixtureFailure::Yaml);
+                    }
+                }
+            }
+        }
+        if let Some(rows) = &catalog.platform_support {
+            for row in rows {
+                if row.signal.is_empty()
+                    || !UNIX_SUPPORT.contains(&row.linux.as_str())
+                    || !UNIX_SUPPORT.contains(&row.macos.as_str())
+                    || !UNIX_SUPPORT.contains(&row.freebsd.as_str())
+                    || !WINDOWS_SUPPORT.contains(&row.windows.as_str())
+                {
+                    return Err(FixtureFailure::Yaml);
+                }
+                if let Some(fallback) = &row.fallback {
+                    if !FALLBACK_BEHAVIORS.contains(&fallback.as_str()) {
+                        return Err(FixtureFailure::Yaml);
+                    }
+                }
+            }
+        }
+        Ok(catalog)
+    }
+
+    #[cfg(feature = "schema-validation")]
+    fn compiled_signal_schema() -> jsonschema::JSONSchema {
+        let raw =
+            include_str!("../../schemas/crucible-rs/library/foundry/v1.0.0/signals.schema.json");
+        let schema: serde_json::Value = serde_json::from_str(raw).expect("signals.schema.json");
+        jsonschema::JSONSchema::compile(&schema).expect("compile signals schema")
+    }
+
+    #[cfg(feature = "schema-validation")]
+    fn yaml_to_json(yaml: &str) -> Result<serde_json::Value, FixtureFailure> {
+        let value: serde_yaml::Value =
+            serde_yaml::from_str(yaml).map_err(|_| FixtureFailure::Yaml)?;
+        serde_json::to_value(value).map_err(|_| FixtureFailure::Yaml)
+    }
+
+    #[test]
+    fn signal_schema_fixtures_valid_invalid_and_parity() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("config/crucible-rs/library/foundry/fixtures/signals");
+        let valid_dir = root.join("valid");
+        let mut valid = std::collections::BTreeMap::new();
+        #[cfg(feature = "schema-validation")]
+        let schema = compiled_signal_schema();
+        #[cfg(feature = "schema-validation")]
+        let mut tolerated_schema_drift = 0usize;
+        for entry in std::fs::read_dir(&valid_dir).expect("valid fixtures") {
+            let path = entry.unwrap().path();
+            if path.extension().and_then(|e| e.to_str()) != Some("yaml") {
+                continue;
+            }
+            let raw = std::fs::read_to_string(&path).unwrap();
+            let catalog = parse_signal_fixture(&raw).unwrap_or_else(|e| panic!("{path:?}: {e:?}"));
+            #[cfg(feature = "schema-validation")]
+            {
+                let instance = yaml_to_json(&raw).expect("valid yaml to json");
+                let msgs: Vec<String> = match schema.validate(&instance) {
+                    Ok(()) => Vec::new(),
+                    Err(errors) => errors.map(|e| e.to_string()).collect(),
+                };
+                if !msgs.is_empty() {
+                    // Catalog fixtures predate the stricter windows_fallback required
+                    // set. Every other schema class must still pass.
+                    assert!(
+                        msgs.iter().all(|m| m.contains("windows_fallback")
+                            || m.contains("fallback_behavior")
+                            || m.contains("log_template")
+                            || m.contains("operation_hint")),
+                        "{path:?} unexpected schema errors: {msgs:?}"
+                    );
+                    tolerated_schema_drift += msgs.len();
+                }
+            }
+            let stem = path
+                .file_stem()
+                .unwrap()
+                .to_string_lossy()
+                .replace('-', "_");
+            valid.insert(stem, catalog);
+        }
+        #[cfg(feature = "schema-validation")]
+        assert!(
+            tolerated_schema_drift > 0,
+            "complete.yaml vs signals.schema.json drift is gone; remove the windows_fallback allowlist"
+        );
+
+        let invalid_dir = root.join("invalid");
+        for entry in std::fs::read_dir(&invalid_dir).expect("invalid fixtures") {
+            let path = entry.unwrap().path();
+            let raw = std::fs::read_to_string(&path).unwrap();
+            let name = path.file_name().unwrap().to_string_lossy();
+            let err = match parse_signal_fixture(&raw) {
+                Err(err) => err,
+                Ok(_) => panic!("invalid must fail: {name}"),
+            };
+            match name.as_ref() {
+                "malformed.yaml" => assert!(matches!(err, FixtureFailure::Yaml), "{name}: {err:?}"),
+                "missing-required.yaml" => {
+                    assert!(
+                        matches!(err, FixtureFailure::Yaml | FixtureFailure::MissingRequired),
+                        "{name}: {err:?}"
+                    );
+                }
+                "invalid-exit-code.yaml" => {
+                    assert!(
+                        matches!(err, FixtureFailure::ExitCodeRange),
+                        "{name}: {err:?}"
+                    );
+                }
+                "invalid-behavior.yaml" => {
+                    assert!(
+                        matches!(err, FixtureFailure::UnknownBehavior),
+                        "{name}: {err:?}"
+                    );
+                }
+                other => panic!("unexpected invalid fixture {other}"),
+            }
+            #[cfg(feature = "schema-validation")]
+            if name != "malformed.yaml" {
+                let instance = yaml_to_json(&raw).expect("invalid yaml still parses");
+                assert!(
+                    schema.validate(&instance).is_err(),
+                    "{name} must fail signals.schema.json"
+                );
+            }
+        }
+
+        let snap: ParityFile = serde_yaml::from_str(
+            &std::fs::read_to_string(root.join("parity-snapshot.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            snap.fixtures.len(),
+            valid.len(),
+            "snapshot and valid fixtures must cover the same set"
+        );
+        for (name, row) in &snap.fixtures {
+            let key = name.replace('-', "_");
+            let catalog = valid
+                .get(&key)
+                .unwrap_or_else(|| panic!("snapshot {name} missing valid fixture"));
+            assert_eq!(
+                catalog.signals.len(),
+                row.signals_count,
+                "parity {name} signals_count"
+            );
+            assert_eq!(
+                catalog.behaviors.len(),
+                row.behaviors_count,
+                "parity {name} behaviors_count"
+            );
+            let names: Vec<_> = catalog.signals.iter().map(|s| s.name.as_str()).collect();
+            if let Some(required) = &row.required_signals {
+                for signal in required {
+                    assert!(names.contains(&signal.as_str()), "{name} missing {signal}");
+                }
+            }
+            if let Some(all) = &row.all_signals {
+                assert_eq!(names, all.iter().map(String::as_str).collect::<Vec<_>>());
+            }
+            if let Some(listed) = &row.signals {
+                for signal in listed {
+                    assert!(names.contains(&signal.as_str()), "{name} missing {signal}");
+                }
+            }
+            if let Some(custom) = &row.custom_signals {
+                for signal in custom {
+                    let found = catalog
+                        .signals
+                        .iter()
+                        .find(|s| s.name == *signal)
+                        .unwrap_or_else(|| panic!("{name} custom {signal}"));
+                    assert_eq!(found.default_behavior, "custom");
+                }
+            }
+            let has_overrides = catalog
+                .signals
+                .iter()
+                .any(|s| s.platform_overrides.is_some())
+                || catalog.os_mappings.platform_overrides.is_some();
+            if let Some(flag) = row.has_platform_overrides {
+                assert_eq!(flag, has_overrides, "{name} has_platform_overrides");
+            }
+            let has_double_tap = catalog
+                .signals
+                .iter()
+                .any(|s| s.double_tap_behavior.is_some());
+            if let Some(flag) = row.has_double_tap {
+                assert_eq!(flag, has_double_tap, "{name} has_double_tap");
+            }
+            let has_reload = catalog.signals.iter().any(|s| s.reload_strategy.is_some());
+            if let Some(flag) = row.has_reload_strategy {
+                assert_eq!(flag, has_reload, "{name} has_reload_strategy");
+            }
+            let has_custom = catalog
+                .signals
+                .iter()
+                .any(|s| s.default_behavior == "custom");
+            if let Some(flag) = row.has_custom_handlers {
+                assert_eq!(flag, has_custom, "{name} has_custom_handlers");
+            }
+            if let Some(override_names) = &row.platform_override_signals {
+                for signal in override_names {
+                    let found = catalog.signals.iter().find(|s| s.name == *signal).unwrap();
+                    assert!(found.platform_overrides.is_some(), "{name} {signal}");
+                }
+            }
+        }
+        for key in valid.keys() {
+            let snap_key = key.replace('_', "-");
+            assert!(
+                snap.fixtures.contains_key(key) || snap.fixtures.contains_key(&snap_key),
+                "valid fixture {key} missing from snapshot"
+            );
+        }
+
+        let complete = valid.get("complete").expect("complete fixture");
+        let int = complete
+            .signals
+            .iter()
+            .find(|s| s.name == "SIGINT")
+            .expect("SIGINT");
+        assert_eq!(int.double_tap_behavior.as_deref(), Some("immediate_exit"));
+        assert_eq!(int.double_tap_exit_code, Some(130));
+        assert_eq!(int.id, "int");
+        assert_eq!(complete.exit_codes.sigint, 130);
+
+        let support = complete
+            .platform_support
+            .as_ref()
+            .expect("complete platform_support");
+        assert!(
+            support.iter().any(|row| row.signal == "SIGHUP"
+                && row.windows == "unsupported"
+                && row.fallback.as_deref() == Some("http_admin_endpoint")),
+            "complete platform_support must type Windows fallback rows"
+        );
+        let os_overrides = complete
+            .os_mappings
+            .platform_overrides
+            .as_ref()
+            .expect("complete os_mappings.platform_overrides");
+        assert_eq!(
+            os_overrides
+                .get("darwin")
+                .and_then(|m| m.get("SIGUSR1"))
+                .copied(),
+            Some(30)
+        );
+        let hup = complete
+            .signals
+            .iter()
+            .find(|s| s.name == "SIGHUP")
+            .expect("SIGHUP");
+        let fallback = hup
+            .windows_fallback
+            .as_ref()
+            .expect("SIGHUP windows_fallback");
+        assert_eq!(fallback.log_level.as_deref(), Some("WARN"));
+        assert!(fallback.telemetry_event.is_some());
+
+        let expect = snap
+            .test_expectations
+            .as_ref()
+            .expect("parity test_expectations");
+        assert_eq!(
+            expect.signal_validation.valid_behaviors, SIGNAL_BEHAVIORS,
+            "parity valid_behaviors must match SIGNAL_BEHAVIORS"
+        );
+        assert_eq!(expect.exit_code_mapping.get("SIGTERM"), Some(&143));
+        assert_eq!(
+            expect
+                .platform_override_signals
+                .get("SIGUSR1")
+                .and_then(|m| m.get("darwin"))
+                .copied(),
+            Some(30)
+        );
+        let usage = snap
+            .cross_language_usage
+            .as_ref()
+            .expect("parity cross_language_usage");
+        assert!(!usage.example_tests.is_empty());
     }
 }
