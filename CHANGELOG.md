@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   downstream `match` arms need a wildcard. `Digest` fields are private:
   construct with `Digest::new` or the hash APIs, and read via
   `algorithm()` / `bytes()`. Wrong-length serde input is rejected.
+  Serialized `Digest` now emits the `digest.schema.json` fields
+  `{algorithm, hex, formatted, bytes}`; deserialization still accepts
+  the older `{algorithm, bytes}` form.
 
 ### Fixed
 

@@ -1085,21 +1085,100 @@ mod tests {
         assert_eq!(round, digest);
 
         let oversized_hex = "aa".repeat(10_000);
-        let too_long =
-            format!("algorithm: sha256\nhex: {oversized_hex}\nformatted: sha256:{oversized_hex}\n");
+        let too_long_hex = format!("algorithm: sha256\nhex: {oversized_hex}\n");
+        let hex_err = serde_yaml::from_str::<Digest>(&too_long_hex)
+            .expect_err("oversized hex must not be retained");
         assert!(
-            serde_yaml::from_str::<Digest>(&too_long).is_err(),
-            "oversized hex must not be retained"
+            hex_err
+                .to_string()
+                .contains("digest hex exceeds max length"),
+            "hex bound must fail before Digest::new, got {hex_err}"
+        );
+
+        let too_long_formatted = format!("algorithm: sha256\nformatted: sha256:{oversized_hex}\n");
+        let formatted_err = serde_yaml::from_str::<Digest>(&too_long_formatted)
+            .expect_err("oversized formatted must not be retained");
+        assert!(
+            formatted_err
+                .to_string()
+                .contains("formatted digest is too long"),
+            "formatted bound must fail before Digest::new, got {formatted_err}"
         );
 
         let oversized_bytes = format!(
             "algorithm: sha256\nbytes: [{}]\n",
             vec!["0"; 10_000].join(", ")
         );
+        let bytes_err = serde_yaml::from_str::<Digest>(&oversized_bytes)
+            .expect_err("oversized bytes must stop before retaining a huge Vec");
         assert!(
-            serde_yaml::from_str::<Digest>(&oversized_bytes).is_err(),
-            "oversized bytes must stop before retaining a huge Vec"
+            bytes_err.to_string().contains("digest bytes exceed 32"),
+            "byte bound must fail before Digest::new, got {bytes_err}"
         );
+
+        let counter = CountingBytes {
+            remaining: 10_000,
+            requested: std::cell::Cell::new(0),
+        };
+        let visitor_err = super::deserialize_bounded_bytes(&counter)
+            .expect_err("unbounded seq must stop at SHA-256 length");
+        assert!(
+            visitor_err.to_string().contains("digest bytes exceed 32"),
+            "seq visitor must report the byte bound, got {visitor_err}"
+        );
+        assert!(
+            counter.requested.get() <= super::MAX_DIGEST_BYTES + 1,
+            "seq visitor requested {} elements; bound must stop at {}",
+            counter.requested.get(),
+            super::MAX_DIGEST_BYTES + 1
+        );
+    }
+
+    struct CountingBytes {
+        remaining: usize,
+        requested: std::cell::Cell<usize>,
+    }
+
+    impl<'de> serde::Deserializer<'de> for &CountingBytes {
+        type Error = serde::de::value::Error;
+
+        fn deserialize_any<V: serde::de::Visitor<'de>>(
+            self,
+            visitor: V,
+        ) -> Result<V::Value, Self::Error> {
+            visitor.visit_seq(CountingSeq { inner: self })
+        }
+
+        serde::forward_to_deserialize_any! {
+            bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
+            bytes byte_buf option unit unit_struct newtype_struct seq tuple
+            tuple_struct map struct enum identifier ignored_any
+        }
+    }
+
+    struct CountingSeq<'a> {
+        inner: &'a CountingBytes,
+    }
+
+    impl<'de> serde::de::SeqAccess<'de> for CountingSeq<'_> {
+        type Error = serde::de::value::Error;
+
+        fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>, Self::Error>
+        where
+            T: serde::de::DeserializeSeed<'de>,
+        {
+            let n = self.inner.requested.get() + 1;
+            self.inner.requested.set(n);
+            if n > self.inner.remaining {
+                return Ok(None);
+            }
+            seed.deserialize(serde::de::value::U8Deserializer::new(0))
+                .map(Some)
+        }
+
+        fn size_hint(&self) -> Option<usize> {
+            None
+        }
     }
 
     #[test]
