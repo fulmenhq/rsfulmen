@@ -8,7 +8,6 @@ use jsonschema::{JSONSchema, SchemaResolver, SchemaResolverError};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::fs;
-#[cfg(unix)]
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -604,9 +603,12 @@ fn read_under_root(root: &Path, abs: &Path) -> Result<Value, String> {
     }
     #[cfg(windows)]
     {
-        reject_reparse_components(root, abs)?;
-        let bytes = fs::read(abs).map_err(|e| e.to_string())?;
-        parse_schema_bytes(&abs.display().to_string(), &bytes).map_err(|e| e.to_string())
+        let mut file = open_nofollow_under_root(root, abs)?;
+        #[cfg(test)]
+        run_windows_after_open_hook();
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf).map_err(|e| e.to_string())?;
+        parse_schema_bytes(&abs.display().to_string(), &buf).map_err(|e| e.to_string())
     }
     #[cfg(all(not(unix), not(windows)))]
     {
@@ -616,39 +618,317 @@ fn read_under_root(root: &Path, abs: &Path) -> Result<Value, String> {
 }
 
 #[cfg(windows)]
-fn is_reparse_point(meta: &fs::Metadata) -> bool {
-    use std::os::windows::fs::MetadataExt;
-    const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
-    meta.file_type().is_symlink() || (meta.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT) != 0
+const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
+
+#[cfg(all(windows, test))]
+thread_local! {
+    static AFTER_NOFOLLOW_OPEN: std::cell::RefCell<Option<Box<dyn Fn()>>> =
+        std::cell::RefCell::new(None);
 }
 
-/// Walk from `abs` up to `root` and reject any reparse point so `fs::read`
-/// cannot follow an in-root junction or symlink outside the catalog.
+#[cfg(all(windows, test))]
+fn run_windows_after_open_hook() {
+    AFTER_NOFOLLOW_OPEN.with(|hook| {
+        if let Some(run) = hook.borrow().as_ref() {
+            run();
+        }
+    });
+}
+
+/// Open `abs` by walking from `root` with handle-relative, no-reparse
+/// `NtCreateFile` so a junction swap between metadata and read cannot be
+/// followed. Intermediate `CreateFileW` flags only apply to the last
+/// component; the parent handle is the trust root for each hop.
 #[cfg(windows)]
-fn reject_reparse_components(root: &Path, abs: &Path) -> Result<(), String> {
-    let mut cursor = abs.to_path_buf();
-    loop {
-        if let Ok(meta) = fs::symlink_metadata(&cursor) {
-            if is_reparse_point(&meta) {
-                return Err(format!(
-                    "catalog path is a reparse point: {}",
-                    cursor.display()
-                ));
-            }
-        }
-        if comparable_windows_path(&cursor) == comparable_windows_path(root) {
-            break;
-        }
-        if !cursor.pop() {
-            break;
-        }
-        if !path_is_under_root(&cursor, root)
-            && comparable_windows_path(&cursor) != comparable_windows_path(root)
-        {
-            break;
-        }
+fn open_nofollow_under_root(root: &Path, abs: &Path) -> Result<fs::File, String> {
+    use std::os::windows::io::{FromRawHandle, IntoRawHandle};
+
+    let rel = windows_rel_components(root, abs)?;
+    if rel.is_empty() {
+        return Err("schema path resolved to a catalog root directory".to_string());
     }
-    Ok(())
+    let mut parent = open_win_directory(root)
+        .map_err(|e| format!("cannot open catalog root {}: {e}", root.display()))?;
+    if handle_is_reparse(&parent)? {
+        return Err(format!(
+            "catalog path is a reparse point: {}",
+            root.display()
+        ));
+    }
+    for (i, name) in rel.iter().enumerate() {
+        let last = i + 1 == rel.len();
+        let child = open_relative_nofollow(&parent, name, !last)?;
+        if handle_is_reparse(&child)? {
+            return Err(format!(
+                "catalog path is a reparse point: {}",
+                name.to_string_lossy()
+            ));
+        }
+        parent = child;
+    }
+    Ok(unsafe { fs::File::from_raw_handle(parent.into_raw_handle()) })
+}
+
+#[cfg(windows)]
+fn windows_rel_components(root: &Path, abs: &Path) -> Result<Vec<std::ffi::OsString>, String> {
+    use std::path::Component;
+    if let Ok(rel) = abs.strip_prefix(root) {
+        return rel
+            .components()
+            .map(|c| match c {
+                Component::Normal(name) => Ok(name.to_os_string()),
+                _ => Err(format!(
+                    "schema path not contained in catalog roots: {}",
+                    abs.display()
+                )),
+            })
+            .collect();
+    }
+    let root_cmp = comparable_windows_path(root);
+    let abs_cmp = comparable_windows_path(abs);
+    let rel_cmp = abs_cmp.strip_prefix(&root_cmp).map_err(|_| {
+        format!(
+            "schema path not contained in catalog roots: {}",
+            abs.display()
+        )
+    })?;
+    let rel_n = rel_cmp.components().count();
+    let names: Vec<_> = abs
+        .components()
+        .filter_map(|c| match c {
+            Component::Normal(name) => Some(name.to_os_string()),
+            _ => None,
+        })
+        .collect();
+    if names.len() < rel_n {
+        return Err(format!(
+            "schema path not contained in catalog roots: {}",
+            abs.display()
+        ));
+    }
+    Ok(names[names.len() - rel_n..].to_vec())
+}
+
+#[cfg(windows)]
+fn open_win_directory(path: &Path) -> std::io::Result<std::os::windows::io::OwnedHandle> {
+    use std::os::windows::ffi::OsStrExt;
+    use std::os::windows::io::{FromRawHandle, OwnedHandle};
+
+    let mut wide: Vec<u16> = path.as_os_str().encode_wide().collect();
+    wide.push(0);
+    const GENERIC_READ: u32 = 0x8000_0000;
+    const FILE_SHARE_READ: u32 = 0x1;
+    const FILE_SHARE_WRITE: u32 = 0x2;
+    const FILE_SHARE_DELETE: u32 = 0x4;
+    const OPEN_EXISTING: u32 = 3;
+    const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
+    const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x0020_0000;
+    let handle = unsafe {
+        CreateFileW(
+            wide.as_ptr(),
+            GENERIC_READ,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            std::ptr::null_mut(),
+            OPEN_EXISTING,
+            FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
+            std::ptr::null_mut(),
+        )
+    };
+    if is_invalid_handle(handle) {
+        return Err(std::io::Error::last_os_error());
+    }
+    Ok(unsafe { OwnedHandle::from_raw_handle(handle) })
+}
+
+#[cfg(windows)]
+fn open_relative_nofollow(
+    parent: &std::os::windows::io::OwnedHandle,
+    name: &std::ffi::OsStr,
+    directory: bool,
+) -> Result<std::os::windows::io::OwnedHandle, String> {
+    use std::os::windows::ffi::OsStrExt;
+    use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle, RawHandle};
+
+    let mut wide: Vec<u16> = name.encode_wide().collect();
+    let byte_len = wide.len().saturating_mul(2);
+    if byte_len > u16::MAX as usize {
+        return Err("catalog path component is too long".to_string());
+    }
+    wide.push(0);
+    let mut unicode = UnicodeString {
+        length: byte_len as u16,
+        maximum_length: (byte_len + 2) as u16,
+        buffer: wide.as_mut_ptr(),
+    };
+    let mut attrs = ObjectAttributes {
+        length: std::mem::size_of::<ObjectAttributes>() as u32,
+        root_directory: parent.as_raw_handle(),
+        object_name: &mut unicode,
+        attributes: OBJ_CASE_INSENSITIVE | OBJ_DONT_REPARSE,
+        security_descriptor: std::ptr::null_mut(),
+        security_qos: std::ptr::null_mut(),
+    };
+    let mut iosb = IoStatusBlock {
+        status: 0,
+        information: 0,
+    };
+    let mut handle: RawHandle = std::ptr::null_mut();
+    const FILE_READ_DATA: u32 = 0x0001;
+    const FILE_READ_ATTRIBUTES: u32 = 0x0080;
+    const SYNCHRONIZE: u32 = 0x0010_0000;
+    const FILE_SHARE_READ: u32 = 0x1;
+    const FILE_SHARE_WRITE: u32 = 0x2;
+    const FILE_SHARE_DELETE: u32 = 0x4;
+    const FILE_OPEN: u32 = 1;
+    const FILE_DIRECTORY_FILE: u32 = 0x1;
+    const FILE_NON_DIRECTORY_FILE: u32 = 0x40;
+    const FILE_SYNCHRONOUS_IO_NONALERT: u32 = 0x20;
+    const FILE_OPEN_REPARSE_POINT: u32 = 0x0020_0000;
+    const FILE_ATTRIBUTE_NORMAL: u32 = 0x80;
+    let mut options = FILE_SYNCHRONOUS_IO_NONALERT | FILE_OPEN_REPARSE_POINT;
+    options |= if directory {
+        FILE_DIRECTORY_FILE
+    } else {
+        FILE_NON_DIRECTORY_FILE
+    };
+    let status = unsafe {
+        NtCreateFile(
+            &mut handle,
+            FILE_READ_DATA | FILE_READ_ATTRIBUTES | SYNCHRONIZE,
+            &mut attrs,
+            &mut iosb,
+            std::ptr::null_mut(),
+            FILE_ATTRIBUTE_NORMAL,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            FILE_OPEN,
+            options,
+            std::ptr::null_mut(),
+            0,
+        )
+    };
+    if status < 0 {
+        return Err(format!(
+            "catalog path is a reparse point: {}",
+            name.to_string_lossy()
+        ));
+    }
+    if is_invalid_handle(handle) {
+        return Err(format!(
+            "cannot open catalog path component {}",
+            name.to_string_lossy()
+        ));
+    }
+    Ok(unsafe { OwnedHandle::from_raw_handle(handle) })
+}
+
+#[cfg(windows)]
+fn handle_is_reparse(handle: &std::os::windows::io::OwnedHandle) -> Result<bool, String> {
+    use std::os::windows::io::AsRawHandle;
+    let mut info = ByHandleFileInformation::default();
+    let ok = unsafe { GetFileInformationByHandle(handle.as_raw_handle(), &mut info) };
+    if ok == 0 {
+        return Err(format!(
+            "cannot query catalog handle: {}",
+            std::io::Error::last_os_error()
+        ));
+    }
+    Ok((info.file_attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0)
+}
+
+#[cfg(windows)]
+fn is_invalid_handle(handle: std::os::windows::io::RawHandle) -> bool {
+    handle.is_null() || handle == (-1isize as std::os::windows::io::RawHandle)
+}
+
+#[cfg(windows)]
+const OBJ_CASE_INSENSITIVE: u32 = 0x0000_0040;
+#[cfg(windows)]
+const OBJ_DONT_REPARSE: u32 = 0x0000_1000;
+
+#[cfg(windows)]
+#[repr(C)]
+struct UnicodeString {
+    length: u16,
+    maximum_length: u16,
+    buffer: *mut u16,
+}
+
+#[cfg(windows)]
+#[repr(C)]
+struct ObjectAttributes {
+    length: u32,
+    root_directory: std::os::windows::io::RawHandle,
+    object_name: *mut UnicodeString,
+    attributes: u32,
+    security_descriptor: *mut std::ffi::c_void,
+    security_qos: *mut std::ffi::c_void,
+}
+
+#[cfg(windows)]
+#[repr(C)]
+struct IoStatusBlock {
+    status: isize,
+    information: usize,
+}
+
+#[cfg(windows)]
+#[repr(C)]
+#[derive(Default)]
+struct FileTime {
+    dw_low_date_time: u32,
+    dw_high_date_time: u32,
+}
+
+#[cfg(windows)]
+#[repr(C)]
+#[derive(Default)]
+struct ByHandleFileInformation {
+    file_attributes: u32,
+    creation_time: FileTime,
+    last_access_time: FileTime,
+    last_write_time: FileTime,
+    volume_serial_number: u32,
+    file_size_high: u32,
+    file_size_low: u32,
+    number_of_links: u32,
+    file_index_high: u32,
+    file_index_low: u32,
+}
+
+#[cfg(windows)]
+#[link(name = "kernel32")]
+extern "system" {
+    fn CreateFileW(
+        file_name: *const u16,
+        desired_access: u32,
+        share_mode: u32,
+        security_attributes: *mut std::ffi::c_void,
+        creation_disposition: u32,
+        flags_and_attributes: u32,
+        template_file: std::os::windows::io::RawHandle,
+    ) -> std::os::windows::io::RawHandle;
+    fn GetFileInformationByHandle(
+        handle: std::os::windows::io::RawHandle,
+        file_information: *mut ByHandleFileInformation,
+    ) -> i32;
+}
+
+#[cfg(windows)]
+#[link(name = "ntdll")]
+extern "system" {
+    fn NtCreateFile(
+        file_handle: *mut std::os::windows::io::RawHandle,
+        desired_access: u32,
+        object_attributes: *mut ObjectAttributes,
+        io_status_block: *mut IoStatusBlock,
+        allocation_size: *mut i64,
+        file_attributes: u32,
+        share_access: u32,
+        create_disposition: u32,
+        create_options: u32,
+        ea_buffer: *mut std::ffi::c_void,
+        ea_length: u32,
+    ) -> i32;
 }
 
 #[cfg(unix)]
@@ -1526,6 +1806,39 @@ mod tests {
         } else {
             Err(std::io::Error::other("mklink /J failed"))
         }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn swapped_reparse_after_open_is_not_followed() {
+        let dir = scratch_dir();
+        write_catalog(&dir);
+        let target = dir.join("widget.schema.json");
+        let outside = dir.parent().unwrap().join(format!(
+            "rsfulmen-win-swap-{}-{}",
+            std::process::id(),
+            TEST_SEQ.fetch_add(1, Ordering::SeqCst)
+        ));
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(outside.join("evil.schema.json"), r#"{"type":"number"}"#).unwrap();
+        AFTER_NOFOLLOW_OPEN.with(|hook| {
+            let swap_from = target.clone();
+            let swap_to = outside.join("evil.schema.json");
+            *hook.borrow_mut() = Some(Box::new(move || {
+                let _ = fs::remove_file(&swap_from);
+                let _ = std::os::windows::fs::symlink_file(&swap_to, &swap_from);
+            }));
+        });
+        let got = read_under_root(&dir, &target);
+        AFTER_NOFOLLOW_OPEN.with(|hook| *hook.borrow_mut() = None);
+        let _ = fs::remove_file(&target);
+        let _ = fs::remove_dir_all(&outside);
+        let value = got.expect("nofollow handle must keep the bytes opened before the swap");
+        assert_eq!(
+            value.get("type").and_then(|v| v.as_str()),
+            Some("object"),
+            "check-then-follow would load the swapped number schema"
+        );
     }
 
     #[cfg(windows)]

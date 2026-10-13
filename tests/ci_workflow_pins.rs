@@ -34,40 +34,6 @@ fn ci_third_party_actions_are_sha_pinned() {
 }
 
 #[test]
-fn custom_s_runners_require_same_repository_pull_request() {
-    let text = include_str!("../.github/workflows/ci.yml");
-    assert!(
-        text.contains("trusted_runner: true"),
-        "custom -s runners must be marked trusted_runner"
-    );
-    assert!(
-        text.contains("ubuntu-latest-arm64-s") && text.contains("windows-latest-arm64-s"),
-        "estate 5-way labels must stay present"
-    );
-    assert!(
-        text.contains("platform_smoke_trusted:"),
-        "custom -s runners must live in a separate job so the gate can skip them"
-    );
-    assert!(
-        text.contains("pull_request.head.repo.full_name") && text.contains("github.repository"),
-        "fork pull_request events must not run on custom runners"
-    );
-    // GitHub rejects `matrix` in a job-level `if` at compile time
-    // ("Unrecognized named-value: 'matrix'") and fails the whole workflow
-    // with zero jobs. The trusted-runner gate must not use that context.
-    for (idx, raw) in text.lines().enumerate() {
-        let line = raw.trim();
-        if line.starts_with("if:") {
-            assert!(
-                !line.contains("matrix."),
-                "line {}: job-level if cannot reference matrix: {line}",
-                idx + 1
-            );
-        }
-    }
-}
-
-#[test]
 fn rust_toolchain_sha_pins_set_toolchain() {
     let text = include_str!("../.github/workflows/ci.yml");
     let lines: Vec<&str> = text.lines().collect();
@@ -87,5 +53,35 @@ fn rust_toolchain_sha_pins_set_toolchain() {
     assert!(
         pins >= 2,
         "expected rust-toolchain pins for 1.98 and 1.88, found {pins}"
+    );
+}
+
+#[test]
+fn estate_matrix_uses_standard_hosted_labels() {
+    let workflow = include_str!("../.github/workflows/ci.yml");
+    let actionlint = include_str!("../.github/actionlint.yaml");
+    assert!(
+        !workflow.contains("platform_smoke_trusted:"),
+        "estate labels are GitHub-hosted larger runners; do not split a same-repo job"
+    );
+    assert!(
+        !workflow.contains("trusted_runner:"),
+        "decernor/storageprims shape is a single include matrix without a trust flag"
+    );
+    for label in ["ubuntu-latest-arm64-s", "windows-latest-arm64-s"] {
+        assert!(
+            workflow.contains(label),
+            "workflow must use the standard estate label {label}"
+        );
+        assert!(
+            actionlint.contains(label),
+            "actionlint.yaml must list {label} so lint recognizes the estate runners"
+        );
+    }
+    assert!(
+        workflow.contains("ubuntu-latest")
+            && workflow.contains("macos-15")
+            && workflow.contains("windows-latest"),
+        "5-way matrix must keep the GitHub-hosted amd64/mac labels"
     );
 }

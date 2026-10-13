@@ -172,10 +172,9 @@ jobs:
           toolchain: 1.98.0
       - name: cargo deny (licenses bans advisories sources)
         run: cargo deny --all-features check licenses bans advisories sources
-  # Estate 5-way native matrix (storageprims / forgebolt labels).
-  # Linux container jobs above keep goneat + cargo-deny; these jobs
-  # prove the crate on each desktop/server OS and architecture.
-  # GitHub-hosted isolated runners. Always run, including fork PRs.
+  # Estate 5-way native matrix. Labels match the org-standard GitHub-hosted
+  # larger runners (`ubuntu-latest-arm64-s`, `windows-latest-arm64-s`) used
+  # by storageprims / decernor. actionlint.yaml lists those labels.
   platform_smoke:
     name: platform-smoke (${{ matrix.target }})
     runs-on: ${{ matrix.runner }}
@@ -185,54 +184,14 @@ jobs:
         include:
           - runner: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            trusted_runner: false
-          - runner: macos-15
-            target: aarch64-apple-darwin
-            trusted_runner: false
-          - runner: windows-latest
-            target: x86_64-pc-windows-msvc
-            trusted_runner: false
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with:
-          persist-credentials: false
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@16c20dfc2b8bc5cd72c3bf5072a9453664776e70 # 1.98.0
-        with:
-          toolchain: 1.98.0
-          components: rustfmt, clippy
-      - name: Verify native host
-        run: |
-          set -euo pipefail
-          host=$(rustc -vV | awk '/^host:/{print $2}')
-          test "$host" = "${{ matrix.target }}"
-      - name: Clippy
-        run: cargo clippy --locked --all-targets --all-features -- -D warnings
-      - name: Test
-        run: cargo test --locked --all-features
-      - name: Build
-        run: cargo build --locked --all-features
-  # Custom `-s` runners are privately managed. Do not reference `matrix` in
-  # a job-level `if` (GitHub rejects it at compile time and the whole
-  # workflow fails with zero jobs). Gate the trusted job instead.
-  platform_smoke_trusted:
-    name: platform-smoke (${{ matrix.target }})
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
           - runner: ubuntu-latest-arm64-s
             target: aarch64-unknown-linux-gnu
-            trusted_runner: true
+          - runner: macos-15
+            target: aarch64-apple-darwin
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
           - runner: windows-latest-arm64-s
             target: aarch64-pc-windows-msvc
-            trusted_runner: true
     defaults:
       run:
         shell: bash
@@ -260,21 +219,11 @@ jobs:
   platforms:
     name: platforms
     if: always()
-    needs: [platform_smoke, platform_smoke_trusted]
+    needs: platform_smoke
     runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash
     steps:
-      - name: Require hosted native platforms
+      - name: Require all native platforms
         run: test "${{ needs.platform_smoke.result }}" = "success"
-      - name: Require trusted native platforms when same-repository
-        run: |
-          set -euo pipefail
-          result="${{ needs.platform_smoke_trusted.result }}"
-          same="${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}"
-          if [ "$same" = "true" ]; then
-            test "$result" = "success"
-          else
-            test "$result" = "skipped"
-          fi
