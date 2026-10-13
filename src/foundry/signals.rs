@@ -1556,7 +1556,7 @@ mod tests {
 
     #[test]
     fn signal_struct_is_marked_non_exhaustive() {
-        let src = include_str!("signals.rs");
+        let src = include_str!("signals.rs").replace("\r\n", "\n");
         assert!(
             src.contains("#[non_exhaustive]\npub struct Signal"),
             "Signal must stay non_exhaustive after adding catalog fields"
