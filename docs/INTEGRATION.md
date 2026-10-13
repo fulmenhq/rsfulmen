@@ -159,6 +159,13 @@ let root = pathfinder::find_repository_root(Path::new("."));
 Portable `algo:hex` digests shared with gofulmen / tsfulmen / pyfulmen.
 Algorithms: xxh3-128 (default), sha256, crc32 (IEEE), crc32c (Castagnoli).
 `multi_hash` / `multi_hash_reader` compute several digests in one pass.
+CRC and xxHash detect accidental corruption only; they are not an
+authenticity check. For adversarial inputs use SHA-256 with an
+authenticated expected digest, a signature, or a MAC.
+
+Serialized `Algorithm` values emit catalog ids. v0.2.1 tags `Xxh3_128`
+and `Sha256` still deserialize. `Digest` is constructed with
+`Digest::new` (length-checked) or the hash APIs.
 
 ```rust
 use rsfulmen::fulhash::{self, Algorithm};
