@@ -147,7 +147,12 @@ impl ExitCategory {
 }
 
 /// Exit code entry.
+///
+/// Marked `non_exhaustive` so later catalog fields can be added without
+/// breaking struct literals. Construct via [`lookup_exit_code`] /
+/// [`list_exit_codes`]; match with `..`.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct ExitCode {
     /// The numeric exit code
     pub code: i32,
@@ -372,7 +377,11 @@ pub fn get_signal_from_exit(code: i32) -> Option<i32> {
 }
 
 /// One BSD `sysexits.h` mapping from the catalog `bsd_compatibility` table.
+///
+/// Marked `non_exhaustive` so later catalog columns can be added without
+/// breaking struct literals.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct BsdMapping {
     /// BSD numeric code.
     pub bsd_code: i32,
@@ -426,16 +435,70 @@ static BSD_MAPPINGS: Lazy<Vec<BsdMapping>> = Lazy::new(|| {
         .collect()
 });
 
-/// Map a BSD `sysexits.h` code to the Fulmen code recorded in the catalog.
+/// Map a BSD `sysexits.h` code to the Fulmen code recorded in the catalog
+/// `bsd_compatibility` table.
 ///
 /// Unknown BSD codes return `None`. Conflicts (e.g. EX_OSERR 71 vs
 /// `EXIT_AUTHORIZATION_FAILED` 71) follow the catalog's pragmatic mapping,
 /// not the numeric coincidence.
+///
+/// **gofulmen divergence:** gofulmen `MapFromBSD` searches each exit row's
+/// `bsd_equivalent` instead of this table. On Crucible v0.4.19 that yields
+/// a different answer for four sysexits codes:
+///
+/// | BSD | name | this crate | gofulmen |
+/// | --- | --- | --- | --- |
+/// | 71 | `EX_OSERR` | 33 | none |
+/// | 74 | `EX_IOERR` | 54 | none |
+/// | 75 | `EX_TEMPFAIL` | 34 | none |
+/// | 76 | `EX_PROTOCOL` | none | 73 |
+///
+/// rsfulmen follows the explicit table. 76 has no table row, so it stays
+/// `None` until Crucible reconciles the two sources.
 pub fn map_bsd_to_fulmen(bsd_code: i32) -> Option<i32> {
     BSD_MAPPINGS
         .iter()
         .find(|m| m.bsd_code == bsd_code)
         .map(|m| m.fulmen_code)
+}
+
+/// Canonical `sysexits.h` name → code. Used by [`map_fulmen_to_bsd`].
+const SYSEXITS: &[(&str, i32)] = &[
+    ("EX_USAGE", 64),
+    ("EX_DATAERR", 65),
+    ("EX_NOINPUT", 66),
+    ("EX_NOUSER", 67),
+    ("EX_NOHOST", 68),
+    ("EX_UNAVAILABLE", 69),
+    ("EX_SOFTWARE", 70),
+    ("EX_OSERR", 71),
+    ("EX_OSFILE", 72),
+    ("EX_CANTCREAT", 73),
+    ("EX_IOERR", 74),
+    ("EX_TEMPFAIL", 75),
+    ("EX_PROTOCOL", 76),
+    ("EX_NOPERM", 77),
+    ("EX_CONFIG", 78),
+];
+
+fn parse_bsd_equivalent(raw: &str) -> Option<i32> {
+    let token = raw.split_whitespace().next()?;
+    SYSEXITS
+        .iter()
+        .find(|(name, _)| *name == token)
+        .map(|(_, code)| *code)
+}
+
+/// Map a Fulmen exit code to a BSD `sysexits.h` code via the row's
+/// `bsd_equivalent` field (same source as gofulmen `MapToBSD`).
+///
+/// Signal-style values (`128 + N`) and unknown codes return `None`.
+/// Partial notes such as `EX_NOPERM (partial)` still resolve to the
+/// named sysexits code.
+pub fn map_fulmen_to_bsd(fulmen_code: i32) -> Option<i32> {
+    lookup_exit_code(fulmen_code)
+        .and_then(|entry| entry.bsd_equivalent.as_deref())
+        .and_then(parse_bsd_equivalent)
 }
 
 /// Catalog BSD compatibility rows.
@@ -548,8 +611,36 @@ mod tests {
         assert_eq!(map_bsd_to_fulmen(71), Some(33), "EX_OSERR is not Fulmen 71");
         assert_eq!(map_bsd_to_fulmen(74), Some(54));
         assert_eq!(map_bsd_to_fulmen(75), Some(34));
+        assert_eq!(
+            map_bsd_to_fulmen(76),
+            None,
+            "EX_PROTOCOL has no bsd_compatibility row; gofulmen MapFromBSD yields 73"
+        );
         assert_eq!(map_bsd_to_fulmen(0), None);
         assert_eq!(map_bsd_to_fulmen(99), None);
+
+        assert_eq!(map_fulmen_to_bsd(64), Some(64));
+        assert_eq!(
+            map_fulmen_to_bsd(73),
+            Some(76),
+            "EXIT_CERTIFICATE_INVALID → EX_PROTOCOL"
+        );
+        assert_eq!(map_fulmen_to_bsd(126), Some(77));
+        assert_eq!(map_fulmen_to_bsd(127), Some(69));
+        assert_eq!(
+            map_fulmen_to_bsd(130),
+            None,
+            "128 + N is not a sysexits code"
+        );
+        assert_eq!(map_fulmen_to_bsd(0), None);
+        assert_eq!(map_fulmen_to_bsd(999), None);
+        for entry in list_exit_codes() {
+            if let Some(raw) = entry.bsd_equivalent.as_deref() {
+                let mapped = map_fulmen_to_bsd(entry.code);
+                let expected = parse_bsd_equivalent(raw);
+                assert_eq!(mapped, expected, "fulmen {} {}", entry.code, raw);
+            }
+        }
 
         #[derive(Deserialize)]
         struct Catalog {

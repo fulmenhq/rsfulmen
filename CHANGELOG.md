@@ -39,6 +39,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `None` to match the Crucible signal-resolution fixtures. Callers that
   still accept `kill --signal -N` input should strip a leading `-` before
   calling `resolve_signal`.
+- **`foundry::exit_codes::ExitCode` and `BsdMapping`** are `#[non_exhaustive]`.
+  New catalog fields (`context`, `retry_hint`, `bsd_equivalent`,
+  `python_note`) were added. Construct via `lookup_exit_code` /
+  `list_exit_codes` / `list_bsd_mappings` and match with `..`. Do not
+  write struct literals in downstream crates.
 
 ### Fixed
 

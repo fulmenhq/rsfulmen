@@ -16,6 +16,7 @@ const EXIT_CODES_YAML: &str =
 
 /// Simplified mapping mode identifiers from the catalog.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum SimplifiedMode {
     /// 0 success / 1 error / 2 usage error.
     Basic,
@@ -42,8 +43,19 @@ impl SimplifiedMode {
     }
 }
 
+/// One catalog-defined simplified output code.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct SimplifiedCode {
+    /// Numeric simplified code.
+    pub code: i32,
+    /// Catalog `simplified_name`.
+    pub name: String,
+}
+
 /// Metadata for one simplified mode.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct SimplifiedModeInfo {
     /// Catalog id.
     pub id: String,
@@ -51,6 +63,8 @@ pub struct SimplifiedModeInfo {
     pub name: String,
     /// Description.
     pub description: String,
+    /// Distinct simplified codes defined for this mode.
+    pub codes: Vec<SimplifiedCode>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -69,7 +83,6 @@ struct RawMode {
 #[derive(Debug, Deserialize)]
 struct RawMapping {
     simplified_code: i32,
-    #[allow(dead_code)]
     simplified_name: String,
     maps_from: Vec<i32>,
 }
@@ -95,28 +108,39 @@ impl Indexes {
 
         for mode in catalog.simplified_modes {
             let target = match mode.id.as_str() {
-                "basic" => &mut basic,
-                "severity" => &mut severity,
-                other => {
-                    return Err(FoundryError::LoadError(format!(
-                        "unknown simplified mode id: {other}"
-                    )));
-                }
+                "basic" => Some(&mut basic),
+                "severity" => Some(&mut severity),
+                _ => None,
             };
-            for mapping in &mode.mappings {
-                for from in &mapping.maps_from {
-                    if target.insert(*from, mapping.simplified_code).is_some() {
-                        return Err(FoundryError::LoadError(format!(
-                            "duplicate maps_from {from} in mode {}",
-                            mode.id
-                        )));
+            if let Some(target) = target {
+                for mapping in &mode.mappings {
+                    for from in &mapping.maps_from {
+                        if target.insert(*from, mapping.simplified_code).is_some() {
+                            return Err(FoundryError::LoadError(format!(
+                                "duplicate maps_from {from} in mode {}",
+                                mode.id
+                            )));
+                        }
                     }
+                }
+            }
+            let mut codes = Vec::new();
+            for mapping in &mode.mappings {
+                if !codes
+                    .iter()
+                    .any(|c: &SimplifiedCode| c.code == mapping.simplified_code)
+                {
+                    codes.push(SimplifiedCode {
+                        code: mapping.simplified_code,
+                        name: mapping.simplified_name.clone(),
+                    });
                 }
             }
             infos.push(SimplifiedModeInfo {
                 id: mode.id,
                 name: mode.name,
                 description: mode.description,
+                codes,
             });
         }
 
@@ -240,5 +264,32 @@ mod tests {
         assert_eq!(ids, ["basic", "severity"]);
         assert!(get_simplified_mode_info("basic").is_some());
         assert!(get_simplified_mode_info("nope").is_none());
+    }
+
+    #[test]
+    fn simplified_code_metadata_matches_catalog() {
+        let catalog: RawCatalog =
+            serde_yaml::from_str(EXIT_CODES_YAML).expect("simplified_modes catalog");
+        for mode in catalog.simplified_modes {
+            let info = get_simplified_mode_info(&mode.id).expect(&mode.id);
+            assert_eq!(info.name, mode.name);
+            assert_eq!(info.description, mode.description);
+            let expected: Vec<(i32, String)> = mode
+                .mappings
+                .iter()
+                .map(|m| (m.simplified_code, m.simplified_name.clone()))
+                .fold(Vec::new(), |mut acc, pair| {
+                    if !acc.iter().any(|(c, _)| *c == pair.0) {
+                        acc.push(pair);
+                    }
+                    acc
+                });
+            let got: Vec<(i32, String)> = info
+                .codes
+                .iter()
+                .map(|c| (c.code, c.name.clone()))
+                .collect();
+            assert_eq!(got, expected, "mode {}", mode.id);
+        }
     }
 }

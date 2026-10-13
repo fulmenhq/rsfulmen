@@ -289,6 +289,10 @@ pub struct Signal {
     pub double_tap_window_seconds: Option<u32>,
     /// Double-tap hint message (SIGINT only)
     pub double_tap_message: Option<String>,
+    /// Catalog behavior id used on the second tap (SIGINT only).
+    pub double_tap_behavior: Option<String>,
+    /// Exit code used on the second tap (SIGINT only).
+    pub double_tap_exit_code: Option<i32>,
     /// Reload strategy (SIGHUP only)
     pub reload_strategy: Option<String>,
     /// Whether validation is required (SIGHUP only)
@@ -376,10 +380,8 @@ struct RawSignal {
     double_tap_window_seconds: Option<u32>,
     double_tap_message: Option<String>,
     #[serde(default)]
-    #[allow(dead_code)]
     double_tap_behavior: Option<String>,
     #[serde(default)]
-    #[allow(dead_code)]
     double_tap_exit_code: Option<i32>,
     reload_strategy: Option<String>,
     validation_required: Option<bool>,
@@ -514,6 +516,8 @@ impl SignalIndexes {
                 usage_notes: raw.usage_notes,
                 double_tap_window_seconds: raw.double_tap_window_seconds,
                 double_tap_message: raw.double_tap_message,
+                double_tap_behavior: raw.double_tap_behavior,
+                double_tap_exit_code: raw.double_tap_exit_code,
                 reload_strategy: raw.reload_strategy,
                 validation_required: raw.validation_required,
                 windows_fallback,
@@ -793,10 +797,17 @@ pub fn list_signal_names() -> Vec<&'static str> {
     CATALOG.signals.iter().map(|s| s.name.as_str()).collect()
 }
 
+/// Maximum glob pattern length accepted by [`match_signal_names`].
+///
+/// Longer patterns, including adversarial `*`-repeats, return no matches
+/// instead of recursing.
+pub const MAX_SIGNAL_GLOB_PATTERN: usize = 64;
+
 /// Return signal names matching a simple glob pattern.
 ///
 /// Supports `*` (zero or more characters) and `?` (exactly one character).
 /// Matching is case-insensitive. No regex dependencies required.
+/// Patterns longer than [`MAX_SIGNAL_GLOB_PATTERN`] return no matches.
 ///
 /// Useful for CLI discovery (e.g., `kill --signal TERM*`).
 ///
@@ -834,7 +845,7 @@ pub fn list_signal_names() -> Vec<&'static str> {
 /// ```
 pub fn match_signal_names(pattern: &str) -> Vec<&'static str> {
     let trimmed = pattern.trim();
-    if trimmed.is_empty() {
+    if trimmed.is_empty() || trimmed.chars().count() > MAX_SIGNAL_GLOB_PATTERN {
         return Vec::new();
     }
 
@@ -847,51 +858,28 @@ pub fn match_signal_names(pattern: &str) -> Vec<&'static str> {
         .collect()
 }
 
-/// Simple glob matcher supporting `*` and `?` wildcards.
-/// Case-sensitive comparison (caller should lowercase both inputs for case-insensitive).
+/// Iterative glob matcher supporting `*` and `?`.
+/// Case-sensitive comparison (caller should lowercase both inputs).
 fn glob_match(pattern: &str, text: &str) -> bool {
-    let pattern_chars: Vec<char> = pattern.chars().collect();
-    let text_chars: Vec<char> = text.chars().collect();
-    glob_match_recursive(&pattern_chars, &text_chars, 0, 0)
-}
-
-fn glob_match_recursive(pattern: &[char], text: &[char], pi: usize, ti: usize) -> bool {
-    // If we've consumed all pattern, we must have consumed all text
-    if pi == pattern.len() {
-        return ti == text.len();
-    }
-
-    let p = pattern[pi];
-
-    if p == '*' {
-        // '*' matches zero or more characters
-        // Try matching zero characters (advance pattern only)
-        if glob_match_recursive(pattern, text, pi + 1, ti) {
-            return true;
+    let p: Vec<char> = pattern.chars().collect();
+    let t: Vec<char> = text.chars().collect();
+    let (n, m) = (p.len(), t.len());
+    let mut prev = vec![false; m + 1];
+    let mut curr = vec![false; m + 1];
+    prev[0] = true;
+    for i in 1..=n {
+        curr[0] = prev[0] && p[i - 1] == '*';
+        for j in 1..=m {
+            curr[j] = match p[i - 1] {
+                '*' => prev[j] || curr[j - 1],
+                '?' => prev[j - 1],
+                c => prev[j - 1] && c == t[j - 1],
+            };
         }
-        // Try matching one character and keep '*' active
-        if ti < text.len() && glob_match_recursive(pattern, text, pi, ti + 1) {
-            return true;
-        }
-        return false;
+        std::mem::swap(&mut prev, &mut curr);
+        curr.fill(false);
     }
-
-    // We need a character to match
-    if ti == text.len() {
-        return false;
-    }
-
-    if p == '?' {
-        // '?' matches exactly one character
-        return glob_match_recursive(pattern, text, pi + 1, ti + 1);
-    }
-
-    // Literal character match
-    if p == text[ti] {
-        return glob_match_recursive(pattern, text, pi + 1, ti + 1);
-    }
-
-    false
+    prev[m]
 }
 
 /// Look up a behavior definition by ID.
@@ -1567,6 +1555,8 @@ mod tests {
         assert_eq!(int.double_tap_window_seconds, Some(2));
         assert!(int.double_tap_message.is_some());
         assert!(int.double_tap_message.as_ref().unwrap().contains("2s"));
+        assert_eq!(int.double_tap_behavior.as_deref(), Some("immediate_exit"));
+        assert_eq!(int.double_tap_exit_code, Some(130));
     }
 
     // -------------------------------------------------------------------------
@@ -1941,5 +1931,123 @@ mod tests {
         assert!(missing.is_err(), "pattern is required");
         let unknown = serde_yaml::from_str::<MatchCase>("pattern: '*'\nnot_a_field: 1");
         assert!(unknown.is_err(), "unknown fields must fail deserialization");
+    }
+
+    #[test]
+    fn match_signal_names_rejects_oversized_and_star_flood_safely() {
+        let flood = "*".repeat(100_000);
+        assert!(match_signal_names(&flood).is_empty());
+        let long_literal = "SIG".to_string() + &"X".repeat(200);
+        assert!(match_signal_names(&long_literal).is_empty());
+        let at_limit = format!("SIG{}", "T".repeat(MAX_SIGNAL_GLOB_PATTERN - 3));
+        assert_eq!(at_limit.chars().count(), MAX_SIGNAL_GLOB_PATTERN);
+        let _ = match_signal_names(&at_limit);
+        assert!(match_signal_names("SIGTERM").contains(&"SIGTERM"));
+    }
+
+    #[derive(Deserialize)]
+    struct FixtureCatalog {
+        #[allow(dead_code)]
+        version: Option<String>,
+        signals: Vec<FixtureSignal>,
+        #[serde(default)]
+        behaviors: Vec<FixtureBehavior>,
+    }
+
+    #[derive(Deserialize)]
+    struct FixtureSignal {
+        name: String,
+        exit_code: i32,
+        default_behavior: String,
+        #[serde(default)]
+        double_tap_behavior: Option<String>,
+        #[serde(default)]
+        double_tap_exit_code: Option<i32>,
+    }
+
+    #[derive(Deserialize)]
+    struct FixtureBehavior {
+        id: String,
+    }
+
+    fn parse_signal_fixture(yaml: &str) -> Result<FixtureCatalog, String> {
+        let catalog: FixtureCatalog =
+            serde_yaml::from_str(yaml).map_err(|e| format!("yaml: {e}"))?;
+        for signal in &catalog.signals {
+            if !(0..=255).contains(&signal.exit_code) {
+                return Err(format!(
+                    "exit_code {} out of range for {}",
+                    signal.exit_code, signal.name
+                ));
+            }
+            if !catalog
+                .behaviors
+                .iter()
+                .any(|b| b.id == signal.default_behavior)
+            {
+                return Err(format!(
+                    "unknown behavior {} for {}",
+                    signal.default_behavior, signal.name
+                ));
+            }
+        }
+        Ok(catalog)
+    }
+
+    #[test]
+    fn signal_schema_fixtures_valid_invalid_and_parity() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("config/crucible-rs/library/foundry/fixtures/signals");
+        let valid_dir = root.join("valid");
+        let mut valid_counts = std::collections::BTreeMap::new();
+        for entry in std::fs::read_dir(&valid_dir).expect("valid fixtures") {
+            let path = entry.unwrap().path();
+            let raw = std::fs::read_to_string(&path).unwrap();
+            let catalog = parse_signal_fixture(&raw).unwrap_or_else(|e| panic!("{path:?}: {e}"));
+            let stem = path
+                .file_stem()
+                .unwrap()
+                .to_string_lossy()
+                .replace('-', "_");
+            valid_counts.insert(stem, catalog.signals.len());
+            if path.file_name().unwrap() == "complete.yaml" {
+                let int = catalog
+                    .signals
+                    .iter()
+                    .find(|s| s.name == "SIGINT")
+                    .expect("SIGINT");
+                assert_eq!(int.double_tap_behavior.as_deref(), Some("immediate_exit"));
+                assert_eq!(int.double_tap_exit_code, Some(130));
+            }
+        }
+
+        let invalid_dir = root.join("invalid");
+        for entry in std::fs::read_dir(&invalid_dir).expect("invalid fixtures") {
+            let path = entry.unwrap().path();
+            let raw = std::fs::read_to_string(&path).unwrap();
+            assert!(
+                parse_signal_fixture(&raw).is_err(),
+                "invalid fixture must fail: {path:?}"
+            );
+        }
+
+        #[derive(Deserialize)]
+        struct ParityFile {
+            fixtures: std::collections::BTreeMap<String, ParityRow>,
+        }
+        #[derive(Deserialize)]
+        struct ParityRow {
+            signals_count: usize,
+        }
+        let snap: ParityFile = serde_yaml::from_str(
+            &std::fs::read_to_string(root.join("parity-snapshot.json")).unwrap(),
+        )
+        .unwrap();
+        for (name, row) in snap.fixtures {
+            let key = name.replace('-', "_");
+            if let Some(count) = valid_counts.get(&key) {
+                assert_eq!(*count, row.signals_count, "parity {name}");
+            }
+        }
     }
 }
