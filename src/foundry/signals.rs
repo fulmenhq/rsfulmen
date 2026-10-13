@@ -1973,7 +1973,7 @@ mod tests {
         behaviors: Vec<FixtureBehavior>,
         os_mappings: FixtureOsMappings,
         #[serde(default)]
-        platform_support: Option<serde_yaml::Value>,
+        platform_support: Option<Vec<FixturePlatformSupport>>,
         exit_codes: FixtureExitCodes,
     }
 
@@ -1989,7 +1989,7 @@ mod tests {
         #[serde(default)]
         windows_event: Option<String>,
         #[serde(default)]
-        windows_fallback: Option<serde_yaml::Value>,
+        windows_fallback: Option<FixtureWindowsFallback>,
         description: String,
         default_behavior: String,
         exit_code: i32,
@@ -2026,6 +2026,40 @@ mod tests {
     #[derive(Deserialize)]
     #[serde(deny_unknown_fields)]
     #[allow(dead_code)]
+    struct FixtureWindowsFallback {
+        #[serde(default)]
+        fallback_behavior: Option<String>,
+        #[serde(default)]
+        log_level: Option<String>,
+        #[serde(default)]
+        log_message: Option<String>,
+        #[serde(default)]
+        log_template: Option<String>,
+        #[serde(default)]
+        operation_hint: Option<String>,
+        #[serde(default)]
+        telemetry_event: Option<String>,
+        #[serde(default)]
+        telemetry_tags: Option<std::collections::BTreeMap<String, String>>,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct FixturePlatformSupport {
+        signal: String,
+        linux: String,
+        macos: String,
+        freebsd: String,
+        windows: String,
+        #[serde(default)]
+        fallback: Option<String>,
+        notes: String,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
     struct FixtureBehavior {
         id: String,
         name: String,
@@ -2048,7 +2082,8 @@ mod tests {
         unix: std::collections::BTreeMap<String, i32>,
         windows: std::collections::BTreeMap<String, i32>,
         #[serde(default)]
-        platform_overrides: Option<serde_yaml::Value>,
+        platform_overrides:
+            Option<std::collections::BTreeMap<String, std::collections::BTreeMap<String, i32>>>,
         #[serde(default)]
         signal_to_event: Option<std::collections::BTreeMap<String, Option<String>>>,
     }
@@ -2090,9 +2125,65 @@ mod tests {
         version: Option<String>,
         fixtures: std::collections::BTreeMap<String, ParityRow>,
         #[allow(dead_code)]
-        test_expectations: Option<serde_yaml::Value>,
+        test_expectations: Option<ParityExpectations>,
         #[allow(dead_code)]
-        cross_language_usage: Option<serde_yaml::Value>,
+        cross_language_usage: Option<ParityCrossLanguage>,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct ParityExpectations {
+        signal_validation: ParitySignalValidation,
+        behavior_validation: ParityBehaviorValidation,
+        os_mappings_validation: ParityOsMappingsValidation,
+        exit_code_mapping: std::collections::BTreeMap<String, i32>,
+        platform_override_signals:
+            std::collections::BTreeMap<String, std::collections::BTreeMap<String, i32>>,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct ParitySignalValidation {
+        required_fields: Vec<String>,
+        optional_fields: Vec<String>,
+        valid_behaviors: Vec<String>,
+        exit_code_range: ParityMinMax,
+        signal_number_range: ParityMinMax,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct ParityBehaviorValidation {
+        required_fields: Vec<String>,
+        phase_required_fields: Vec<String>,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct ParityOsMappingsValidation {
+        required_sections: Vec<String>,
+        optional_sections: Vec<String>,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct ParityMinMax {
+        min: i32,
+        max: i32,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct ParityCrossLanguage {
+        description: String,
+        usage: Vec<String>,
+        example_tests: Vec<String>,
     }
 
     #[derive(Deserialize)]
@@ -2114,7 +2205,6 @@ mod tests {
         #[serde(default)]
         has_platform_overrides: Option<bool>,
         #[serde(default)]
-        #[allow(dead_code)]
         has_custom_handlers: Option<bool>,
         #[serde(default)]
         has_double_tap: Option<bool>,
@@ -2140,6 +2230,10 @@ mod tests {
         "custom",
         "observe_only",
     ];
+    const FALLBACK_BEHAVIORS: &[&str] = &["http_admin_endpoint", "exception_handling", "timer_api"];
+    const LOG_LEVELS: &[&str] = &["DEBUG", "INFO", "WARN", "ERROR"];
+    const UNIX_SUPPORT: &[&str] = &["native", "unsupported"];
+    const WINDOWS_SUPPORT: &[&str] = &["native", "mapped", "unsupported"];
 
     fn parse_signal_fixture(yaml: &str) -> Result<FixtureCatalog, FixtureFailure> {
         let catalog: FixtureCatalog =
@@ -2157,6 +2251,35 @@ mod tests {
                 || !(1..=64).contains(&signal.unix_number)
             {
                 return Err(FixtureFailure::MissingRequired);
+            }
+            if let Some(fallback) = &signal.windows_fallback {
+                if let Some(behavior) = &fallback.fallback_behavior {
+                    if !FALLBACK_BEHAVIORS.contains(&behavior.as_str()) {
+                        return Err(FixtureFailure::Yaml);
+                    }
+                }
+                if let Some(level) = &fallback.log_level {
+                    if !LOG_LEVELS.contains(&level.as_str()) {
+                        return Err(FixtureFailure::Yaml);
+                    }
+                }
+            }
+        }
+        if let Some(rows) = &catalog.platform_support {
+            for row in rows {
+                if row.signal.is_empty()
+                    || !UNIX_SUPPORT.contains(&row.linux.as_str())
+                    || !UNIX_SUPPORT.contains(&row.macos.as_str())
+                    || !UNIX_SUPPORT.contains(&row.freebsd.as_str())
+                    || !WINDOWS_SUPPORT.contains(&row.windows.as_str())
+                {
+                    return Err(FixtureFailure::Yaml);
+                }
+                if let Some(fallback) = &row.fallback {
+                    if !FALLBACK_BEHAVIORS.contains(&fallback.as_str()) {
+                        return Err(FixtureFailure::Yaml);
+                    }
+                }
             }
         }
         Ok(catalog)
@@ -2185,6 +2308,8 @@ mod tests {
         let mut valid = std::collections::BTreeMap::new();
         #[cfg(feature = "schema-validation")]
         let schema = compiled_signal_schema();
+        #[cfg(feature = "schema-validation")]
+        let mut tolerated_schema_drift = 0usize;
         for entry in std::fs::read_dir(&valid_dir).expect("valid fixtures") {
             let path = entry.unwrap().path();
             if path.extension().and_then(|e| e.to_str()) != Some("yaml") {
@@ -2209,6 +2334,7 @@ mod tests {
                             || m.contains("operation_hint")),
                         "{path:?} unexpected schema errors: {msgs:?}"
                     );
+                    tolerated_schema_drift += msgs.len();
                 }
             }
             let stem = path
@@ -2218,6 +2344,11 @@ mod tests {
                 .replace('-', "_");
             valid.insert(stem, catalog);
         }
+        #[cfg(feature = "schema-validation")]
+        assert!(
+            tolerated_schema_drift > 0,
+            "complete.yaml vs signals.schema.json drift is gone; remove the windows_fallback allowlist"
+        );
 
         let invalid_dir = root.join("invalid");
         for entry in std::fs::read_dir(&invalid_dir).expect("invalid fixtures") {
@@ -2308,30 +2439,31 @@ mod tests {
                     assert_eq!(found.default_behavior, "custom");
                 }
             }
-            if row.has_platform_overrides == Some(true) {
-                assert!(
-                    catalog
-                        .signals
-                        .iter()
-                        .any(|s| s.platform_overrides.is_some())
-                        || catalog.os_mappings.platform_overrides.is_some(),
-                    "{name} expected platform overrides"
-                );
+            let has_overrides = catalog
+                .signals
+                .iter()
+                .any(|s| s.platform_overrides.is_some())
+                || catalog.os_mappings.platform_overrides.is_some();
+            if let Some(flag) = row.has_platform_overrides {
+                assert_eq!(flag, has_overrides, "{name} has_platform_overrides");
             }
-            if row.has_double_tap == Some(true) {
-                assert!(
-                    catalog
-                        .signals
-                        .iter()
-                        .any(|s| s.double_tap_behavior.is_some()),
-                    "{name} expected double-tap"
-                );
+            let has_double_tap = catalog
+                .signals
+                .iter()
+                .any(|s| s.double_tap_behavior.is_some());
+            if let Some(flag) = row.has_double_tap {
+                assert_eq!(flag, has_double_tap, "{name} has_double_tap");
             }
-            if row.has_reload_strategy == Some(true) {
-                assert!(
-                    catalog.signals.iter().any(|s| s.reload_strategy.is_some()),
-                    "{name} expected reload strategy"
-                );
+            let has_reload = catalog.signals.iter().any(|s| s.reload_strategy.is_some());
+            if let Some(flag) = row.has_reload_strategy {
+                assert_eq!(flag, has_reload, "{name} has_reload_strategy");
+            }
+            let has_custom = catalog
+                .signals
+                .iter()
+                .any(|s| s.default_behavior == "custom");
+            if let Some(flag) = row.has_custom_handlers {
+                assert_eq!(flag, has_custom, "{name} has_custom_handlers");
             }
             if let Some(override_names) = &row.platform_override_signals {
                 for signal in override_names {
@@ -2358,5 +2490,62 @@ mod tests {
         assert_eq!(int.double_tap_exit_code, Some(130));
         assert_eq!(int.id, "int");
         assert_eq!(complete.exit_codes.sigint, 130);
+
+        let support = complete
+            .platform_support
+            .as_ref()
+            .expect("complete platform_support");
+        assert!(
+            support.iter().any(|row| row.signal == "SIGHUP"
+                && row.windows == "unsupported"
+                && row.fallback.as_deref() == Some("http_admin_endpoint")),
+            "complete platform_support must type Windows fallback rows"
+        );
+        let os_overrides = complete
+            .os_mappings
+            .platform_overrides
+            .as_ref()
+            .expect("complete os_mappings.platform_overrides");
+        assert_eq!(
+            os_overrides
+                .get("darwin")
+                .and_then(|m| m.get("SIGUSR1"))
+                .copied(),
+            Some(30)
+        );
+        let hup = complete
+            .signals
+            .iter()
+            .find(|s| s.name == "SIGHUP")
+            .expect("SIGHUP");
+        let fallback = hup
+            .windows_fallback
+            .as_ref()
+            .expect("SIGHUP windows_fallback");
+        assert_eq!(fallback.log_level.as_deref(), Some("WARN"));
+        assert!(fallback.telemetry_event.is_some());
+
+        let expect = snap
+            .test_expectations
+            .as_ref()
+            .expect("parity test_expectations");
+        assert_eq!(
+            expect.signal_validation.valid_behaviors, SIGNAL_BEHAVIORS,
+            "parity valid_behaviors must match SIGNAL_BEHAVIORS"
+        );
+        assert_eq!(expect.exit_code_mapping.get("SIGTERM"), Some(&143));
+        assert_eq!(
+            expect
+                .platform_override_signals
+                .get("SIGUSR1")
+                .and_then(|m| m.get("darwin"))
+                .copied(),
+            Some(30)
+        );
+        let usage = snap
+            .cross_language_usage
+            .as_ref()
+            .expect("parity cross_language_usage");
+        assert!(!usage.example_tests.is_empty());
     }
 }
