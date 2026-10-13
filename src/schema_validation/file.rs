@@ -2016,8 +2016,13 @@ mod tests {
             target.clone(),
             outside.join("evil.schema.json"),
         );
-        let err = FileBackedResolver::from_schema_file(&dir.join("root.schema.json"), &opts(&dir))
-            .unwrap_err();
+        let err = match FileBackedResolver::from_schema_file(
+            &dir.join("root.schema.json"),
+            &opts(&dir),
+        ) {
+            Err(err) => err,
+            Ok(_) => panic!("index swap must fail resolver construction"),
+        };
         clear_hook(&BEFORE_INDEX_READ);
         assert!(done.load(Ordering::SeqCst), "index swap hook must run");
         let _ = fs::remove_file(&target);
