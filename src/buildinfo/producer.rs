@@ -444,7 +444,7 @@ mod tests {
     use std::fs;
     use std::process::{Command, Stdio};
 
-    fn base_env() -> HashMap<String, String> {
+    fn base_env(_guard: &crate::ProcessEnvGuard) -> HashMap<String, String> {
         let mut m = HashMap::new();
         if let Ok(v) = env::var("PATH") {
             m.insert("PATH".into(), v);
@@ -477,14 +477,14 @@ mod tests {
         assert!(status.success(), "git {args:?} failed in {}", dir.display());
     }
 
-    fn init_repo(dir: &Path, marker: &str) -> String {
+    fn init_repo(dir: &Path, marker: &str, guard: &crate::ProcessEnvGuard) -> String {
         git_in(dir, &["init"]);
         git_in(dir, &["config", "user.email", "hostid@example.test"]);
         git_in(dir, &["config", "user.name", "rsfulmen-hostid"]);
         fs::write(dir.join("README"), marker).unwrap();
         git_in(dir, &["add", "README"]);
         git_in(dir, &["commit", "-m", "init"]);
-        git_head(dir, &base_env()).expect("own HEAD")
+        git_head(dir, &base_env(guard)).expect("own HEAD")
     }
 
     fn probe_at(dir: &Path, env_map: HashMap<String, String>) -> ProbeResult {
@@ -524,9 +524,9 @@ mod tests {
 
     #[test]
     fn platform_from_target_not_host() {
-        let _g = crate::acquire_process_env_lock();
+        let guard = crate::ProcessEnvGuard::acquire();
         let dir = temp_prefix("rsfulmen-hostid-plat-");
-        let mut env_map = base_env();
+        let mut env_map = base_env(&guard);
         env_map.insert("FULMEN_HOST_COMMIT".into(), "abc".into());
         let result = probe_at(dir.path(), env_map);
         assert_eq!(result.stamps.platform, "linux/amd64");
@@ -534,13 +534,14 @@ mod tests {
 
     #[test]
     fn foreign_git_dir_does_not_stamp_foreign_commit() {
+        let guard = crate::ProcessEnvGuard::acquire();
         let own = temp_prefix("rsfulmen-hostid-own-");
         let foreign = temp_prefix("rsfulmen-hostid-foreign-");
-        let own_sha = init_repo(own.path(), "own-repo\n");
-        let foreign_sha = init_repo(foreign.path(), "foreign-repo\n");
+        let own_sha = init_repo(own.path(), "own-repo\n", &guard);
+        let foreign_sha = init_repo(foreign.path(), "foreign-repo\n", &guard);
         assert_ne!(own_sha, foreign_sha);
 
-        let mut env_map = base_env();
+        let mut env_map = base_env(&guard);
         env_map.insert(
             "GIT_DIR".into(),
             foreign.path().join(".git").to_string_lossy().into(),
@@ -552,23 +553,25 @@ mod tests {
 
     #[test]
     fn dirty_tracked_and_untracked_is_true() {
+        let guard = crate::ProcessEnvGuard::acquire();
         let own = temp_prefix("rsfulmen-hostid-dirty-");
-        init_repo(own.path(), "own-dirty\n");
+        init_repo(own.path(), "own-dirty\n", &guard);
         fs::write(own.path().join("README"), "edited\n").unwrap();
         fs::write(own.path().join("untracked.txt"), "new\n").unwrap();
-        let result = probe_at(own.path(), base_env());
+        let result = probe_at(own.path(), base_env(&guard));
         assert_eq!(result.stamps.dirty, Some(true));
     }
 
     #[test]
     fn foreign_index_does_not_mask_dirty() {
+        let guard = crate::ProcessEnvGuard::acquire();
         let own = temp_prefix("rsfulmen-hostid-idx-own-");
         let foreign = temp_prefix("rsfulmen-hostid-idx-foreign-");
-        init_repo(own.path(), "own-idx\n");
-        init_repo(foreign.path(), "foreign-idx\n");
+        init_repo(own.path(), "own-idx\n", &guard);
+        init_repo(foreign.path(), "foreign-idx\n", &guard);
         fs::write(own.path().join("README"), "edited\n").unwrap();
         fs::write(own.path().join("untracked.txt"), "new\n").unwrap();
-        let mut env_map = base_env();
+        let mut env_map = base_env(&guard);
         env_map.insert(
             "GIT_INDEX_FILE".into(),
             foreign.path().join(".git/index").to_string_lossy().into(),
@@ -579,17 +582,19 @@ mod tests {
 
     #[test]
     fn no_git_commit_unknown_dirty_omitted() {
+        let guard = crate::ProcessEnvGuard::acquire();
         let dir = temp_prefix("rsfulmen-hostid-nogit-");
         fs::write(dir.path().join("Cargo.toml"), "[package]\nname=\"x\"\n").unwrap();
-        let result = probe_at(dir.path(), base_env());
+        let result = probe_at(dir.path(), base_env(&guard));
         assert_eq!(result.stamps.commit, "unknown");
         assert_eq!(result.stamps.dirty, None);
     }
 
     #[test]
     fn malformed_dirty_override_is_unknown() {
+        let guard = crate::ProcessEnvGuard::acquire();
         let dir = temp_prefix("rsfulmen-hostid-mal-");
-        let mut env_map = base_env();
+        let mut env_map = base_env(&guard);
         env_map.insert("FULMEN_HOST_DIRTY".into(), "yes".into());
         let result = probe_at(dir.path(), env_map);
         assert_eq!(result.stamps.dirty, None);
@@ -597,11 +602,12 @@ mod tests {
 
     #[test]
     fn detached_packed_and_worktree_resolve_own_commit() {
+        let guard = crate::ProcessEnvGuard::acquire();
         let own = temp_prefix("rsfulmen-hostid-geo-");
-        let sha = init_repo(own.path(), "own-geo\n");
+        let sha = init_repo(own.path(), "own-geo\n", &guard);
 
         git_in(own.path(), &["checkout", "--detach", "HEAD"]);
-        let detached = probe_at(own.path(), base_env());
+        let detached = probe_at(own.path(), base_env(&guard));
         assert_eq!(detached.stamps.commit, sha);
         assert!(
             detached
@@ -614,7 +620,7 @@ mod tests {
 
         git_in(own.path(), &["checkout", "-B", "hostid-rebranch"]);
         git_in(own.path(), &["pack-refs", "--all"]);
-        let packed = probe_at(own.path(), base_env());
+        let packed = probe_at(own.path(), base_env(&guard));
         assert_eq!(packed.stamps.commit, sha);
         assert!(
             packed
@@ -637,7 +643,7 @@ mod tests {
                 "HEAD",
             ],
         );
-        let linked = probe_at(&wt_path, base_env());
+        let linked = probe_at(&wt_path, base_env(&guard));
         assert_eq!(linked.stamps.commit, sha);
         assert!(
             linked.rerun_if_changed.iter().any(|p| {
@@ -648,5 +654,45 @@ mod tests {
             "linked worktree must invalidate worktree git dir: {:?}",
             linked.rerun_if_changed
         );
+    }
+
+    #[test]
+    fn buildinfo_reads_home_only_while_holding_process_env_lock() {
+        use std::sync::{Arc, Barrier, TryLockError};
+
+        let writer_holding = Arc::new(Barrier::new(2));
+        let reader_saw_hold = Arc::new(Barrier::new(2));
+        let temp_home = temp_prefix("rsfulmen-hostid-home-writer-");
+        let home_path = temp_home.path().to_path_buf();
+        let w_hold = writer_holding.clone();
+        let w_seen = reader_saw_hold.clone();
+        let writer = std::thread::spawn(move || {
+            let mut guard = crate::ProcessEnvGuard::acquire();
+            guard.set("HOME", &home_path);
+            w_hold.wait();
+            w_seen.wait();
+        });
+        writer_holding.wait();
+        match crate::process_env_lock().try_lock() {
+            Err(TryLockError::WouldBlock) => {}
+            other => panic!("build-info reader must wait while HOME is held, got {other:?}"),
+        }
+        reader_saw_hold.wait();
+        writer.join().expect("writer thread");
+
+        let isolated = temp_prefix("rsfulmen-hostid-home-reader-");
+        let mut guard = crate::ProcessEnvGuard::acquire();
+        guard.set("HOME", isolated.path());
+        let env_map = base_env(&guard);
+        let expected_home = isolated.path().to_string_lossy().into_owned();
+        assert_eq!(
+            env_map.get("HOME"),
+            Some(&expected_home),
+            "build-info PATH/HOME snapshot must see the guarded HOME"
+        );
+        let dir = temp_prefix("rsfulmen-hostid-home-probe-");
+        let sha = init_repo(dir.path(), "home-lock\n", &guard);
+        let result = probe_at(dir.path(), env_map);
+        assert_eq!(result.stamps.commit, sha);
     }
 }
