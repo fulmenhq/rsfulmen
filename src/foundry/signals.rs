@@ -1960,52 +1960,221 @@ mod tests {
     }
 
     #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
     struct FixtureCatalog {
+        #[serde(rename = "$schema")]
         #[allow(dead_code)]
-        version: Option<String>,
+        schema: Option<String>,
+        #[allow(dead_code)]
+        description: Option<String>,
+        version: String,
         signals: Vec<FixtureSignal>,
-        #[serde(default)]
         behaviors: Vec<FixtureBehavior>,
+        os_mappings: FixtureOsMappings,
+        #[serde(default)]
+        platform_support: Option<serde_yaml::Value>,
+        exit_codes: FixtureExitCodes,
     }
 
     #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
     struct FixtureSignal {
+        id: String,
         name: String,
-        exit_code: i32,
+        unix_number: i32,
+        #[serde(default)]
+        platform_overrides: Option<FixturePlatformOverrides>,
+        #[serde(default)]
+        windows_event: Option<String>,
+        #[serde(default)]
+        windows_fallback: Option<serde_yaml::Value>,
+        description: String,
         default_behavior: String,
+        exit_code: i32,
+        #[serde(default)]
+        timeout_seconds: Option<i32>,
+        #[serde(default)]
+        cleanup_actions: Option<Vec<String>>,
+        #[serde(default)]
+        double_tap_window_seconds: Option<i32>,
+        #[serde(default)]
+        double_tap_message: Option<String>,
         #[serde(default)]
         double_tap_behavior: Option<String>,
         #[serde(default)]
         double_tap_exit_code: Option<i32>,
+        #[serde(default)]
+        reload_strategy: Option<String>,
+        #[serde(default)]
+        validation_required: Option<bool>,
+        #[serde(default)]
+        usage_notes: Option<String>,
     }
 
     #[derive(Deserialize)]
-    struct FixtureBehavior {
-        id: String,
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct FixturePlatformOverrides {
+        #[serde(default)]
+        darwin: Option<i32>,
+        #[serde(default)]
+        freebsd: Option<i32>,
     }
 
-    fn parse_signal_fixture(yaml: &str) -> Result<FixtureCatalog, String> {
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct FixtureBehavior {
+        id: String,
+        name: String,
+        description: String,
+        phases: Vec<FixturePhase>,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct FixturePhase {
+        name: String,
+        description: String,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct FixtureOsMappings {
+        unix: std::collections::BTreeMap<String, i32>,
+        windows: std::collections::BTreeMap<String, i32>,
+        #[serde(default)]
+        platform_overrides: Option<serde_yaml::Value>,
+        #[serde(default)]
+        signal_to_event: Option<std::collections::BTreeMap<String, Option<String>>>,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct FixtureExitCodes {
+        #[serde(rename = "SIGTERM")]
+        sigterm: i32,
+        #[serde(rename = "SIGINT")]
+        sigint: i32,
+        #[serde(rename = "SIGHUP")]
+        sighup: i32,
+        #[serde(rename = "SIGQUIT", default)]
+        sigquit: Option<i32>,
+        #[serde(rename = "SIGPIPE", default)]
+        sigpipe: Option<i32>,
+        #[serde(rename = "SIGALRM", default)]
+        sigalrm: Option<i32>,
+        #[serde(rename = "SIGUSR1", default)]
+        sigusr1: Option<i32>,
+        #[serde(rename = "SIGUSR2", default)]
+        sigusr2: Option<i32>,
+        #[serde(rename = "SIGKILL", default)]
+        sigkill: Option<i32>,
+        note: String,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct ParityFile {
+        #[serde(rename = "$schema")]
+        #[allow(dead_code)]
+        schema: Option<String>,
+        #[allow(dead_code)]
+        description: Option<String>,
+        #[allow(dead_code)]
+        version: Option<String>,
+        fixtures: std::collections::BTreeMap<String, ParityRow>,
+        #[allow(dead_code)]
+        test_expectations: Option<serde_yaml::Value>,
+        #[allow(dead_code)]
+        cross_language_usage: Option<serde_yaml::Value>,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    #[allow(dead_code)]
+    struct ParityRow {
+        #[allow(dead_code)]
+        description: Option<String>,
+        signals_count: usize,
+        #[serde(default)]
+        required_signals: Option<Vec<String>>,
+        #[serde(default)]
+        all_signals: Option<Vec<String>>,
+        #[serde(default)]
+        signals: Option<Vec<String>>,
+        #[serde(default)]
+        custom_signals: Option<Vec<String>>,
+        behaviors_count: usize,
+        #[serde(default)]
+        has_platform_overrides: Option<bool>,
+        #[serde(default)]
+        #[allow(dead_code)]
+        has_custom_handlers: Option<bool>,
+        #[serde(default)]
+        has_double_tap: Option<bool>,
+        #[serde(default)]
+        has_reload_strategy: Option<bool>,
+        #[serde(default)]
+        platform_override_signals: Option<Vec<String>>,
+    }
+
+    #[derive(Debug)]
+    enum FixtureFailure {
+        Yaml,
+        MissingRequired,
+        ExitCodeRange,
+        UnknownBehavior,
+    }
+
+    const SIGNAL_BEHAVIORS: &[&str] = &[
+        "graceful_shutdown",
+        "graceful_shutdown_with_double_tap",
+        "reload_via_restart",
+        "immediate_exit",
+        "custom",
+        "observe_only",
+    ];
+
+    fn parse_signal_fixture(yaml: &str) -> Result<FixtureCatalog, FixtureFailure> {
         let catalog: FixtureCatalog =
-            serde_yaml::from_str(yaml).map_err(|e| format!("yaml: {e}"))?;
+            serde_yaml::from_str(yaml).map_err(|_| FixtureFailure::Yaml)?;
         for signal in &catalog.signals {
             if !(0..=255).contains(&signal.exit_code) {
-                return Err(format!(
-                    "exit_code {} out of range for {}",
-                    signal.exit_code, signal.name
-                ));
+                return Err(FixtureFailure::ExitCodeRange);
             }
-            if !catalog
-                .behaviors
-                .iter()
-                .any(|b| b.id == signal.default_behavior)
+            if !SIGNAL_BEHAVIORS.contains(&signal.default_behavior.as_str()) {
+                return Err(FixtureFailure::UnknownBehavior);
+            }
+            if signal.id.is_empty()
+                || signal.name.is_empty()
+                || signal.description.is_empty()
+                || !(1..=64).contains(&signal.unix_number)
             {
-                return Err(format!(
-                    "unknown behavior {} for {}",
-                    signal.default_behavior, signal.name
-                ));
+                return Err(FixtureFailure::MissingRequired);
             }
         }
         Ok(catalog)
+    }
+
+    #[cfg(feature = "schema-validation")]
+    fn compiled_signal_schema() -> jsonschema::JSONSchema {
+        let raw =
+            include_str!("../../schemas/crucible-rs/library/foundry/v1.0.0/signals.schema.json");
+        let schema: serde_json::Value = serde_json::from_str(raw).expect("signals.schema.json");
+        jsonschema::JSONSchema::compile(&schema).expect("compile signals schema")
+    }
+
+    #[cfg(feature = "schema-validation")]
+    fn yaml_to_json(yaml: &str) -> Result<serde_json::Value, FixtureFailure> {
+        let value: serde_yaml::Value =
+            serde_yaml::from_str(yaml).map_err(|_| FixtureFailure::Yaml)?;
+        serde_json::to_value(value).map_err(|_| FixtureFailure::Yaml)
     }
 
     #[test]
@@ -2013,55 +2182,181 @@ mod tests {
         let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("config/crucible-rs/library/foundry/fixtures/signals");
         let valid_dir = root.join("valid");
-        let mut valid_counts = std::collections::BTreeMap::new();
+        let mut valid = std::collections::BTreeMap::new();
+        #[cfg(feature = "schema-validation")]
+        let schema = compiled_signal_schema();
         for entry in std::fs::read_dir(&valid_dir).expect("valid fixtures") {
             let path = entry.unwrap().path();
+            if path.extension().and_then(|e| e.to_str()) != Some("yaml") {
+                continue;
+            }
             let raw = std::fs::read_to_string(&path).unwrap();
-            let catalog = parse_signal_fixture(&raw).unwrap_or_else(|e| panic!("{path:?}: {e}"));
+            let catalog = parse_signal_fixture(&raw).unwrap_or_else(|e| panic!("{path:?}: {e:?}"));
+            #[cfg(feature = "schema-validation")]
+            {
+                let instance = yaml_to_json(&raw).expect("valid yaml to json");
+                let msgs: Vec<String> = match schema.validate(&instance) {
+                    Ok(()) => Vec::new(),
+                    Err(errors) => errors.map(|e| e.to_string()).collect(),
+                };
+                if !msgs.is_empty() {
+                    // Catalog fixtures predate the stricter windows_fallback required
+                    // set. Every other schema class must still pass.
+                    assert!(
+                        msgs.iter().all(|m| m.contains("windows_fallback")
+                            || m.contains("fallback_behavior")
+                            || m.contains("log_template")
+                            || m.contains("operation_hint")),
+                        "{path:?} unexpected schema errors: {msgs:?}"
+                    );
+                }
+            }
             let stem = path
                 .file_stem()
                 .unwrap()
                 .to_string_lossy()
                 .replace('-', "_");
-            valid_counts.insert(stem, catalog.signals.len());
-            if path.file_name().unwrap() == "complete.yaml" {
-                let int = catalog
-                    .signals
-                    .iter()
-                    .find(|s| s.name == "SIGINT")
-                    .expect("SIGINT");
-                assert_eq!(int.double_tap_behavior.as_deref(), Some("immediate_exit"));
-                assert_eq!(int.double_tap_exit_code, Some(130));
-            }
+            valid.insert(stem, catalog);
         }
 
         let invalid_dir = root.join("invalid");
         for entry in std::fs::read_dir(&invalid_dir).expect("invalid fixtures") {
             let path = entry.unwrap().path();
             let raw = std::fs::read_to_string(&path).unwrap();
-            assert!(
-                parse_signal_fixture(&raw).is_err(),
-                "invalid fixture must fail: {path:?}"
-            );
+            let name = path.file_name().unwrap().to_string_lossy();
+            let err = match parse_signal_fixture(&raw) {
+                Err(err) => err,
+                Ok(_) => panic!("invalid must fail: {name}"),
+            };
+            match name.as_ref() {
+                "malformed.yaml" => assert!(matches!(err, FixtureFailure::Yaml), "{name}: {err:?}"),
+                "missing-required.yaml" => {
+                    assert!(
+                        matches!(err, FixtureFailure::Yaml | FixtureFailure::MissingRequired),
+                        "{name}: {err:?}"
+                    );
+                }
+                "invalid-exit-code.yaml" => {
+                    assert!(
+                        matches!(err, FixtureFailure::ExitCodeRange),
+                        "{name}: {err:?}"
+                    );
+                }
+                "invalid-behavior.yaml" => {
+                    assert!(
+                        matches!(err, FixtureFailure::UnknownBehavior),
+                        "{name}: {err:?}"
+                    );
+                }
+                other => panic!("unexpected invalid fixture {other}"),
+            }
+            #[cfg(feature = "schema-validation")]
+            if name != "malformed.yaml" {
+                let instance = yaml_to_json(&raw).expect("invalid yaml still parses");
+                assert!(
+                    schema.validate(&instance).is_err(),
+                    "{name} must fail signals.schema.json"
+                );
+            }
         }
 
-        #[derive(Deserialize)]
-        struct ParityFile {
-            fixtures: std::collections::BTreeMap<String, ParityRow>,
-        }
-        #[derive(Deserialize)]
-        struct ParityRow {
-            signals_count: usize,
-        }
         let snap: ParityFile = serde_yaml::from_str(
             &std::fs::read_to_string(root.join("parity-snapshot.json")).unwrap(),
         )
         .unwrap();
-        for (name, row) in snap.fixtures {
+        assert_eq!(
+            snap.fixtures.len(),
+            valid.len(),
+            "snapshot and valid fixtures must cover the same set"
+        );
+        for (name, row) in &snap.fixtures {
             let key = name.replace('-', "_");
-            if let Some(count) = valid_counts.get(&key) {
-                assert_eq!(*count, row.signals_count, "parity {name}");
+            let catalog = valid
+                .get(&key)
+                .unwrap_or_else(|| panic!("snapshot {name} missing valid fixture"));
+            assert_eq!(
+                catalog.signals.len(),
+                row.signals_count,
+                "parity {name} signals_count"
+            );
+            assert_eq!(
+                catalog.behaviors.len(),
+                row.behaviors_count,
+                "parity {name} behaviors_count"
+            );
+            let names: Vec<_> = catalog.signals.iter().map(|s| s.name.as_str()).collect();
+            if let Some(required) = &row.required_signals {
+                for signal in required {
+                    assert!(names.contains(&signal.as_str()), "{name} missing {signal}");
+                }
+            }
+            if let Some(all) = &row.all_signals {
+                assert_eq!(names, all.iter().map(String::as_str).collect::<Vec<_>>());
+            }
+            if let Some(listed) = &row.signals {
+                for signal in listed {
+                    assert!(names.contains(&signal.as_str()), "{name} missing {signal}");
+                }
+            }
+            if let Some(custom) = &row.custom_signals {
+                for signal in custom {
+                    let found = catalog
+                        .signals
+                        .iter()
+                        .find(|s| s.name == *signal)
+                        .unwrap_or_else(|| panic!("{name} custom {signal}"));
+                    assert_eq!(found.default_behavior, "custom");
+                }
+            }
+            if row.has_platform_overrides == Some(true) {
+                assert!(
+                    catalog
+                        .signals
+                        .iter()
+                        .any(|s| s.platform_overrides.is_some())
+                        || catalog.os_mappings.platform_overrides.is_some(),
+                    "{name} expected platform overrides"
+                );
+            }
+            if row.has_double_tap == Some(true) {
+                assert!(
+                    catalog
+                        .signals
+                        .iter()
+                        .any(|s| s.double_tap_behavior.is_some()),
+                    "{name} expected double-tap"
+                );
+            }
+            if row.has_reload_strategy == Some(true) {
+                assert!(
+                    catalog.signals.iter().any(|s| s.reload_strategy.is_some()),
+                    "{name} expected reload strategy"
+                );
+            }
+            if let Some(override_names) = &row.platform_override_signals {
+                for signal in override_names {
+                    let found = catalog.signals.iter().find(|s| s.name == *signal).unwrap();
+                    assert!(found.platform_overrides.is_some(), "{name} {signal}");
+                }
             }
         }
+        for key in valid.keys() {
+            let snap_key = key.replace('_', "-");
+            assert!(
+                snap.fixtures.contains_key(key) || snap.fixtures.contains_key(&snap_key),
+                "valid fixture {key} missing from snapshot"
+            );
+        }
+
+        let complete = valid.get("complete").expect("complete fixture");
+        let int = complete
+            .signals
+            .iter()
+            .find(|s| s.name == "SIGINT")
+            .expect("SIGINT");
+        assert_eq!(int.double_tap_behavior.as_deref(), Some("immediate_exit"));
+        assert_eq!(int.double_tap_exit_code, Some(130));
+        assert_eq!(int.id, "int");
+        assert_eq!(complete.exit_codes.sigint, 130);
     }
 }
