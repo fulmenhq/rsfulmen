@@ -45,8 +45,10 @@ pub struct FileSchemaOptions {
 /// On Unix, each component under an allowed root is opened with `openat(2)` and
 /// `O_NOFOLLOW` so a swapped intermediate directory cannot escape the catalog.
 /// The root schema path and each `ref_dirs` entry must be real (non-symlink)
-/// files/directories. On other platforms, catalog roots are treated as trusted
-/// for the duration of validation.
+/// files/directories. On Windows, containment compares paths after stripping
+/// `\\?\` verbatim prefixes and folding ASCII case so `file://` URLs match
+/// `fs::canonicalize` roots. On other platforms, catalog roots are treated as
+/// trusted for the duration of validation.
 pub struct FileBackedResolver {
     allowed_roots: Vec<PathBuf>,
     schema_dir: PathBuf,
@@ -118,7 +120,7 @@ impl FileBackedResolver {
         let root = self
             .allowed_roots
             .iter()
-            .find(|root| abs.starts_with(root))
+            .find(|root| path_is_under_root(&abs, root))
             .ok_or_else(|| {
                 anyhow::anyhow!(
                     "schema path not contained in catalog roots: {}",
@@ -530,7 +532,59 @@ fn normalize_lexical(path: &Path) -> PathBuf {
     out
 }
 
+fn path_is_under_root(abs: &Path, root: &Path) -> bool {
+    #[cfg(windows)]
+    {
+        comparable_windows_path(abs).starts_with(comparable_windows_path(root))
+    }
+    #[cfg(not(windows))]
+    {
+        abs.starts_with(root)
+    }
+}
+
+/// Strip `\\?\` / `\\?\UNC\` prefixes and fold ASCII case so `file://`
+/// paths (`C:\...`) match `fs::canonicalize` roots (`\\?\C:\...`).
+#[cfg(windows)]
+fn comparable_windows_path(path: &Path) -> PathBuf {
+    use std::path::{Component, Prefix};
+    let mut out = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::Prefix(prefix) => match prefix.kind() {
+                Prefix::VerbatimDisk(disk) | Prefix::Disk(disk) => {
+                    out.push(format!("{}:", disk.to_ascii_uppercase() as char));
+                }
+                Prefix::VerbatimUNC(server, share) | Prefix::UNC(server, share) => {
+                    out.push(r"\\");
+                    out.push(server.to_string_lossy().to_ascii_lowercase().as_ref());
+                    out.push(share.to_string_lossy().to_ascii_lowercase().as_ref());
+                }
+                Prefix::Verbatim(rest) | Prefix::DeviceNS(rest) => {
+                    out.push(rest.to_string_lossy().to_ascii_lowercase().as_ref());
+                }
+            },
+            Component::RootDir => out.push(std::path::MAIN_SEPARATOR_STR),
+            Component::CurDir => {}
+            Component::ParentDir => {
+                let _ = out.pop();
+            }
+            Component::Normal(part) => {
+                out.push(part.to_string_lossy().to_ascii_lowercase().as_ref());
+            }
+        }
+    }
+    out
+}
+
 fn read_under_root(root: &Path, abs: &Path) -> Result<Value, String> {
+    if !path_is_under_root(abs, root) {
+        return Err(format!(
+            "schema path not contained in catalog roots: {}",
+            abs.display()
+        ));
+    }
+    #[cfg(unix)]
     let rel = abs.strip_prefix(root).map_err(|_| {
         format!(
             "schema path not contained in catalog roots: {}",
@@ -1386,5 +1440,28 @@ mod tests {
             }
             other => panic!("expected compile failure, got {other:?}"),
         }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn file_url_path_matches_verbatim_canonical_root() {
+        // Url::to_file_path yields `C:\...`; fs::canonicalize yields `\\?\C:\...`.
+        let root = PathBuf::from(r"\\?\C:\Users\runner\catalog");
+        let via_url = PathBuf::from(r"C:\Users\runner\catalog\widget.schema.json");
+        assert!(
+            path_is_under_root(&via_url, &root),
+            "file:// paths must match canonicalize() roots on Windows"
+        );
+        assert!(path_is_under_root(
+            &PathBuf::from(r"c:\users\runner\catalog\widget.schema.json"),
+            &root
+        ));
+        assert!(
+            !path_is_under_root(
+                &PathBuf::from(r"C:\Users\runner\catalog-other\widget.schema.json"),
+                &root
+            ),
+            "sibling prefix must not count as contained"
+        );
     }
 }

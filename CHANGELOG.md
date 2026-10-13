@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **Windows `file://` schema containment** — catalog roots from
+  `fs::canonicalize` use `\\?\` verbatim prefixes; `Url::to_file_path`
+  does not. Containment now strips those prefixes and folds ASCII case
+  so local `file://` `$ref`s resolve on Windows.
+
 ## [0.2.1] - 2026-10-12
 
 Patch release after goneat v0.6.2 (#18): crate lockfile refresh, signed-tag
