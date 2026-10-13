@@ -401,20 +401,18 @@ fn read_stable(path: &Path) -> std::io::Result<Vec<u8>> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::OpenOptionsExt;
+        // Some hosted filesystems ignore O_NOFOLLOW. Reject a trailing
+        // symlink first so a canonicalize-then-swap cannot be read.
+        let meta = fs::symlink_metadata(path)?;
+        if meta.file_type().is_symlink() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("refusing to read symlink: {}", path.display()),
+            ));
+        }
         let mut opts = fs::OpenOptions::new();
         opts.read(true);
-        // O_NOFOLLOW: Linux 0o400000, Darwin/BSD 0x100. Closes the
-        // canonicalize-then-open symlink swap on the final path.
-        #[cfg(any(target_os = "linux", target_os = "android"))]
-        opts.custom_flags(0o400000);
-        #[cfg(any(
-            target_os = "macos",
-            target_os = "ios",
-            target_os = "freebsd",
-            target_os = "netbsd",
-            target_os = "openbsd"
-        ))]
-        opts.custom_flags(0x0000_0100);
+        opts.custom_flags(libc::O_NOFOLLOW);
         let mut file = opts.open(path)?;
         let mut buf = Vec::new();
         file.read_to_end(&mut buf)?;
