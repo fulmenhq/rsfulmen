@@ -48,7 +48,8 @@ pub struct FileSchemaOptions {
 /// files/directories. On Windows, containment compares paths after stripping
 /// `\\?\` verbatim prefixes and folding ASCII case so `file://` URLs match
 /// `fs::canonicalize` roots. Intermediate reparse points (junctions, directory
-/// symlinks) under a catalog root are rejected before `fs::read`. On other
+/// symlinks) under a catalog root are opened from a trusted parent handle
+/// without following reparse points, then rejected. On other
 /// platforms, catalog roots are treated as trusted for the duration of
 /// validation.
 pub struct FileBackedResolver {
@@ -57,6 +58,7 @@ pub struct FileBackedResolver {
     resolution: FileSchemaResolution,
     id_index: HashMap<String, PathBuf>,
     files: Vec<PathBuf>,
+    root_schema: PathBuf,
 }
 
 impl FileBackedResolver {
@@ -90,19 +92,26 @@ impl FileBackedResolver {
         files.sort();
         files.dedup();
         for file in &files {
-            if let Ok(value) = load_value(file) {
-                if let Some(id) = value.get("$id").and_then(|v| v.as_str()) {
-                    let id = strip_fragment(id).to_string();
-                    if let Some(prev) = id_index.insert(id.clone(), file.clone()) {
-                        if prev != *file {
-                            return Err(SchemaValidationError::SchemaCompileFailed {
-                                path: file.display().to_string(),
-                                message: format!(
-                                    "duplicate schema $id {id} in catalog (also {})",
-                                    prev.display()
-                                ),
-                            });
-                        }
+            #[cfg(all(windows, test))]
+            run_before_index_read_hook();
+            // Containment/reparse failures must abort the index. Parse
+            // errors on incidental `.json`/`.yaml` files are skipped.
+            let value = match load_catalog_file(&allowed_roots, file) {
+                Ok(value) => value,
+                Err(err) if catalog_read_must_fail(&err) => return Err(err),
+                Err(_) => continue,
+            };
+            if let Some(id) = value.get("$id").and_then(|v| v.as_str()) {
+                let id = strip_fragment(id).to_string();
+                if let Some(prev) = id_index.insert(id.clone(), file.clone()) {
+                    if prev != *file {
+                        return Err(SchemaValidationError::SchemaCompileFailed {
+                            path: file.display().to_string(),
+                            message: format!(
+                                "duplicate schema $id {id} in catalog (also {})",
+                                prev.display()
+                            ),
+                        });
                     }
                 }
             }
@@ -114,6 +123,7 @@ impl FileBackedResolver {
             resolution: opts.resolution,
             id_index,
             files,
+            root_schema: schema_path,
         })
     }
 
@@ -277,7 +287,9 @@ pub fn validate_instance_with_schema_file(
     opts: FileSchemaOptions,
 ) -> Result<Vec<ValidationIssue>, SchemaValidationError> {
     let resolver = FileBackedResolver::from_schema_file(schema_path, &opts)?;
-    let mut schema = load_value(schema_path)?;
+    #[cfg(all(windows, test))]
+    run_before_root_schema_read_hook();
+    let mut schema = load_catalog_file(&resolver.allowed_roots, &resolver.root_schema)?;
     ensure_file_id(&mut schema, schema_path)?;
     compile_and_validate(
         &schema,
@@ -391,6 +403,35 @@ fn ensure_file_id(schema: &mut Value, schema_path: &Path) -> Result<(), SchemaVa
 
 fn load_value(path: &Path) -> Result<Value, SchemaValidationError> {
     load_value_stable(path)
+}
+
+fn catalog_read_must_fail(err: &SchemaValidationError) -> bool {
+    let SchemaValidationError::SchemaCompileFailed { message, .. } = err else {
+        return false;
+    };
+    message.contains("reparse")
+        || message.contains("not contained")
+        || message.contains("not found")
+        || message.contains("cannot open")
+        || message.contains("symlink")
+        || message.contains("nofollow")
+}
+
+fn load_catalog_file(roots: &[PathBuf], file: &Path) -> Result<Value, SchemaValidationError> {
+    let root = roots.iter().find(|root| path_is_under_root(file, root));
+    let Some(root) = root else {
+        return Err(SchemaValidationError::SchemaCompileFailed {
+            path: file.display().to_string(),
+            message: format!(
+                "schema path not contained in catalog roots: {}",
+                file.display()
+            ),
+        });
+    };
+    read_under_root(root, file).map_err(|message| SchemaValidationError::SchemaCompileFailed {
+        path: file.display().to_string(),
+        message,
+    })
 }
 
 fn load_value_stable(path: &Path) -> Result<Value, SchemaValidationError> {
@@ -624,11 +665,33 @@ const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
 thread_local! {
     static AFTER_NOFOLLOW_OPEN: std::cell::RefCell<Option<Box<dyn Fn()>>> =
         std::cell::RefCell::new(None);
+    static BEFORE_INDEX_READ: std::cell::RefCell<Option<Box<dyn Fn()>>> =
+        std::cell::RefCell::new(None);
+    static BEFORE_ROOT_SCHEMA_READ: std::cell::RefCell<Option<Box<dyn Fn()>>> =
+        std::cell::RefCell::new(None);
 }
 
 #[cfg(all(windows, test))]
 fn run_windows_after_open_hook() {
     AFTER_NOFOLLOW_OPEN.with(|hook| {
+        if let Some(run) = hook.borrow().as_ref() {
+            run();
+        }
+    });
+}
+
+#[cfg(all(windows, test))]
+fn run_before_index_read_hook() {
+    BEFORE_INDEX_READ.with(|hook| {
+        if let Some(run) = hook.borrow().as_ref() {
+            run();
+        }
+    });
+}
+
+#[cfg(all(windows, test))]
+fn run_before_root_schema_read_hook() {
+    BEFORE_ROOT_SCHEMA_READ.with(|hook| {
         if let Some(run) = hook.borrow().as_ref() {
             run();
         }
@@ -807,10 +870,7 @@ fn open_relative_nofollow(
         )
     };
     if status < 0 {
-        return Err(format!(
-            "catalog path is a reparse point: {}",
-            name.to_string_lossy()
-        ));
+        return Err(nt_open_error(status, name));
     }
     if is_invalid_handle(handle) {
         return Err(format!(
@@ -833,6 +893,31 @@ fn handle_is_reparse(handle: &std::os::windows::io::OwnedHandle) -> Result<bool,
         ));
     }
     Ok((info.file_attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0)
+}
+
+#[cfg(windows)]
+const STATUS_OBJECT_NAME_NOT_FOUND: u32 = 0xC000_0034;
+#[cfg(windows)]
+const STATUS_OBJECT_PATH_NOT_FOUND: u32 = 0xC000_003A;
+#[cfg(windows)]
+const STATUS_REPARSE_POINT_ENCOUNTERED: u32 = 0xC000_050B;
+#[cfg(windows)]
+const STATUS_STOPPED_ON_SYMLINK: u32 = 0x8000_002D;
+
+#[cfg(windows)]
+fn nt_open_error(status: i32, name: &std::ffi::OsStr) -> String {
+    let code = status as u32;
+    let shown = format!("0x{code:08X}");
+    let display = name.to_string_lossy();
+    match code {
+        STATUS_REPARSE_POINT_ENCOUNTERED | STATUS_STOPPED_ON_SYMLINK => {
+            format!("catalog path is a reparse point: {display} (ntstatus {shown})")
+        }
+        STATUS_OBJECT_NAME_NOT_FOUND | STATUS_OBJECT_PATH_NOT_FOUND => {
+            format!("catalog path not found: {display} (ntstatus {shown})")
+        }
+        _ => format!("cannot open catalog path component {display}: ntstatus {shown}"),
+    }
 }
 
 #[cfg(windows)]
@@ -1809,8 +1894,43 @@ mod tests {
     }
 
     #[cfg(windows)]
+    fn with_swap_hook(
+        slot: &'static std::thread::LocalKey<std::cell::RefCell<Option<Box<dyn Fn()>>>>,
+        from: PathBuf,
+        to: PathBuf,
+    ) -> std::sync::Arc<std::sync::atomic::AtomicBool> {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        let done = std::sync::Arc::new(AtomicBool::new(false));
+        let flag = done.clone();
+        slot.with(|hook| {
+            *hook.borrow_mut() = Some(Box::new(move || {
+                if flag.swap(true, Ordering::SeqCst) {
+                    return;
+                }
+                fs::remove_file(&from).expect("remove_file for reparse swap");
+                std::os::windows::fs::symlink_file(&to, &from)
+                    .expect("symlink_file for reparse swap");
+                assert!(
+                    fs::symlink_metadata(&from)
+                        .expect("swapped path metadata")
+                        .file_type()
+                        .is_symlink(),
+                    "swap must leave a symlink"
+                );
+            }));
+        });
+        done
+    }
+
+    #[cfg(windows)]
+    fn clear_hook(slot: &'static std::thread::LocalKey<std::cell::RefCell<Option<Box<dyn Fn()>>>>) {
+        slot.with(|hook| *hook.borrow_mut() = None);
+    }
+
+    #[cfg(windows)]
     #[test]
     fn swapped_reparse_after_open_is_not_followed() {
+        use std::sync::atomic::Ordering;
         let dir = scratch_dir();
         write_catalog(&dir);
         let target = dir.join("widget.schema.json");
@@ -1821,16 +1941,14 @@ mod tests {
         ));
         fs::create_dir_all(&outside).unwrap();
         fs::write(outside.join("evil.schema.json"), r#"{"type":"number"}"#).unwrap();
-        AFTER_NOFOLLOW_OPEN.with(|hook| {
-            let swap_from = target.clone();
-            let swap_to = outside.join("evil.schema.json");
-            *hook.borrow_mut() = Some(Box::new(move || {
-                let _ = fs::remove_file(&swap_from);
-                let _ = std::os::windows::fs::symlink_file(&swap_to, &swap_from);
-            }));
-        });
+        let done = with_swap_hook(
+            &AFTER_NOFOLLOW_OPEN,
+            target.clone(),
+            outside.join("evil.schema.json"),
+        );
         let got = read_under_root(&dir, &target);
-        AFTER_NOFOLLOW_OPEN.with(|hook| *hook.borrow_mut() = None);
+        clear_hook(&AFTER_NOFOLLOW_OPEN);
+        assert!(done.load(Ordering::SeqCst), "swap hook must run");
         let _ = fs::remove_file(&target);
         let _ = fs::remove_dir_all(&outside);
         let value = got.expect("nofollow handle must keep the bytes opened before the swap");
@@ -1839,6 +1957,118 @@ mod tests {
             Some("object"),
             "check-then-follow would load the swapped number schema"
         );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn root_schema_swap_after_canonical_is_compile_failure() {
+        use std::sync::atomic::Ordering;
+        let dir = scratch_dir();
+        write_catalog(&dir);
+        let target = dir.join("root.schema.json");
+        let outside = dir.parent().unwrap().join(format!(
+            "rsfulmen-win-root-swap-{}-{}",
+            std::process::id(),
+            TEST_SEQ.fetch_add(1, Ordering::SeqCst)
+        ));
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(outside.join("evil.schema.json"), r#"{"type":"number"}"#).unwrap();
+        let done = with_swap_hook(
+            &BEFORE_ROOT_SCHEMA_READ,
+            target.clone(),
+            outside.join("evil.schema.json"),
+        );
+        let err = validate_instance_with_schema_file(&target, &json!({}), opts(&dir)).unwrap_err();
+        clear_hook(&BEFORE_ROOT_SCHEMA_READ);
+        assert!(
+            done.load(Ordering::SeqCst),
+            "root-schema swap hook must run"
+        );
+        let _ = fs::remove_file(&target);
+        let _ = fs::remove_dir_all(&outside);
+        match err {
+            SchemaValidationError::SchemaCompileFailed { message, .. } => {
+                assert!(
+                    message.contains("reparse"),
+                    "root schema swap must report reparse, got {message}"
+                );
+            }
+            other => panic!("expected compile failure, got {other:?}"),
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn catalog_index_swap_is_compile_failure() {
+        use std::sync::atomic::Ordering;
+        let dir = scratch_dir();
+        write_catalog(&dir);
+        let target = dir.join("widget.schema.json");
+        let outside = dir.parent().unwrap().join(format!(
+            "rsfulmen-win-idx-swap-{}-{}",
+            std::process::id(),
+            TEST_SEQ.fetch_add(1, Ordering::SeqCst)
+        ));
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(outside.join("evil.schema.json"), r#"{"type":"number"}"#).unwrap();
+        let done = with_swap_hook(
+            &BEFORE_INDEX_READ,
+            target.clone(),
+            outside.join("evil.schema.json"),
+        );
+        let err = FileBackedResolver::from_schema_file(&dir.join("root.schema.json"), &opts(&dir))
+            .unwrap_err();
+        clear_hook(&BEFORE_INDEX_READ);
+        assert!(done.load(Ordering::SeqCst), "index swap hook must run");
+        let _ = fs::remove_file(&target);
+        let _ = fs::remove_dir_all(&outside);
+        match err {
+            SchemaValidationError::SchemaCompileFailed { message, .. } => {
+                assert!(
+                    message.contains("reparse"),
+                    "index swap must report reparse, got {message}"
+                );
+            }
+            other => panic!("expected compile failure, got {other:?}"),
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn missing_in_root_ref_is_not_reported_as_reparse() {
+        let dir = scratch_dir();
+        write_catalog(&dir);
+        fs::write(
+            dir.join("uses-missing.schema.json"),
+            r#"{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "x": { "$ref": "no-such.schema.json" }
+  }
+}
+"#,
+        )
+        .unwrap();
+        let err = validate_instance_with_schema_file(
+            &dir.join("uses-missing.schema.json"),
+            &json!({}),
+            opts(&dir),
+        )
+        .unwrap_err();
+        match err {
+            SchemaValidationError::SchemaCompileFailed { message, .. } => {
+                assert!(
+                    !message.contains("reparse"),
+                    "missing file must not be diagnosed as reparse: {message}"
+                );
+                assert!(
+                    message.contains("not found") || message.contains("cannot open"),
+                    "missing file should be not-found, got {message}"
+                );
+            }
+            other => panic!("expected compile failure, got {other:?}"),
+        }
     }
 
     #[cfg(windows)]
@@ -1878,10 +2108,8 @@ mod tests {
         match err {
             SchemaValidationError::SchemaCompileFailed { message, .. } => {
                 assert!(
-                    message.contains("reparse")
-                        || message.contains("symlink")
-                        || message.contains("not contained"),
-                    "{message}"
+                    message.contains("reparse"),
+                    "junction must be diagnosed as a reparse point, got {message}"
                 );
             }
             other => panic!("expected compile failure, got {other:?}"),

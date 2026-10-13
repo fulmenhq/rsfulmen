@@ -66,22 +66,142 @@ fn estate_matrix_uses_standard_hosted_labels() {
     );
     assert!(
         !workflow.contains("trusted_runner:"),
-        "decernor/storageprims shape is a single include matrix without a trust flag"
+        "estate shape is a single include matrix without a trust flag"
     );
+
+    let include = parse_job_matrix_include(workflow, "platform_smoke");
+    let expected: Vec<(String, String)> = [
+        ("ubuntu-latest", "x86_64-unknown-linux-gnu"),
+        ("ubuntu-latest-arm64-s", "aarch64-unknown-linux-gnu"),
+        ("macos-15", "aarch64-apple-darwin"),
+        ("windows-latest", "x86_64-pc-windows-msvc"),
+        ("windows-latest-arm64-s", "aarch64-pc-windows-msvc"),
+    ]
+    .into_iter()
+    .map(|(runner, target)| (runner.to_string(), target.to_string()))
+    .collect();
+    assert_eq!(
+        include, expected,
+        "platform_smoke.strategy.matrix.include must be exactly the five estate pairs"
+    );
+
+    let needs = parse_job_needs(workflow, "platforms");
+    assert!(
+        needs.iter().any(|n| n == "platform_smoke"),
+        "platforms.needs must contain platform_smoke, got {needs:?}"
+    );
+
     for label in ["ubuntu-latest-arm64-s", "windows-latest-arm64-s"] {
         assert!(
-            workflow.contains(label),
-            "workflow must use the standard estate label {label}"
-        );
-        assert!(
-            actionlint.contains(label),
+            actionlint_lists_label(actionlint, label),
             "actionlint.yaml must list {label} so lint recognizes the estate runners"
         );
     }
+}
+
+fn parse_job_matrix_include(workflow: &str, job: &str) -> Vec<(String, String)> {
+    let body = job_body(workflow, job);
+    let include = mapping_block(&body, "include").unwrap_or_else(|| {
+        panic!("{job}.strategy.matrix.include is missing");
+    });
+    let mut pairs = Vec::new();
+    let mut runner = None;
+    for raw in include.lines() {
+        let line = raw.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        if let Some(value) = line.strip_prefix("- runner:") {
+            assert!(
+                runner.is_none(),
+                "{job} include entry is missing target before the next runner"
+            );
+            runner = Some(value.trim().to_string());
+        } else if let Some(value) = line.strip_prefix("target:") {
+            let runner = runner
+                .take()
+                .unwrap_or_else(|| panic!("{job} include target has no runner"));
+            pairs.push((runner, value.trim().to_string()));
+        }
+    }
     assert!(
-        workflow.contains("ubuntu-latest")
-            && workflow.contains("macos-15")
-            && workflow.contains("windows-latest"),
-        "5-way matrix must keep the GitHub-hosted amd64/mac labels"
+        runner.is_none(),
+        "{job} include entry is missing target at end of list"
     );
+    pairs
+}
+
+fn parse_job_needs(workflow: &str, job: &str) -> Vec<String> {
+    let body = job_body(workflow, job);
+    for raw in body.lines() {
+        let indent = raw.len() - raw.trim_start().len();
+        let line = raw.trim();
+        if indent != 4 || !line.starts_with("needs:") {
+            continue;
+        }
+        let value = line.trim_start_matches("needs:").trim();
+        if value.is_empty() {
+            return mapping_block(&body, "needs")
+                .unwrap_or_default()
+                .lines()
+                .filter_map(|item| item.trim().strip_prefix("- "))
+                .map(|item| item.trim().to_string())
+                .filter(|item| !item.is_empty())
+                .collect();
+        }
+        return vec![value.to_string()];
+    }
+    Vec::new()
+}
+
+fn job_body(workflow: &str, job: &str) -> String {
+    let mut lines = workflow.lines().peekable();
+    let header = format!("{job}:");
+    while let Some(line) = lines.next() {
+        if line == format!("  {header}") || line.trim_start() == header && line.starts_with("  ") {
+            let mut body = Vec::new();
+            for next in lines.by_ref() {
+                let is_next_job = next.starts_with("  ")
+                    && !next.starts_with("   ")
+                    && next.trim_end().ends_with(':');
+                if is_next_job {
+                    break;
+                }
+                body.push(next);
+            }
+            return body.join("\n");
+        }
+    }
+    panic!("job {job} not found");
+}
+
+fn mapping_block(body: &str, key: &str) -> Option<String> {
+    let header = format!("{key}:");
+    let mut lines = body.lines().peekable();
+    while let Some(line) = lines.next() {
+        if line.trim() != header {
+            continue;
+        }
+        let indent = line.len() - line.trim_start().len();
+        let mut block = Vec::new();
+        for next in lines.by_ref() {
+            if next.trim().is_empty() {
+                continue;
+            }
+            let next_indent = next.len() - next.trim_start().len();
+            if next_indent <= indent {
+                break;
+            }
+            block.push(next);
+        }
+        return Some(block.join("\n"));
+    }
+    None
+}
+
+fn actionlint_lists_label(actionlint: &str, label: &str) -> bool {
+    actionlint
+        .lines()
+        .map(str::trim)
+        .any(|line| line == format!("- {label}"))
 }

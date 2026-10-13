@@ -174,7 +174,8 @@ jobs:
         run: cargo deny --all-features check licenses bans advisories sources
   # Estate 5-way native matrix. Labels match the org-standard GitHub-hosted
   # larger runners (`ubuntu-latest-arm64-s`, `windows-latest-arm64-s`) used
-  # by storageprims / decernor. actionlint.yaml lists those labels.
+  # by storageprims. actionlint.yaml lists those labels as an unknown-name
+  # allowlist only.
   platform_smoke:
     name: platform-smoke (${{ matrix.target }})
     runs-on: ${{ matrix.runner }}
