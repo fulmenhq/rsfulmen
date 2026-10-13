@@ -410,7 +410,79 @@ nested:
     }
 
     #[test]
+    fn load_three_layer_user_null_then_runtime_restore() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let config_home = tmp.path().join("config");
+        let app_name = format!(
+            "rsfulmen-three-layer-{}",
+            tmp.path().file_name().unwrap().to_string_lossy()
+        );
+        let user_rel = "overrides.yaml";
+        let user_path = config_home.join(&app_name).join(user_rel);
+        fs::create_dir_all(user_path.parent().unwrap()).unwrap();
+        // `key` is not in the terminal SSOT defaults (user null is a no-op
+        // delete). `last_updated` is a real defaults key that is deleted then
+        // restored. `notes` is a real defaults key that stays deleted.
+        fs::write(&user_path, "key: null\nlast_updated: null\nnotes: null\n").unwrap();
+
+        let mut env = crate::ProcessEnvGuard::acquire();
+        env.set("XDG_CONFIG_HOME", &config_home);
+        env.set("APPDATA", &config_home);
+
+        let base = ThreeLayerOptions {
+            app_name,
+            defaults_path: "terminal/v1.0.0/terminal-overrides-defaults.yaml".to_string(),
+            user_config_path: user_rel.to_string(),
+            runtime_overrides: None,
+            schema_path: None,
+        };
+
+        let deleted = load_three_layer(&base).unwrap();
+        let deleted_map = deleted.config.as_mapping().unwrap();
+        for key in ["key", "last_updated", "notes"] {
+            assert!(
+                deleted_map.get(Value::String(key.into())).is_none(),
+                "{key} must be absent after user null and no runtime overrides"
+            );
+        }
+        assert_eq!(
+            deleted.provenance.paths.get("/notes"),
+            Some(&ConfigLayer::User)
+        );
+
+        let mut restored = base.clone();
+        restored.runtime_overrides =
+            Some(serde_yaml::from_str("key: restored\nlast_updated: from-runtime\n").unwrap());
+        let out = load_three_layer(&restored).unwrap();
+        let mapping = out.config.as_mapping().unwrap();
+        assert_eq!(
+            mapping.get(Value::String("key".into())).unwrap(),
+            &Value::String("restored".into())
+        );
+        assert_eq!(
+            mapping.get(Value::String("last_updated".into())).unwrap(),
+            &Value::String("from-runtime".into())
+        );
+        assert!(
+            mapping.get(Value::String("notes".into())).is_none(),
+            "notes must stay deleted after user null and no runtime restore"
+        );
+        assert!(mapping.contains_key(Value::String("version".into())));
+        assert!(mapping.contains_key(Value::String("terminals".into())));
+        assert_eq!(
+            out.provenance.paths.get("/key"),
+            Some(&ConfigLayer::Runtime)
+        );
+        assert_eq!(
+            out.provenance.paths.get("/last_updated"),
+            Some(&ConfigLayer::Runtime)
+        );
+        assert_eq!(out.provenance.paths.get("/notes"), Some(&ConfigLayer::User));
+    }
+
+    #[test]
     fn test_load_three_layer_defaults_only_with_runtime_overrides() {
+        let _env = crate::ProcessEnvGuard::acquire();
         // Use a unique app name + non-existent config file to avoid pulling any user config.
         let options = ThreeLayerOptions {
             app_name: format!("rsfulmen-test-{}", std::process::id()),
@@ -433,6 +505,7 @@ nested:
     #[cfg(feature = "schema-validation")]
     #[test]
     fn test_schema_validation_failure_returns_error() {
+        let _env = crate::ProcessEnvGuard::acquire();
         // Deliberately validate an unrelated config against the mime-types schema.
         let options = ThreeLayerOptions {
             app_name: format!("rsfulmen-test-{}", std::process::id()),
@@ -449,6 +522,7 @@ nested:
     #[cfg(not(feature = "schema-validation"))]
     #[test]
     fn test_schema_validation_unavailable_feature_gate() {
+        let _env = crate::ProcessEnvGuard::acquire();
         let options = ThreeLayerOptions {
             app_name: format!("rsfulmen-test-{}", std::process::id()),
             defaults_path: "terminal/v1.0.0/terminal-overrides-defaults.yaml".to_string(),

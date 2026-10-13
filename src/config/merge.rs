@@ -72,6 +72,9 @@ pub fn deep_copy(value: &Value) -> Value {
 }
 
 fn merge_mappings(base: &Mapping, overlay: &Mapping) -> Mapping {
+    // Mapping key order after merge is not a contract. Overwritten keys keep
+    // their position in `base`; newly introduced overlay keys are appended.
+    // Do not snapshot insertion order in tests or consumers.
     let mut result = deep_copy_mapping(base);
     for (key, overlay_value) in overlay {
         if overlay_value.is_null() {

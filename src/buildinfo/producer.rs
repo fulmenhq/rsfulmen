@@ -443,11 +443,10 @@ mod tests {
     use super::*;
     use std::fs;
     use std::process::{Command, Stdio};
-    use std::sync::Mutex;
 
-    static ENV_LOCK: Mutex<()> = Mutex::new(());
-
-    fn base_env() -> HashMap<String, String> {
+    // PATH/HOME snapshot. The unused guard argument is the compile-time
+    // lock: callers must hold ProcessEnvGuard or the helper will not compile.
+    fn base_env(_guard: &crate::ProcessEnvGuard) -> HashMap<String, String> {
         let mut m = HashMap::new();
         if let Ok(v) = env::var("PATH") {
             m.insert("PATH".into(), v);
@@ -480,14 +479,14 @@ mod tests {
         assert!(status.success(), "git {args:?} failed in {}", dir.display());
     }
 
-    fn init_repo(dir: &Path, marker: &str) -> String {
+    fn init_repo(dir: &Path, marker: &str, guard: &crate::ProcessEnvGuard) -> String {
         git_in(dir, &["init"]);
         git_in(dir, &["config", "user.email", "hostid@example.test"]);
         git_in(dir, &["config", "user.name", "rsfulmen-hostid"]);
         fs::write(dir.join("README"), marker).unwrap();
         git_in(dir, &["add", "README"]);
         git_in(dir, &["commit", "-m", "init"]);
-        git_head(dir, &base_env()).expect("own HEAD")
+        git_head(dir, &base_env(guard)).expect("own HEAD")
     }
 
     fn probe_at(dir: &Path, env_map: HashMap<String, String>) -> ProbeResult {
@@ -527,9 +526,9 @@ mod tests {
 
     #[test]
     fn platform_from_target_not_host() {
-        let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let guard = crate::ProcessEnvGuard::acquire();
         let dir = temp_prefix("rsfulmen-hostid-plat-");
-        let mut env_map = base_env();
+        let mut env_map = base_env(&guard);
         env_map.insert("FULMEN_HOST_COMMIT".into(), "abc".into());
         let result = probe_at(dir.path(), env_map);
         assert_eq!(result.stamps.platform, "linux/amd64");
@@ -537,13 +536,14 @@ mod tests {
 
     #[test]
     fn foreign_git_dir_does_not_stamp_foreign_commit() {
+        let guard = crate::ProcessEnvGuard::acquire();
         let own = temp_prefix("rsfulmen-hostid-own-");
         let foreign = temp_prefix("rsfulmen-hostid-foreign-");
-        let own_sha = init_repo(own.path(), "own-repo\n");
-        let foreign_sha = init_repo(foreign.path(), "foreign-repo\n");
+        let own_sha = init_repo(own.path(), "own-repo\n", &guard);
+        let foreign_sha = init_repo(foreign.path(), "foreign-repo\n", &guard);
         assert_ne!(own_sha, foreign_sha);
 
-        let mut env_map = base_env();
+        let mut env_map = base_env(&guard);
         env_map.insert(
             "GIT_DIR".into(),
             foreign.path().join(".git").to_string_lossy().into(),
@@ -555,23 +555,25 @@ mod tests {
 
     #[test]
     fn dirty_tracked_and_untracked_is_true() {
+        let guard = crate::ProcessEnvGuard::acquire();
         let own = temp_prefix("rsfulmen-hostid-dirty-");
-        init_repo(own.path(), "own-dirty\n");
+        init_repo(own.path(), "own-dirty\n", &guard);
         fs::write(own.path().join("README"), "edited\n").unwrap();
         fs::write(own.path().join("untracked.txt"), "new\n").unwrap();
-        let result = probe_at(own.path(), base_env());
+        let result = probe_at(own.path(), base_env(&guard));
         assert_eq!(result.stamps.dirty, Some(true));
     }
 
     #[test]
     fn foreign_index_does_not_mask_dirty() {
+        let guard = crate::ProcessEnvGuard::acquire();
         let own = temp_prefix("rsfulmen-hostid-idx-own-");
         let foreign = temp_prefix("rsfulmen-hostid-idx-foreign-");
-        init_repo(own.path(), "own-idx\n");
-        init_repo(foreign.path(), "foreign-idx\n");
+        init_repo(own.path(), "own-idx\n", &guard);
+        init_repo(foreign.path(), "foreign-idx\n", &guard);
         fs::write(own.path().join("README"), "edited\n").unwrap();
         fs::write(own.path().join("untracked.txt"), "new\n").unwrap();
-        let mut env_map = base_env();
+        let mut env_map = base_env(&guard);
         env_map.insert(
             "GIT_INDEX_FILE".into(),
             foreign.path().join(".git/index").to_string_lossy().into(),
@@ -582,17 +584,19 @@ mod tests {
 
     #[test]
     fn no_git_commit_unknown_dirty_omitted() {
+        let guard = crate::ProcessEnvGuard::acquire();
         let dir = temp_prefix("rsfulmen-hostid-nogit-");
         fs::write(dir.path().join("Cargo.toml"), "[package]\nname=\"x\"\n").unwrap();
-        let result = probe_at(dir.path(), base_env());
+        let result = probe_at(dir.path(), base_env(&guard));
         assert_eq!(result.stamps.commit, "unknown");
         assert_eq!(result.stamps.dirty, None);
     }
 
     #[test]
     fn malformed_dirty_override_is_unknown() {
+        let guard = crate::ProcessEnvGuard::acquire();
         let dir = temp_prefix("rsfulmen-hostid-mal-");
-        let mut env_map = base_env();
+        let mut env_map = base_env(&guard);
         env_map.insert("FULMEN_HOST_DIRTY".into(), "yes".into());
         let result = probe_at(dir.path(), env_map);
         assert_eq!(result.stamps.dirty, None);
@@ -600,11 +604,12 @@ mod tests {
 
     #[test]
     fn detached_packed_and_worktree_resolve_own_commit() {
+        let guard = crate::ProcessEnvGuard::acquire();
         let own = temp_prefix("rsfulmen-hostid-geo-");
-        let sha = init_repo(own.path(), "own-geo\n");
+        let sha = init_repo(own.path(), "own-geo\n", &guard);
 
         git_in(own.path(), &["checkout", "--detach", "HEAD"]);
-        let detached = probe_at(own.path(), base_env());
+        let detached = probe_at(own.path(), base_env(&guard));
         assert_eq!(detached.stamps.commit, sha);
         assert!(
             detached
@@ -617,7 +622,7 @@ mod tests {
 
         git_in(own.path(), &["checkout", "-B", "hostid-rebranch"]);
         git_in(own.path(), &["pack-refs", "--all"]);
-        let packed = probe_at(own.path(), base_env());
+        let packed = probe_at(own.path(), base_env(&guard));
         assert_eq!(packed.stamps.commit, sha);
         assert!(
             packed
@@ -640,7 +645,7 @@ mod tests {
                 "HEAD",
             ],
         );
-        let linked = probe_at(&wt_path, base_env());
+        let linked = probe_at(&wt_path, base_env(&guard));
         assert_eq!(linked.stamps.commit, sha);
         assert!(
             linked.rerun_if_changed.iter().any(|p| {
@@ -650,6 +655,19 @@ mod tests {
             }),
             "linked worktree must invalidate worktree git dir: {:?}",
             linked.rerun_if_changed
+        );
+    }
+
+    #[test]
+    fn base_env_signature_requires_process_env_guard() {
+        let src = include_str!("producer.rs");
+        assert!(
+            src.contains("fn base_env(_guard: &crate::ProcessEnvGuard)"),
+            "PATH/HOME snapshots must take ProcessEnvGuard so an unguarded call cannot compile"
+        );
+        assert!(
+            !src.contains(concat!("fn base_env(", ") ->")),
+            "pre-fix unguarded base_env signature must not exist"
         );
     }
 }
