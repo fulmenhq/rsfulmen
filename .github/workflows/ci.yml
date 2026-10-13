@@ -23,16 +23,16 @@ jobs:
       options: --user 1001
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
           fetch-depth: 0
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@1.98.0
+        uses: dtolnay/rust-toolchain@16c20dfc2b8bc5cd72c3bf5072a9453664776e70 # 1.98.0
         with:
           components: rustfmt, clippy
       - name: Cache cargo registry
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
             /tmp/rsfulmen-cargo/registry
@@ -89,13 +89,13 @@ jobs:
           - "fulpack"
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@1.98.0
+        uses: dtolnay/rust-toolchain@16c20dfc2b8bc5cd72c3bf5072a9453664776e70 # 1.98.0
       - name: Cache cargo registry
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
             /tmp/rsfulmen-cargo/registry
@@ -131,11 +131,11 @@ jobs:
       options: --user 1001
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
       - name: Set up Rust 1.88
-        uses: dtolnay/rust-toolchain@1.88.0
+        uses: dtolnay/rust-toolchain@9c73e2f62269c4b1d0240bd5dd1b81de08099bb6 # 1.88.0
       - name: Build
         run: cargo build --locked --all-features
         env:
@@ -158,11 +158,11 @@ jobs:
       options: --user 1001
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@1.98.0
+        uses: dtolnay/rust-toolchain@16c20dfc2b8bc5cd72c3bf5072a9453664776e70 # 1.98.0
       - name: cargo deny (licenses bans advisories sources)
         run: cargo deny --all-features check licenses bans advisories sources
   # Estate 5-way native matrix (storageprims / forgebolt labels).
@@ -171,30 +171,38 @@ jobs:
   platform_smoke:
     name: platform-smoke (${{ matrix.target }})
     runs-on: ${{ matrix.runner }}
+    # Custom `-s` runners are privately managed. Fork pull_request events
+    # stay on GitHub-hosted isolated runners only.
+    if: ${{ !matrix.trusted_runner || github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - runner: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+            trusted_runner: false
           - runner: ubuntu-latest-arm64-s
             target: aarch64-unknown-linux-gnu
+            trusted_runner: true
           - runner: macos-15
             target: aarch64-apple-darwin
+            trusted_runner: false
           - runner: windows-latest
             target: x86_64-pc-windows-msvc
+            trusted_runner: false
           - runner: windows-latest-arm64-s
             target: aarch64-pc-windows-msvc
+            trusted_runner: true
     defaults:
       run:
         shell: bash
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@1.98.0
+        uses: dtolnay/rust-toolchain@16c20dfc2b8bc5cd72c3bf5072a9453664776e70 # 1.98.0
         with:
           components: rustfmt, clippy
       - name: Verify native host
@@ -202,6 +210,8 @@ jobs:
           set -euo pipefail
           host=$(rustc -vV | awk '/^host:/{print $2}')
           test "$host" = "${{ matrix.target }}"
+      - name: Clippy
+        run: cargo clippy --locked --all-targets --all-features -- -D warnings
       - name: Test
         run: cargo test --locked --all-features
       - name: Build

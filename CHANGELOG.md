@@ -12,7 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Windows `file://` schema containment** — catalog roots from
   `fs::canonicalize` use `\\?\` verbatim prefixes; `Url::to_file_path`
   does not. Containment now strips those prefixes and folds ASCII case
-  so local `file://` `$ref`s resolve on Windows.
+  so local `file://` `$ref`s resolve on Windows. Intermediate reparse
+  points (junctions, directory symlinks) under a catalog root are
+  rejected before `fs::read`.
 
 ## [0.2.1] - 2026-10-12
 

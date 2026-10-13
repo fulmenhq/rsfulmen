@@ -8,6 +8,7 @@ use jsonschema::{JSONSchema, SchemaResolver, SchemaResolverError};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::fs;
+#[cfg(unix)]
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -47,8 +48,10 @@ pub struct FileSchemaOptions {
 /// The root schema path and each `ref_dirs` entry must be real (non-symlink)
 /// files/directories. On Windows, containment compares paths after stripping
 /// `\\?\` verbatim prefixes and folding ASCII case so `file://` URLs match
-/// `fs::canonicalize` roots. On other platforms, catalog roots are treated as
-/// trusted for the duration of validation.
+/// `fs::canonicalize` roots. Intermediate reparse points (junctions, directory
+/// symlinks) under a catalog root are rejected before `fs::read`. On other
+/// platforms, catalog roots are treated as trusted for the duration of
+/// validation.
 pub struct FileBackedResolver {
     allowed_roots: Vec<PathBuf>,
     schema_dir: PathBuf,
@@ -599,11 +602,53 @@ fn read_under_root(root: &Path, abs: &Path) -> Result<Value, String> {
         file.read_to_end(&mut buf).map_err(|e| e.to_string())?;
         parse_schema_bytes(&abs.display().to_string(), &buf).map_err(|e| e.to_string())
     }
-    #[cfg(not(unix))]
+    #[cfg(windows)]
+    {
+        reject_reparse_components(root, abs)?;
+        let bytes = fs::read(abs).map_err(|e| e.to_string())?;
+        parse_schema_bytes(&abs.display().to_string(), &bytes).map_err(|e| e.to_string())
+    }
+    #[cfg(all(not(unix), not(windows)))]
     {
         let bytes = fs::read(abs).map_err(|e| e.to_string())?;
         parse_schema_bytes(&abs.display().to_string(), &bytes).map_err(|e| e.to_string())
     }
+}
+
+#[cfg(windows)]
+fn is_reparse_point(meta: &fs::Metadata) -> bool {
+    use std::os::windows::fs::MetadataExt;
+    const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
+    meta.file_type().is_symlink() || (meta.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT) != 0
+}
+
+/// Walk from `abs` up to `root` and reject any reparse point so `fs::read`
+/// cannot follow an in-root junction or symlink outside the catalog.
+#[cfg(windows)]
+fn reject_reparse_components(root: &Path, abs: &Path) -> Result<(), String> {
+    let mut cursor = abs.to_path_buf();
+    loop {
+        if let Ok(meta) = fs::symlink_metadata(&cursor) {
+            if is_reparse_point(&meta) {
+                return Err(format!(
+                    "catalog path is a reparse point: {}",
+                    cursor.display()
+                ));
+            }
+        }
+        if comparable_windows_path(&cursor) == comparable_windows_path(root) {
+            break;
+        }
+        if !cursor.pop() {
+            break;
+        }
+        if !path_is_under_root(&cursor, root)
+            && comparable_windows_path(&cursor) != comparable_windows_path(root)
+        {
+            break;
+        }
+    }
+    Ok(())
 }
 
 #[cfg(unix)]
@@ -1464,5 +1509,69 @@ mod tests {
             ),
             "sibling prefix must not count as contained"
         );
+    }
+
+    #[cfg(windows)]
+    fn create_junction(link: &Path, target: &Path) -> std::io::Result<()> {
+        if std::os::windows::fs::symlink_dir(target, link).is_ok() {
+            return Ok(());
+        }
+        let status = std::process::Command::new("cmd")
+            .args(["/C", "mklink", "/J"])
+            .arg(link)
+            .arg(target)
+            .status()?;
+        if status.success() {
+            Ok(())
+        } else {
+            Err(std::io::Error::other("mklink /J failed"))
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn in_root_junction_to_outside_is_compile_failure() {
+        let dir = scratch_dir();
+        write_catalog(&dir);
+        let outside = dir.parent().unwrap().join(format!(
+            "rsfulmen-win-junc-{}-{}",
+            std::process::id(),
+            TEST_SEQ.fetch_add(1, Ordering::SeqCst)
+        ));
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(outside.join("evil.schema.json"), r#"{"type":"number"}"#).unwrap();
+        let link = dir.join("junc");
+        create_junction(&link, &outside).expect("create junction or directory symlink");
+        fs::write(
+            dir.join("uses-junc.schema.json"),
+            r#"{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "x": { "$ref": "junc/evil.schema.json" }
+  }
+}
+"#,
+        )
+        .unwrap();
+        let err = validate_instance_with_schema_file(
+            &dir.join("uses-junc.schema.json"),
+            &json!({}),
+            opts(&dir),
+        )
+        .unwrap_err();
+        let _ = fs::remove_dir(&link);
+        let _ = fs::remove_dir_all(&outside);
+        match err {
+            SchemaValidationError::SchemaCompileFailed { message, .. } => {
+                assert!(
+                    message.contains("reparse")
+                        || message.contains("symlink")
+                        || message.contains("not contained"),
+                    "{message}"
+                );
+            }
+            other => panic!("expected compile failure, got {other:?}"),
+        }
     }
 }
