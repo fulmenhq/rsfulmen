@@ -45,7 +45,47 @@ fn custom_s_runners_require_same_repository_pull_request() {
         "estate 5-way labels must stay present"
     );
     assert!(
+        text.contains("platform_smoke_trusted:"),
+        "custom -s runners must live in a separate job so the gate can skip them"
+    );
+    assert!(
         text.contains("pull_request.head.repo.full_name") && text.contains("github.repository"),
         "fork pull_request events must not run on custom runners"
+    );
+    // GitHub rejects `matrix` in a job-level `if` at compile time
+    // ("Unrecognized named-value: 'matrix'") and fails the whole workflow
+    // with zero jobs. The trusted-runner gate must not use that context.
+    for (idx, raw) in text.lines().enumerate() {
+        let line = raw.trim();
+        if line.starts_with("if:") {
+            assert!(
+                !line.contains("matrix."),
+                "line {}: job-level if cannot reference matrix: {line}",
+                idx + 1
+            );
+        }
+    }
+}
+
+#[test]
+fn rust_toolchain_sha_pins_set_toolchain() {
+    let text = include_str!("../.github/workflows/ci.yml");
+    let lines: Vec<&str> = text.lines().collect();
+    let mut pins = 0usize;
+    for (i, line) in lines.iter().enumerate() {
+        if !line.contains("dtolnay/rust-toolchain@") {
+            continue;
+        }
+        pins += 1;
+        let window = lines[i..i.saturating_add(8).min(lines.len())].join("\n");
+        assert!(
+            window.contains("toolchain:"),
+            "line {}: SHA-pinned rust-toolchain must set toolchain:",
+            i + 1
+        );
+    }
+    assert!(
+        pins >= 2,
+        "expected rust-toolchain pins for 1.98 and 1.88, found {pins}"
     );
 }
