@@ -4,13 +4,10 @@
 //! **templated** route (or a raw path that [`normalize_route`] will rewrite),
 //! status, and duration. No `axum` / `tower` / listen socket.
 
-use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use super::{Metrics, TelemetryError};
 
-const MAX_HTTP_SERIES: usize = 10_000;
 const OTHER_ROUTE: &str = "__other__";
 const STANDARD_METHODS: &[&str] = &[
     "GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH",
@@ -208,8 +205,6 @@ pub struct HttpRecorder {
     metrics: Metrics,
     service: String,
     track_sizes: bool,
-    label_sets: Arc<Mutex<HashMap<String, HashSet<String>>>>,
-    label_cap: usize,
 }
 
 impl HttpRecorder {
@@ -219,8 +214,6 @@ impl HttpRecorder {
             metrics,
             service: service.into(),
             track_sizes: false,
-            label_sets: Arc::new(Mutex::new(HashMap::new())),
-            label_cap: MAX_HTTP_SERIES,
         }
     }
 
@@ -243,6 +236,10 @@ impl HttpRecorder {
     }
 
     /// Record a completed request (counter + duration, optional sizes).
+    ///
+    /// Label sets share one cap on the [`Metrics`] registry. Past the cap,
+    /// the route collapses to `__other__` and the status collapses to its
+    /// outcome class so request-controlled labels cannot open more series.
     pub fn record(&self, record: HttpRecord) -> Result<(), TelemetryError> {
         let method = canonical_method(&record.method);
         let mut route = if record.normalize {
@@ -250,18 +247,13 @@ impl HttpRecorder {
         } else {
             record.route
         };
-        let status = record.status.to_string();
         let outcome = outcome_from_status(record.status);
+        let mut status = record.status.to_string();
         let service = self.service.as_str();
-        let signature = format!("{method}\n{route}\n{status}\n{outcome}");
-        {
-            let mut seen = self
-                .label_sets
-                .lock()
-                .expect("http label set lock poisoned");
-            if !admit_series(&mut seen, "http_requests_total", &signature, self.label_cap) {
-                route = OTHER_ROUTE.to_string();
-            }
+        let signature = format!("{service}\n{method}\n{route}\n{status}\n{outcome}");
+        if !self.metrics.admit_http_series(&signature) {
+            route = OTHER_ROUTE.to_string();
+            status = outcome.to_string();
         }
 
         self.metrics
@@ -312,29 +304,6 @@ impl HttpRecorder {
         }
         Ok(())
     }
-}
-
-fn admit_series(
-    seen: &mut HashMap<String, HashSet<String>>,
-    metric: &str,
-    signature: &str,
-    cap: usize,
-) -> bool {
-    let set = seen.entry(metric.to_string()).or_default();
-    if set.contains(signature) {
-        return true;
-    }
-    let overflow = "__overflow__".to_string();
-    let reserved = set.contains(&overflow);
-    let limit = if reserved { cap } else { cap.saturating_sub(1) };
-    if set.len() < limit {
-        set.insert(signature.to_string());
-        return true;
-    }
-    if !reserved {
-        set.insert(overflow);
-    }
-    false
 }
 
 /// Guard that decrements `http_active_requests` when dropped.
@@ -432,8 +401,8 @@ mod tests {
     #[test]
     fn label_sets_collapse_past_cap_and_unknown_methods() {
         let metrics = Metrics::new();
-        let mut rec = HttpRecorder::new(metrics.clone(), "api");
-        rec.label_cap = 3;
+        metrics.set_http_series_cap(3);
+        let rec = HttpRecorder::new(metrics.clone(), "api");
         for i in 0..5 {
             rec.record(HttpRecord::new("GET", format!("/only-{i}"), 404))
                 .unwrap();
@@ -446,6 +415,59 @@ mod tests {
         assert!(!text.contains("/only-4"), "{text}");
         assert!(text.contains("method=\"OTHER\""), "{text}");
         assert!(!text.contains("9f8e"), "{text}");
+    }
+
+    #[test]
+    fn recorders_share_one_registry_cap() {
+        let metrics = Metrics::new();
+        metrics.set_http_series_cap(3);
+        let left = HttpRecorder::new(metrics.clone(), "api");
+        let right = HttpRecorder::new(metrics.clone(), "api");
+        left.record(HttpRecord::new("GET", "/ra-0", 200)).unwrap();
+        right.record(HttpRecord::new("GET", "/rb-0", 200)).unwrap();
+        left.record(HttpRecord::new("GET", "/ra-1", 200)).unwrap();
+        right.record(HttpRecord::new("GET", "/rb-1", 200)).unwrap();
+        let text = metrics.export_prometheus_text().unwrap();
+        let series = text
+            .lines()
+            .filter(|line| line.starts_with("http_requests_total{"))
+            .count();
+        assert!(series <= 3, "{series}\n{text}");
+        assert!(text.contains("route=\"__other__\""), "{text}");
+        let present = ["/ra-0", "/rb-0", "/ra-1", "/rb-1"]
+            .into_iter()
+            .filter(|route| text.contains(route))
+            .count();
+        assert_eq!(present, 2, "{text}");
+    }
+
+    #[test]
+    fn overflow_collapses_status_to_outcome() {
+        let metrics = Metrics::new();
+        metrics.set_http_series_cap(3);
+        let rec = HttpRecorder::new(metrics.clone(), "api");
+        rec.record(HttpRecord::new("GET", "/keep-a", 200)).unwrap();
+        rec.record(HttpRecord::new("GET", "/keep-b", 200)).unwrap();
+        for status in [201u16, 404, 401, 500, 503, 302, 418] {
+            rec.record(HttpRecord::new("GET", format!("/past-{status}"), status))
+                .unwrap();
+        }
+        let text = metrics.export_prometheus_text().unwrap();
+        assert!(text.contains("route=\"/keep-a\""), "{text}");
+        assert!(text.contains("route=\"/keep-b\""), "{text}");
+        assert!(text.contains("route=\"__other__\""), "{text}");
+        assert!(!text.contains("/past-"), "{text}");
+        for status in ["201", "404", "401", "500", "503", "302", "418"] {
+            assert!(!text.contains(&format!("status=\"{status}\"")), "{text}");
+        }
+        assert!(text.contains("status=\"4xx\""), "{text}");
+        assert!(text.contains("status=\"5xx\""), "{text}");
+        let series = text
+            .lines()
+            .filter(|line| line.starts_with("http_requests_total{"))
+            .count();
+        // Two admitted routes plus one overflow series per outcome class.
+        assert!(series <= 6, "{series}\n{text}");
     }
 
     #[test]

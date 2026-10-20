@@ -321,9 +321,11 @@ _Use case: Emit metrics that conform to your organization's taxonomy without bui
 
 Taxonomy-backed counters, gauges, and histograms. Export JSON events or
 Prometheus text (no in-process scrape server). HTTP helpers record `http_*`
-metrics. Pass a route template when you have one: raw paths are
-normalized (ids and long tokens) and label sets are capped, and
-cardinality stays bounded for a templated route.
+metrics. Pass a route template when you have one. Raw paths are normalized
+for ids, UUIDs, and long tokens that contain a digit. Letter-only and
+email-shaped segments are left as-is; a cap shared by every recorder on
+the same registry is the backstop. Past that cap, further series collapse
+to `route="__other__"` and a status equal to the outcome class.
 
 ```rust
 use rsfulmen::telemetry_metrics::{HttpRecord, HttpRecorder, Metrics};
