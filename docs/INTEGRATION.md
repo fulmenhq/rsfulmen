@@ -153,6 +153,9 @@ root detection.
 `HOME=/` or `/root` falls back to the current working directory. A home
 that is not an ancestor stops with `BoundaryReached`. PathConstraint /
 RespectConstraints is deferred; pass `boundary` instead.
+The default `follow_symlinks: false` mode rejects `..` components in start and
+boundary paths and hides repository markers behind symlinked directories below
+the ceiling. Aliases at or above the ceiling remain allowed.
 
 ```rust
 use rsfulmen::pathfinder::{

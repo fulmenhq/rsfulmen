@@ -465,11 +465,16 @@ fn path_has_symlink_between(boundary: &Path, current: &Path) -> bool {
     let Ok(boundary) = canonicalize_for_compare(boundary) else {
         return true;
     };
-    // Find the ceiling in the caller's ancestry using resolved identities.
-    // Do not canonicalize descendants away: every hop below it must be checked.
-    let Some(ceiling) = current.ancestors().find(|ancestor| {
-        canonicalize_for_compare(ancestor).is_ok_and(|path| paths_equal(&path, &boundary))
-    }) else {
+    // Use the outermost resolved ceiling occurrence: an in-bound symlink back
+    // to the ceiling must itself be screened, not become the screening anchor.
+    // Aliases at or above that occurrence remain allowed.
+    let Some(ceiling) = current
+        .ancestors()
+        .filter(|ancestor| {
+            canonicalize_for_compare(ancestor).is_ok_and(|path| paths_equal(&path, &boundary))
+        })
+        .last()
+    else {
         return true;
     };
     for descendant in current.ancestors().take_while(|path| *path != ceiling) {
@@ -1352,6 +1357,69 @@ mod tests {
             }
         }
     }
+    #[cfg(unix)]
+    fn check_alias_back_to_ceiling(home_ceiling: bool, ceiling_marker: bool) {
+        let tmp = TestDir::new();
+        let ceiling = tmp.path().join("ceiling");
+        fs::create_dir_all(ceiling.join("repo/.git")).unwrap();
+        if ceiling_marker {
+            fs::create_dir(ceiling.join(".git")).unwrap();
+        }
+        std::os::unix::fs::symlink(&ceiling, ceiling.join("back")).unwrap();
+
+        // Cover the hop itself, a marked descendant, and repeated back aliases.
+        for suffix in ["back", "back/repo", "back/back", "back/back/repo"] {
+            let start = ceiling.join(suffix);
+            let result = if home_ceiling {
+                with_home(&ceiling, || {
+                    discover_repository_root(&start, &default_opts())
+                })
+            } else {
+                discover_repository_root(&start, &opts(&[".git"], &ceiling, 10))
+            };
+            if ceiling_marker {
+                assert_eq!(
+                    result.unwrap(),
+                    ceiling,
+                    "only the actual ceiling may supply a marker: start={start:?}"
+                );
+            } else {
+                assert!(
+                    matches!(result, Err(RepositoryRootError::RepositoryNotFound { .. })),
+                    "markers behind the back alias must be hidden: start={start:?}, {result:?}"
+                );
+            }
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn regression_m1_back_to_explicit_ceiling_without_marker() {
+        let _lock = crate::test_env_lock();
+        check_alias_back_to_ceiling(false, false);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn regression_m1_back_to_explicit_ceiling_with_marker() {
+        let _lock = crate::test_env_lock();
+        check_alias_back_to_ceiling(false, true);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn regression_m1_back_to_home_ceiling_without_marker() {
+        let _lock = crate::test_env_lock();
+        check_alias_back_to_ceiling(true, false);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn regression_m1_back_to_home_ceiling_with_marker() {
+        let _lock = crate::test_env_lock();
+        check_alias_back_to_ceiling(true, true);
+    }
+
     #[cfg(unix)]
     fn check_boundary_alias(mode: u8) {
         let tmp = TestDir::new();
