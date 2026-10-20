@@ -100,7 +100,9 @@ help: ## Show this help message
 	@echo "  RSFULMEN_TAGGER_EMAIL     - annotated-tag tagger email"
 	@echo ""
 	@echo "Required env for release-publish:"
+	@echo "  RSFULMEN_TAGGER_NAME/EMAIL - expected tagger of the signed tag"
 	@echo "  RSFULMEN_MINISIGN_PUB     - minisign public key; attestation is verified before upload"
+	@echo "  RSFULMEN_RELEASE_REMOTE   - optional remote to compare the tag with (default origin)"
 	@echo "  RSFULMEN_RELEASE_TAG      - optional tag override (must match VERSION)"
 	@echo ""
 

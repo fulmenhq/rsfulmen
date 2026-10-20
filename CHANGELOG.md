@@ -64,6 +64,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`release-publish` binds the attestation to the published tag** — it
+  previously checked only the tag name, that a same-name local tag existed,
+  and the minisign signature, so a stale or substituted attestation or a
+  different same-name tag could pass. Before calling `gh` it now requires an
+  annotated tag whose target is `HEAD` (also with `RSFULMEN_RELEASE_TAG`),
+  `git verify-tag` plus the `RSFULMEN_TAGGER_NAME` / `RSFULMEN_TAGGER_EMAIL`
+  identity, attestation `tag` / `tag_object` / `tag_target` equal to the live
+  tag, and the same tag object and commit on `RSFULMEN_RELEASE_REMOTE`
+  (default `origin`). The tagger env is now required for `release-publish`.
+
 - **Prometheus exporter rejects invalid label names** — tag keys outside
   `[a-zA-Z_][a-zA-Z0-9_]*`, keys starting with the reserved `__`, and `le`
   on a histogram were written raw into the exposition (e.g.
