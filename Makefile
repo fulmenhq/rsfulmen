@@ -103,6 +103,7 @@ help: ## Show this help message
 	@echo "  RSFULMEN_TAGGER_NAME/EMAIL - expected tagger of the signed tag"
 	@echo "  RSFULMEN_MINISIGN_PUB     - minisign public key; attestation is verified before upload"
 	@echo "  RSFULMEN_RELEASE_REMOTE   - optional remote to compare the tag with (default origin)"
+	@echo "  RSFULMEN_RELEASE_REPO     - optional owner/name to publish to (default: from that remote)"
 	@echo "  RSFULMEN_RELEASE_TAG      - optional tag override (must match VERSION)"
 	@echo ""
 

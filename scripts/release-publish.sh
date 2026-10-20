@@ -56,6 +56,48 @@ require_equal() {
 	fi
 }
 
+# github_repo_from_url URL: print owner/name for a github.com remote URL.
+github_repo_from_url() {
+	printf '%s\n' "$1" | sed -nE \
+		-e 's#^(https|ssh)://([^@/]+@)?github\.com(:[0-9]+)?/([^/]+/[^/]+)$#\4#p' \
+		-e 's#^[^@/]+@github\.com:([^/]+/[^/]+)$#\1#p' |
+		sed -E 's#\.git$##; s#/$##'
+}
+
+# resolve_release_repo REMOTE: the one GitHub repository that both the remote
+# tag check and gh target. RSFULMEN_RELEASE_REPO (owner/name) wins; otherwise
+# it comes from the remote URL. Any conflicting gh selector is refused.
+resolve_release_repo() {
+	local remote="$1" url derived repo
+	url="$(git remote get-url "${remote}" 2>/dev/null)" || {
+		echo "error: remote ${remote} not configured" >&2
+		return 1
+	}
+	derived="$(github_repo_from_url "${url}")"
+	repo="${RSFULMEN_RELEASE_REPO:-${derived}}"
+	if [ -z "${repo}" ]; then
+		echo "error: cannot derive a github.com repository from remote ${remote}; set RSFULMEN_RELEASE_REPO=owner/name" >&2
+		return 1
+	fi
+	if ! printf '%s\n' "${repo}" | grep -Eq '^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$'; then
+		echo "error: release repository must be owner/name: ${repo}" >&2
+		return 1
+	fi
+	if [ -n "${derived}" ] && [ "${derived}" != "${repo}" ]; then
+		echo "error: RSFULMEN_RELEASE_REPO=${repo} differs from remote ${remote} (${derived})" >&2
+		return 1
+	fi
+	if [ -n "${GH_REPO:-}" ] && [ "${GH_REPO}" != "${repo}" ] && [ "${GH_REPO}" != "github.com/${repo}" ]; then
+		echo "error: GH_REPO=${GH_REPO} differs from release repository ${repo}" >&2
+		return 1
+	fi
+	if [ -n "${GH_HOST:-}" ] && [ "${GH_HOST}" != "github.com" ]; then
+		echo "error: GH_HOST=${GH_HOST} is not github.com" >&2
+		return 1
+	fi
+	printf '%s\n' "${repo}"
+}
+
 main() {
 	local root
 	root="$(repo_root)"
@@ -105,7 +147,10 @@ main() {
 	head="$(git rev-parse HEAD)"
 	require_equal "tag ${tag} target vs HEAD" "${head}" "${tag_target}"
 
-	local gpg_homedir="${RSFULMEN_GPG_HOMEDIR:-}"
+	local gpg_homedir="${RSFULMEN_GPG_HOMEDIR:-${RSFULMEN_GPG_HOME:-}}"
+	if [ -n "${RSFULMEN_GPG_HOME:-}" ] && [ -z "${RSFULMEN_GPG_HOMEDIR:-}" ]; then
+		echo "warning: RSFULMEN_GPG_HOME is deprecated; use RSFULMEN_GPG_HOMEDIR" >&2
+	fi
 	if [ -n "${gpg_homedir}" ]; then
 		if [ ! -d "${gpg_homedir}" ]; then
 			echo "error: RSFULMEN_GPG_HOMEDIR=${gpg_homedir} is not a directory" >&2
@@ -115,8 +160,8 @@ main() {
 	fi
 	require_tagger_env
 	echo "→ Verifying tag signature: ${tag}"
-	if ! git verify-tag "${tag}" >/dev/null 2>&1; then
-		echo "error: tag ${tag} has no valid signature (git verify-tag failed)" >&2
+	if ! git verify-tag "refs/tags/${tag}" >/dev/null 2>&1; then
+		echo "error: tag ${tag} has no valid signature (git verify-tag failed; check RSFULMEN_GPG_HOMEDIR)" >&2
 		exit 1
 	fi
 	verify_tag_identity "${tag}"
@@ -136,7 +181,10 @@ main() {
 	fi
 
 	echo "→ Verifying minisign attestation: ${sig}"
-	minisign -Vm "${payload}" -p "${RSFULMEN_MINISIGN_PUB}" >/dev/null
+	if ! minisign -Vm "${payload}" -p "${RSFULMEN_MINISIGN_PUB}" >/dev/null; then
+		echo "error: minisign verification failed for ${payload}" >&2
+		exit 1
+	fi
 	echo "✅ Minisign attestation verified: ${sig}"
 
 	local att_tag att_object att_target
@@ -149,6 +197,10 @@ main() {
 	echo "✅ Attestation matches tag ${tag} (${tag_object} -> ${tag_target})"
 
 	local remote="${RSFULMEN_RELEASE_REMOTE:-origin}"
+	local repo
+	repo="$(resolve_release_repo "${remote}")" || exit 1
+	echo "→ Release repository: ${repo} (remote ${remote})"
+
 	local remote_refs remote_object remote_target
 	if ! remote_refs="$(git ls-remote --tags "${remote}" "refs/tags/${tag}" "refs/tags/${tag}^{}")"; then
 		echo "error: could not list tags on remote ${remote}" >&2
@@ -165,13 +217,23 @@ main() {
 		exit 1
 	fi
 
-	if gh release view "${tag}" >/dev/null 2>&1; then
+	# Bind the destination too: the tag gh will release must be the same
+	# annotated tag object (and so the same commit) that was verified.
+	local dest_ref
+	if ! dest_ref="$(gh api "repos/${repo}/git/ref/tags/${tag}" --jq '.object.type + " " + .object.sha')"; then
+		echo "error: tag ${tag} not found in GitHub repository ${repo}" >&2
+		exit 1
+	fi
+	require_equal "GitHub ${repo} tag ${tag}" "tag ${tag_object}" "${dest_ref}"
+	echo "✅ GitHub ${repo} tag ${tag} matches"
+
+	if gh release view "${tag}" --repo "${repo}" >/dev/null 2>&1; then
 		echo "error: GitHub release ${tag} already exists" >&2
 		exit 1
 	fi
 
 	echo "→ Creating GitHub release: ${tag}"
-	gh release create "${tag}" --notes-file "${notes}" "${payload}" "${sig}"
+	gh release create "${tag}" --repo "${repo}" --verify-tag --notes-file "${notes}" "${payload}" "${sig}"
 	echo "✅ Published GitHub release: ${tag}"
 }
 

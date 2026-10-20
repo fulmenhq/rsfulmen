@@ -18,6 +18,7 @@ This checklist follows the shared ecosystem pattern (gofulmen/pyfulmen/tsfulmen/
 - `RSFULMEN_MINISIGN_KEY`: optional minisign secret key path (creates a sidecar signature for the tag attestation)
 - `RSFULMEN_MINISIGN_PUB`: minisign public key path. Optional for `make release-tag` / `make release-verify-tag`. Required by `make release-publish` so the attestation is verified before upload.
 - `RSFULMEN_RELEASE_REMOTE`: remote whose tag `make release-publish` compares with the local tag (default `origin`)
+- `RSFULMEN_RELEASE_REPO`: optional `owner/name` of the GitHub repository to publish to; defaults to the one in the `RSFULMEN_RELEASE_REMOTE` URL and must match it. `GH_REPO`/`GH_HOST` must not select anything else.
 - `RSFULMEN_ALLOW_NON_MAIN=1`: optional override to tag from a non-`main` branch (not recommended)
 - `RSFULMEN_ALLOW_UNTAGGED=1`: skip tag requirement in guard check (for local dry-runs only). `make release-publish` rejects this override.
 
@@ -124,6 +125,7 @@ Note: `RSFULMEN_RELEASE_TAG` is not a secret and typically isn't stored in encry
     - `git verify-tag` passes (`RSFULMEN_GPG_HOMEDIR` selects the keyring) and the tagger matches `RSFULMEN_TAGGER_NAME` / `RSFULMEN_TAGGER_EMAIL`
     - the minisign attestation verifies with `RSFULMEN_MINISIGN_PUB`, and its `tag`, `tag_object` and `tag_target` equal the tag name, tag object and target commit
     - the tag on `RSFULMEN_RELEASE_REMOTE` (default `origin`) has the same tag object and commit, so push the tag first
+    - the tag on the GitHub repository being published to (read with `gh api`) is that same tag object; `gh` then runs with `--repo <that repo> --verify-tag`
   - It also fails before `gh` if any required asset is missing or empty:
     - `CHANGELOG.md` (release notes)
     - `dist/release/<tag>.tag.txt`
@@ -133,6 +135,6 @@ Note: `RSFULMEN_RELEASE_TAG` is not a secret and typically isn't stored in encry
     ```
     Equivalent upload, once those checks have passed:
     ```bash
-    gh release create v$(cat VERSION) --notes-file CHANGELOG.md dist/release/v$(cat VERSION).tag.txt dist/release/v$(cat VERSION).tag.txt.minisig
+    gh release create v$(cat VERSION) --repo fulmenhq/rsfulmen --verify-tag --notes-file CHANGELOG.md dist/release/v$(cat VERSION).tag.txt dist/release/v$(cat VERSION).tag.txt.minisig
     ```
 - [ ] Announce / coordinate downstream upgrades as needed.

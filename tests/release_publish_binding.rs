@@ -18,6 +18,7 @@ static FIXTURE_SEQ: AtomicUsize = AtomicUsize::new(0);
 const TAGGER_NAME: &str = "rsfulmen-test-tagger";
 const TAGGER_EMAIL: &str = "tagger@example.test";
 const VERSION: &str = "9.9.9";
+const REPO: &str = "example/rsf";
 const TAG: &str = "v9.9.9";
 
 // Repository locators and config sources that must not leak in from a hook
@@ -45,6 +46,10 @@ const STRIP: &[&str] = &[
     "RSFULMEN_MINISIGN_PUB",
     "RSFULMEN_RELEASE_REMOTE",
     "RSFULMEN_RELEASE_DIST",
+    "RSFULMEN_RELEASE_REPO",
+    "RSFULMEN_GPG_HOME",
+    "GH_REPO",
+    "GH_HOST",
     "RSFULMEN_PGP_KEY_ID",
     "RSFULMEN_MINISIGN_KEY",
 ];
@@ -107,16 +112,43 @@ impl Fixture {
     }
 
     fn write_shims(&self) {
-        // `gh release view` reports "no such release"; everything is logged.
+        // Every gh call is logged. `release view` reports "no such release".
+        // `api .../git/ref/tags/<t>` answers from the bare origin (the
+        // destination repo in these tests) unless `dest_ref` overrides it
+        // ("missing" = 404).
+        let origin = self.base.join("origin.git");
+        let dest = self.base.join("dest_ref");
         self.write_exec(
             "gh",
             &format!(
-                "#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{}'\n[ \"$1 $2\" = 'release view' ] && exit 1\nexit 0\n",
-                self.gh_log.display()
+                r#"#!/bin/sh
+printf '%s\n' "$*" >> '{log}'
+case "$1" in
+release) [ "$2" = view ] && exit 1; exit 0 ;;
+api)
+  if [ -f '{dest}' ]; then
+    c=$(cat '{dest}'); [ "$c" = missing ] && exit 1; echo "$c"; exit 0
+  fi
+  ref=${{2#repos/*/git/ref/}}
+  o=$(git --git-dir='{origin}' rev-parse -q --verify "refs/$ref") || exit 1
+  echo "$(git --git-dir='{origin}' cat-file -t "$o") $o"; exit 0 ;;
+esac
+exit 0
+"#,
+                log = self.gh_log.display(),
+                dest = dest.display(),
+                origin = origin.display(),
             ),
         );
-        // minisign is not under test here; the binding checks are.
-        self.write_exec("minisign", "#!/bin/sh\nexit 0\n");
+        // minisign's own check is not under test; `minisign.rc` makes it fail.
+        let rc = self.base.join("minisign.rc");
+        self.write_exec(
+            "minisign",
+            &format!(
+                "#!/bin/sh\n[ -f '{0}' ] && exit \"$(cat '{0}')\"\nexit 0\n",
+                rc.display()
+            ),
+        );
     }
 
     fn cmd(&self, program: &str) -> Command {
@@ -231,7 +263,8 @@ impl Fixture {
         let mut cmd = self.cmd(script.to_str().unwrap());
         cmd.env("RSFULMEN_TAGGER_NAME", TAGGER_NAME)
             .env("RSFULMEN_TAGGER_EMAIL", TAGGER_EMAIL)
-            .env("RSFULMEN_MINISIGN_PUB", self.repo.join("pub.key"));
+            .env("RSFULMEN_MINISIGN_PUB", self.repo.join("pub.key"))
+            .env("RSFULMEN_RELEASE_REPO", REPO);
         for (k, v) in extra {
             cmd.env(k, v);
         }
@@ -239,9 +272,19 @@ impl Fixture {
     }
 
     fn gh_created(&self) -> bool {
-        fs::read_to_string(&self.gh_log)
-            .map(|log| log.lines().any(|l| l.starts_with("release create")))
-            .unwrap_or(false)
+        self.gh_create_line().is_some()
+    }
+
+    fn gh_create_line(&self) -> Option<String> {
+        fs::read_to_string(&self.gh_log).ok().and_then(|log| {
+            log.lines()
+                .find(|l| l.starts_with("release create"))
+                .map(str::to_owned)
+        })
+    }
+
+    fn set_dest_ref(&self, value: &str) {
+        fs::write(self.base.join("dest_ref"), value).expect("dest_ref");
     }
 }
 
@@ -278,7 +321,16 @@ fn publishes_when_tag_attestation_and_remote_agree() {
             "stderr: {}",
             String::from_utf8_lossy(&out.stderr)
         );
-        assert!(fx.gh_created(), "gh release create should run");
+        let create = fx.gh_create_line().expect("gh release create should run");
+        assert!(
+            create.starts_with(&format!("release create {TAG} --repo {REPO} --verify-tag ")),
+            "create must be pinned to the checked repo and tag: {create}"
+        );
+        let log = fs::read_to_string(&fx.gh_log).unwrap();
+        assert!(
+            log.contains(&format!("release view {TAG} --repo {REPO}")),
+            "{log}"
+        );
     }
 }
 
@@ -344,15 +396,12 @@ fn rejects_wrong_tagger_identity() {
     fx.signed_tag("HEAD");
     fx.attest_live_tag();
     fx.push_tag();
-    let script = fx.repo.join("scripts/release-publish.sh");
-    let out = fx
-        .cmd(script.to_str().unwrap())
-        .env("RSFULMEN_TAGGER_NAME", "someone-else")
-        .env("RSFULMEN_TAGGER_EMAIL", TAGGER_EMAIL)
-        .env("RSFULMEN_MINISIGN_PUB", fx.repo.join("pub.key"))
-        .output()
-        .expect("run");
+    let out = fx.publish_with(&[("RSFULMEN_TAGGER_NAME", "someone-else")]);
     assert_refused(&fx, &out, "tagger does not match");
+    let out = fx.publish_with(&[("RSFULMEN_TAGGER_NAME", "")]);
+    assert_refused(&fx, &out, "RSFULMEN_TAGGER_NAME is required");
+    let out = fx.publish_with(&[("RSFULMEN_TAGGER_EMAIL", "")]);
+    assert_refused(&fx, &out, "RSFULMEN_TAGGER_EMAIL is required");
 }
 
 #[test]
@@ -384,4 +433,108 @@ fn rejects_lightweight_tag() {
     let head = fx.git(&["rev-parse", "HEAD"]);
     fx.write_attestation(TAG, &head, &head);
     assert_refused(&fx, &fx.publish(), "is not an annotated tag");
+}
+
+#[test]
+fn rejects_when_github_destination_tag_differs_or_is_missing() {
+    let Some(fx) = Fixture::new("destination tag") else {
+        return;
+    };
+    fx.signed_tag("HEAD");
+    fx.attest_live_tag();
+    fx.push_tag();
+    let object = fx.git(&["rev-parse", &format!("refs/tags/{TAG}")]);
+    let target = fx.git(&["rev-parse", "HEAD"]);
+    // Same name on the publish repo but another tag object.
+    fx.set_dest_ref(&format!("tag {}", "1".repeat(40)));
+    assert_refused(&fx, &fx.publish(), "GitHub example/rsf tag v9.9.9 mismatch");
+    // A lightweight tag on the commit itself is not the verified tag.
+    fx.set_dest_ref(&format!("commit {target}"));
+    assert_refused(&fx, &fx.publish(), "GitHub example/rsf tag v9.9.9 mismatch");
+    fx.set_dest_ref("missing");
+    assert_refused(
+        &fx,
+        &fx.publish(),
+        "not found in GitHub repository example/rsf",
+    );
+    fx.set_dest_ref(&format!("tag {object}"));
+    let out = fx.publish();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+#[test]
+fn rejects_conflicting_release_destination() {
+    let Some(fx) = Fixture::new("destination selectors") else {
+        return;
+    };
+    fx.signed_tag("HEAD");
+    fx.attest_live_tag();
+    fx.push_tag();
+    let out = fx.publish_with(&[("GH_REPO", "other/repo")]);
+    assert_refused(
+        &fx,
+        &out,
+        "GH_REPO=other/repo differs from release repository example/rsf",
+    );
+    let out = fx.publish_with(&[("GH_HOST", "ghe.example.test")]);
+    assert_refused(&fx, &out, "GH_HOST=ghe.example.test is not github.com");
+    let out = fx.publish_with(&[("RSFULMEN_RELEASE_REPO", "")]);
+    assert_refused(
+        &fx,
+        &out,
+        "cannot derive a github.com repository from remote origin",
+    );
+    let out = fx.publish_with(&[("RSFULMEN_RELEASE_REPO", "not a repo")]);
+    assert_refused(&fx, &out, "release repository must be owner/name");
+    // The checked remote names a different GitHub repository.
+    fx.git(&[
+        "remote",
+        "add",
+        "canon",
+        "https://github.com/fulmenhq/rsfulmen.git",
+    ]);
+    let out = fx.publish_with(&[("RSFULMEN_RELEASE_REMOTE", "canon")]);
+    assert_refused(&fx, &out, "differs from remote canon (fulmenhq/rsfulmen)");
+    let out = fx.publish_with(&[("RSFULMEN_RELEASE_REMOTE", "nope")]);
+    assert_refused(&fx, &out, "remote nope not configured");
+    // GH_REPO naming the same repo is accepted.
+    let out = fx.publish_with(&[("GH_REPO", REPO)]);
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+#[test]
+fn rejects_malformed_attestation_and_failed_minisign() {
+    let Some(fx) = Fixture::new("attestation parsing") else {
+        return;
+    };
+    fx.signed_tag("HEAD");
+    fx.push_tag();
+    let object = fx.git(&["rev-parse", &format!("refs/tags/{TAG}")]);
+    let target = fx.git(&["rev-parse", "HEAD"]);
+    let payload = fx.repo.join(format!("dist/release/{TAG}.tag.txt"));
+    fx.attest_live_tag();
+    let good = fs::read_to_string(&payload).unwrap();
+
+    fs::write(&payload, format!("{good}\ttag_target: {target}\n")).unwrap();
+    assert_refused(&fx, &fx.publish(), "exactly one tag_target: line");
+    fs::write(&payload, format!("\ttag: {TAG}\n\ttag_target: {target}\n")).unwrap();
+    assert_refused(&fx, &fx.publish(), "exactly one tag_object: line");
+    fs::write(
+        &payload,
+        format!("\ttag: {TAG}\n\ttag_object: {object} extra\n\ttag_target: {target}\n"),
+    )
+    .unwrap();
+    assert_refused(&fx, &fx.publish(), "attestation tag_object mismatch");
+
+    fs::write(&payload, &good).unwrap();
+    fs::write(fx.base.join("minisign.rc"), "1").unwrap();
+    assert_refused(&fx, &fx.publish(), "minisign verification failed");
 }
