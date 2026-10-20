@@ -67,11 +67,11 @@ impl FileBackedResolver {
         schema_path: &Path,
         opts: &FileSchemaOptions,
     ) -> Result<Self, SchemaValidationError> {
-        let schema_path = require_real_canonical(schema_path)?;
-        let schema_dir = schema_path
+        let root_schema = require_real_canonical(schema_path)?;
+        let schema_dir = root_schema
             .parent()
             .ok_or_else(|| SchemaValidationError::SchemaCompileFailed {
-                path: schema_path.display().to_string(),
+                path: root_schema.display().to_string(),
                 message: "schema path has no parent directory".to_string(),
             })?
             .to_path_buf();
@@ -92,14 +92,17 @@ impl FileBackedResolver {
         files.sort();
         files.dedup();
         for file in &files {
-            #[cfg(all(windows, test))]
+            #[cfg(test)]
             run_before_index_read_hook();
             // Containment/reparse failures must abort the index. Parse
             // errors on incidental `.json`/`.yaml` files are skipped.
             let value = match load_catalog_file(&allowed_roots, file) {
                 Ok(value) => value,
-                Err(err) if catalog_read_must_fail(&err) => return Err(err),
-                Err(_) => continue,
+                Err(err @ CatalogReadError::Parse(_)) if *file == root_schema => {
+                    return Err(err.into_root_error(schema_path));
+                }
+                Err(CatalogReadError::Parse(_)) => continue,
+                Err(err) => return Err(err.into_compile_error(file)),
             };
             if let Some(id) = value.get("$id").and_then(|v| v.as_str()) {
                 let id = strip_fragment(id).to_string();
@@ -123,7 +126,7 @@ impl FileBackedResolver {
             resolution: opts.resolution,
             id_index,
             files,
-            root_schema: schema_path,
+            root_schema,
         })
     }
 
@@ -287,9 +290,10 @@ pub fn validate_instance_with_schema_file(
     opts: FileSchemaOptions,
 ) -> Result<Vec<ValidationIssue>, SchemaValidationError> {
     let resolver = FileBackedResolver::from_schema_file(schema_path, &opts)?;
-    #[cfg(all(windows, test))]
+    #[cfg(test)]
     run_before_root_schema_read_hook();
-    let mut schema = load_catalog_file(&resolver.allowed_roots, &resolver.root_schema)?;
+    let mut schema = load_catalog_file(&resolver.allowed_roots, &resolver.root_schema)
+        .map_err(|err| err.into_root_error(schema_path))?;
     ensure_file_id(&mut schema, schema_path)?;
     compile_and_validate(
         &schema,
@@ -405,33 +409,50 @@ fn load_value(path: &Path) -> Result<Value, SchemaValidationError> {
     load_value_stable(path)
 }
 
-fn catalog_read_must_fail(err: &SchemaValidationError) -> bool {
-    let SchemaValidationError::SchemaCompileFailed { message, .. } = err else {
-        return false;
-    };
-    message.contains("reparse")
-        || message.contains("not contained")
-        || message.contains("not found")
-        || message.contains("cannot open")
-        || message.contains("symlink")
-        || message.contains("nofollow")
+#[derive(Debug, thiserror::Error)]
+enum CatalogReadError {
+    #[error(transparent)]
+    Parse(SchemaValidationError),
+    #[error("{0}")]
+    Access(String),
 }
 
-fn load_catalog_file(roots: &[PathBuf], file: &Path) -> Result<Value, SchemaValidationError> {
+impl From<String> for CatalogReadError {
+    fn from(message: String) -> Self {
+        Self::Access(message)
+    }
+}
+
+impl CatalogReadError {
+    fn into_root_error(self, path: &Path) -> SchemaValidationError {
+        match self {
+            Self::Parse(SchemaValidationError::InvalidSchemaJson { message, .. }) => {
+                SchemaValidationError::InvalidSchemaJson {
+                    path: path.display().to_string(),
+                    message,
+                }
+            }
+            other => other.into_compile_error(path),
+        }
+    }
+
+    fn into_compile_error(self, path: &Path) -> SchemaValidationError {
+        SchemaValidationError::SchemaCompileFailed {
+            path: path.display().to_string(),
+            message: self.to_string(),
+        }
+    }
+}
+
+fn load_catalog_file(roots: &[PathBuf], file: &Path) -> Result<Value, CatalogReadError> {
     let root = roots.iter().find(|root| path_is_under_root(file, root));
     let Some(root) = root else {
-        return Err(SchemaValidationError::SchemaCompileFailed {
-            path: file.display().to_string(),
-            message: format!(
-                "schema path not contained in catalog roots: {}",
-                file.display()
-            ),
-        });
+        return Err(CatalogReadError::Access(format!(
+            "schema path not contained in catalog roots: {}",
+            file.display()
+        )));
     };
-    read_under_root(root, file).map_err(|message| SchemaValidationError::SchemaCompileFailed {
-        path: file.display().to_string(),
-        message,
-    })
+    read_under_root(root, file)
 }
 
 fn load_value_stable(path: &Path) -> Result<Value, SchemaValidationError> {
@@ -621,12 +642,12 @@ fn comparable_windows_path(path: &Path) -> PathBuf {
     out
 }
 
-fn read_under_root(root: &Path, abs: &Path) -> Result<Value, String> {
+fn read_under_root(root: &Path, abs: &Path) -> Result<Value, CatalogReadError> {
     if !path_is_under_root(abs, root) {
-        return Err(format!(
+        return Err(CatalogReadError::Access(format!(
             "schema path not contained in catalog roots: {}",
             abs.display()
-        ));
+        )));
     }
     #[cfg(unix)]
     let rel = abs.strip_prefix(root).map_err(|_| {
@@ -640,7 +661,7 @@ fn read_under_root(root: &Path, abs: &Path) -> Result<Value, String> {
         let mut file = openat_nofollow(root, rel)?;
         let mut buf = Vec::new();
         file.read_to_end(&mut buf).map_err(|e| e.to_string())?;
-        parse_schema_bytes(&abs.display().to_string(), &buf).map_err(|e| e.to_string())
+        parse_schema_bytes(&abs.display().to_string(), &buf).map_err(CatalogReadError::Parse)
     }
     #[cfg(windows)]
     {
@@ -649,12 +670,12 @@ fn read_under_root(root: &Path, abs: &Path) -> Result<Value, String> {
         run_windows_after_open_hook();
         let mut buf = Vec::new();
         file.read_to_end(&mut buf).map_err(|e| e.to_string())?;
-        parse_schema_bytes(&abs.display().to_string(), &buf).map_err(|e| e.to_string())
+        parse_schema_bytes(&abs.display().to_string(), &buf).map_err(CatalogReadError::Parse)
     }
     #[cfg(all(not(unix), not(windows)))]
     {
         let bytes = fs::read(abs).map_err(|e| e.to_string())?;
-        parse_schema_bytes(&abs.display().to_string(), &bytes).map_err(|e| e.to_string())
+        parse_schema_bytes(&abs.display().to_string(), &bytes).map_err(CatalogReadError::Parse)
     }
 }
 
@@ -664,10 +685,6 @@ const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
 #[cfg(all(windows, test))]
 thread_local! {
     static AFTER_NOFOLLOW_OPEN: std::cell::RefCell<Option<Box<dyn Fn()>>> =
-        std::cell::RefCell::new(None);
-    static BEFORE_INDEX_READ: std::cell::RefCell<Option<Box<dyn Fn()>>> =
-        std::cell::RefCell::new(None);
-    static BEFORE_ROOT_SCHEMA_READ: std::cell::RefCell<Option<Box<dyn Fn()>>> =
         std::cell::RefCell::new(None);
 }
 
@@ -680,7 +697,15 @@ fn run_windows_after_open_hook() {
     });
 }
 
-#[cfg(all(windows, test))]
+#[cfg(test)]
+thread_local! {
+    static BEFORE_ROOT_SCHEMA_READ: std::cell::RefCell<Option<Box<dyn Fn()>>> =
+        std::cell::RefCell::new(None);
+    static BEFORE_INDEX_READ: std::cell::RefCell<Option<Box<dyn Fn()>>> =
+        std::cell::RefCell::new(None);
+}
+
+#[cfg(test)]
 fn run_before_index_read_hook() {
     BEFORE_INDEX_READ.with(|hook| {
         if let Some(run) = hook.borrow().as_ref() {
@@ -689,7 +714,7 @@ fn run_before_index_read_hook() {
     });
 }
 
-#[cfg(all(windows, test))]
+#[cfg(test)]
 fn run_before_root_schema_read_hook() {
     BEFORE_ROOT_SCHEMA_READ.with(|hook| {
         if let Some(run) = hook.borrow().as_ref() {
@@ -1136,6 +1161,135 @@ mod tests {
 
     fn good_instance() -> Value {
         json!({"name": "n", "widget": {"kind": "ok"}})
+    }
+
+    #[test]
+    fn malformed_incidental_catalog_names_do_not_abort_index() {
+        for word in [
+            "symlink",
+            "reparse",
+            "nofollow",
+            "not found",
+            "cannot open",
+            "not contained",
+        ] {
+            let dir = scratch_dir();
+            write_catalog(&dir);
+            fs::write(dir.join(format!("{word}-notes.json")), b"{broken: [").unwrap();
+            assert!(
+                FileBackedResolver::from_schema_file(&dir.join("root.schema.json"), &opts(&dir))
+                    .is_ok(),
+                "malformed incidental file containing {word:?} must be skipped"
+            );
+            fs::remove_dir_all(dir).unwrap();
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn catalog_index_read_io_failure_aborts_construction() {
+        let dir = scratch_dir();
+        write_catalog(&dir);
+        let target = dir.join("widget.schema.json");
+        let swapped = target.clone();
+        BEFORE_INDEX_READ.with(|hook| {
+            *hook.borrow_mut() = Some(Box::new(move || {
+                if swapped.is_file() {
+                    fs::remove_file(&swapped).unwrap();
+                    fs::create_dir(&swapped).unwrap();
+                }
+            }));
+        });
+        let result =
+            FileBackedResolver::from_schema_file(&dir.join("root.schema.json"), &opts(&dir));
+        BEFORE_INDEX_READ.with(|hook| *hook.borrow_mut() = None);
+        assert!(target.is_dir(), "index read hook must replace the file");
+        fs::remove_dir_all(dir).unwrap();
+        assert!(
+            matches!(
+                result,
+                Err(SchemaValidationError::SchemaCompileFailed { .. })
+            ),
+            "an IO failure reading an indexed file must abort construction"
+        );
+    }
+
+    fn assert_malformed_root_error(load: impl Fn(&Path, &Path) -> SchemaValidationError) {
+        for extension in ["json", "yaml", "yml"] {
+            let dir = scratch_dir();
+            let schema_path = dir.join(format!("root.{extension}"));
+            let data_path = dir.join("instance.json");
+            fs::write(&schema_path, b"{broken: [").unwrap();
+            fs::write(&data_path, b"{}").unwrap();
+            let expected = load_value(&schema_path).unwrap_err();
+            let err = load(&schema_path, &data_path);
+            match (&err, &expected) {
+                (
+                    SchemaValidationError::InvalidSchemaJson { path, message },
+                    SchemaValidationError::InvalidSchemaJson {
+                        path: expected_path,
+                        message: expected_message,
+                    },
+                ) => {
+                    assert_eq!(path, expected_path);
+                    assert_eq!(message, expected_message);
+                }
+                _ => panic!("expected InvalidSchemaJson, got {err:?}"),
+            }
+            fs::remove_dir_all(dir).unwrap();
+        }
+    }
+
+    #[test]
+    fn malformed_root_with_schema_file_is_invalid_json() {
+        assert_malformed_root_error(|schema, _| {
+            validate_instance_with_schema_file(schema, &json!({}), FileSchemaOptions::default())
+                .unwrap_err()
+        });
+    }
+
+    #[test]
+    fn malformed_root_with_instance_bytes_is_invalid_json() {
+        assert_malformed_root_error(|schema, _| {
+            validate_instance_bytes(schema, b"{}", FileSchemaOptions::default()).unwrap_err()
+        });
+    }
+
+    #[test]
+    fn malformed_root_with_instance_file_is_invalid_json() {
+        assert_malformed_root_error(|schema, data| {
+            validate_instance_file(schema, data, FileSchemaOptions::default()).unwrap_err()
+        });
+    }
+
+    #[test]
+    fn malformed_root_in_resolver_is_invalid_json() {
+        assert_malformed_root_error(|schema, _| {
+            FileBackedResolver::from_schema_file(schema, &FileSchemaOptions::default())
+                .err()
+                .expect("malformed root must fail resolver construction")
+        });
+    }
+
+    #[test]
+    fn malformed_root_after_index_is_invalid_json() {
+        let dir = scratch_dir();
+        write_catalog(&dir);
+        let schema_path = dir.join("root.schema.json");
+        let target = schema_path.clone();
+        BEFORE_ROOT_SCHEMA_READ.with(|hook| {
+            *hook.borrow_mut() = Some(Box::new(move || {
+                fs::write(&target, b"{broken: [").unwrap();
+            }));
+        });
+        let err =
+            validate_instance_with_schema_file(&schema_path, &json!({}), opts(&dir)).unwrap_err();
+        BEFORE_ROOT_SCHEMA_READ.with(|hook| *hook.borrow_mut() = None);
+        assert!(
+            matches!(err, SchemaValidationError::InvalidSchemaJson { .. }),
+            "{err:?}"
+        );
+        fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]

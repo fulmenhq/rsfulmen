@@ -10,7 +10,7 @@
 //! - Include/exclude glob pattern filtering
 //! - Path traversal detection and prevention
 //! - Optional SHA-256 checksums for matched files
-//! - Repository root detection (`.git` directory or file)
+//! - Repository root detection (`.git` convenience walk plus bounded marker discovery)
 //! - Config file discovery shorthand
 //! - Non-fatal warnings for partial traversal outcomes
 //!
@@ -42,6 +42,12 @@ use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
+
+mod repo_root;
+pub use repo_root::{
+    discover_repository_root, RepositoryNotFoundReason, RepositoryRootError, RepositoryRootOptions,
+    DEFAULT_MAX_DEPTH, GIT_MARKERS, GO_MOD_MARKERS, MONOREPO_MARKERS, NODE_MARKERS, PYTHON_MARKERS,
+};
 
 // ---------------------------------------------------------------------------
 // Core types
