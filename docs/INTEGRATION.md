@@ -124,6 +124,10 @@ Optional foundry extras (each adds deps):
 | `foundry-patterns`    | `regex`, `glob`               |
 | `foundry-correlation` | `uuid` (UUIDv7 correlation IDs) |
 
+Catalog-driven extras on `foundry-core` (Crucible v0.4.19):
+`simplified_modes::map_to_simplified`, `exit_codes::map_bsd_to_fulmen`,
+and signal-resolution fixtures for `resolve_signal` / `match_signal_names`.
+
 ### Logging (`logging`)
 
 Crucible observability profiles. `Simple` is human-readable on stderr;

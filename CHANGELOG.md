@@ -21,6 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   signature or MAC for adversarial inputs. Binary serde formats (bincode,
   postcard) keep the compact v0.2.1 `Digest` layout (`algorithm`, `bytes`);
   self-describing formats (JSON, YAML) use the field set described above.
+- **Foundry Crucible v0.4.19 extras** — `foundry::simplified_modes`
+  (`SimplifiedMode`, `SimplifiedCode`, `SimplifiedModeInfo`,
+  `map_to_simplified`, `list_simplified_modes`, `get_simplified_mode_info`);
+  BSD compatibility via `BsdMapping`, `map_bsd_to_fulmen`,
+  `map_fulmen_to_bsd` and `list_bsd_mappings`; `ExitCategory::id`; new
+  `ExitCode` catalog fields (`context`, `retry_hint`, `bsd_equivalent`,
+  `python_note`); `Signal::double_tap_behavior` /
+  `double_tap_exit_code`; and `MAX_SIGNAL_GLOB_PATTERN`.
 
 ### Changed
 
@@ -34,6 +42,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Serialized `Digest` now emits the `digest.schema.json` fields
   `{algorithm, hex, formatted, bytes}`; deserialization still accepts
   the older `{algorithm, bytes}` form.
+- **`foundry::signals::resolve_signal`** — only positive numeric forms are
+  accepted (`"15"`). Kill-style negatives such as `"-15"` now return
+  `None` to match the Crucible signal-resolution fixtures. Callers that
+  still accept `kill --signal -N` input should strip a leading `-` before
+  calling `resolve_signal`.
+- **`foundry::signals::match_signal_names`** — glob matching is iterative,
+  and patterns longer than `MAX_SIGNAL_GLOB_PATTERN` (64) characters now
+  return an empty list.
+- **`foundry::exit_codes::ExitCode` and `BsdMapping`** are `#[non_exhaustive]`.
+  New catalog fields (`context`, `retry_hint`, `bsd_equivalent`,
+  `python_note`) were added. Construct via `lookup_exit_code` /
+  `list_exit_codes` / `list_bsd_mappings` and match with `..`. Do not
+  write struct literals in downstream crates.
+- **`foundry::signals::Signal`** is `#[non_exhaustive]` after adding
+  `double_tap_behavior` and `double_tap_exit_code`. Construct via
+  `lookup_signal` / `list_signals` and match with `..`.
+- **`map_bsd_to_fulmen` / `map_fulmen_to_bsd` are not inverses.** The
+  table maps 71→33, 74→54, 75→34; per-row `bsd_equivalent` maps 73→76.
+  Those pairs do not round-trip.
 
 ### Fixed
 
