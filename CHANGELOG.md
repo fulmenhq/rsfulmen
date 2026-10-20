@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Catalog indexing skips only parse failures; access, containment, and IO failures abort resolver construction.
+
 - **Windows `file://` schema containment** — catalog roots from
   `fs::canonicalize` use `\\?\` verbatim prefixes; `Url::to_file_path`
   does not. Containment now strips those prefixes and folds ASCII case
