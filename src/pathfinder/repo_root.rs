@@ -814,7 +814,7 @@ mod tests {
 
     #[test]
     fn discovers_git_dir_n_levels_up() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         fs::create_dir_all(tmp.path().join(".git")).unwrap();
         let nested = tmp.path().join("a/b/c");
@@ -826,7 +826,7 @@ mod tests {
 
     #[test]
     fn closest_marker_wins_over_outer_git() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         fs::create_dir_all(tmp.path().join(".git")).unwrap();
         write_file(&tmp.path().join("proj/go.mod"), "module example");
@@ -843,7 +843,7 @@ mod tests {
 
     #[test]
     fn max_depth_stops_before_marker() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         fs::create_dir_all(tmp.path().join(".git")).unwrap();
         let nested = tmp.path().join("a/b/c");
@@ -865,7 +865,7 @@ mod tests {
 
     #[test]
     fn max_depth_zero_does_not_inspect_start() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         fs::create_dir_all(tmp.path().join(".git")).unwrap();
 
@@ -883,7 +883,7 @@ mod tests {
 
     #[test]
     fn explicit_boundary_blocks_marker_above() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         fs::create_dir_all(tmp.path().join(".git")).unwrap();
         let inner = tmp.path().join("inner");
@@ -901,7 +901,7 @@ mod tests {
 
     #[test]
     fn start_outside_boundary_is_invalid() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let boundary = TestDir::new();
         let start = TestDir::new();
         fs::create_dir_all(start.path().join("src")).unwrap();
@@ -921,7 +921,7 @@ mod tests {
 
     #[test]
     fn missing_start_is_invalid() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let err = discover_repository_root(
             Path::new("/no/such/rsfulmen-repo-root-start"),
             &RepositoryRootOptions::default(),
@@ -932,7 +932,7 @@ mod tests {
 
     #[test]
     fn empty_start_is_invalid() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let err =
             discover_repository_root(Path::new(""), &RepositoryRootOptions::default()).unwrap_err();
         assert!(matches!(err, RepositoryRootError::InvalidStartPath { .. }));
@@ -940,7 +940,7 @@ mod tests {
 
     #[test]
     fn empty_markers_are_invalid() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         let mut options = opts(&[], tmp.path(), 10);
         options.markers.clear();
@@ -950,7 +950,7 @@ mod tests {
 
     #[test]
     fn missing_boundary_is_invalid() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         let options = RepositoryRootOptions {
             boundary: Some(tmp.path().join("missing-boundary")),
@@ -962,7 +962,7 @@ mod tests {
 
     #[test]
     fn file_start_uses_parent() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         fs::create_dir_all(tmp.path().join(".git")).unwrap();
         let file = tmp.path().join("src/main.rs");
@@ -974,7 +974,7 @@ mod tests {
 
     #[test]
     fn git_file_marker_counts() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         write_file(&tmp.path().join(".git"), "gitdir: /elsewhere");
         let nested = tmp.path().join("a/b");
@@ -986,7 +986,7 @@ mod tests {
 
     #[test]
     fn stop_at_first_false_returns_outermost_marker() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         fs::create_dir_all(tmp.path().join(".git")).unwrap();
         write_file(&tmp.path().join("proj/go.mod"), "module example");
@@ -1005,7 +1005,7 @@ mod tests {
 
     #[test]
     fn node_and_python_markers() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         write_file(&tmp.path().join("package.json"), "{}");
         write_file(
@@ -1034,7 +1034,7 @@ mod tests {
 
     #[test]
     fn unbounded_home_sentinel() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         assert!(is_unbounded_home(Path::new("/")));
         assert!(is_unbounded_home(Path::new("/root")));
         let tmp = TestDir::new();
@@ -1044,7 +1044,7 @@ mod tests {
 
     #[test]
     fn rejects_empty_dot_dotdot_absolute_and_multicomponent_markers() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         fs::create_dir_all(tmp.path().join(".git")).unwrap();
         let cases = ["", ".", "..", "/.git", "foo/bar", "foo\\bar"];
@@ -1060,7 +1060,7 @@ mod tests {
 
     #[test]
     fn relative_and_file_boundaries_are_invalid() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         fs::create_dir_all(tmp.path().join(".git")).unwrap();
         let file = tmp.path().join("not-a-dir");
@@ -1127,7 +1127,7 @@ mod tests {
 
     #[test]
     fn default_home_outside_start_ancestry_is_boundary_reached() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         fs::create_dir_all(tmp.path().join(".git")).unwrap();
         let start = tmp.path().join("src");
@@ -1148,7 +1148,7 @@ mod tests {
 
     #[test]
     fn unbounded_home_falls_back_to_cwd_not_filesystem_root() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let outer = TestDir::new();
         fs::create_dir_all(outer.path().join(".git")).unwrap();
         let work = outer.path().join("work/deep");
@@ -1169,7 +1169,7 @@ mod tests {
 
     #[test]
     fn select_user_home_prefers_userprofile_on_windows_only() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         use std::ffi::OsString;
         let home = Some(OsString::from("/from-home"));
         let profile = Some(OsString::from("/from-userprofile"));
@@ -1182,7 +1182,7 @@ mod tests {
 
     #[test]
     fn filesystem_root_posix_and_windows_shapes() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         assert_eq!(filesystem_root(Path::new("/")), PathBuf::from("/"));
         assert_eq!(filesystem_root(Path::new("/foo/bar")), PathBuf::from("/"));
     }
@@ -1190,7 +1190,7 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn filesystem_root_windows_drive_and_unc() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         assert_eq!(filesystem_root(Path::new(r"C:\")), PathBuf::from(r"C:\"));
         assert_eq!(
             filesystem_root(Path::new(r"C:\foo\bar")),
@@ -1202,7 +1202,7 @@ mod tests {
 
     #[test]
     fn path_starts_with_does_not_match_sibling_prefix() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         assert!(path_starts_with(
             Path::new("/users/x/proj"),
             Path::new("/users/x")
@@ -1216,7 +1216,7 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn windows_boundary_compare_is_case_insensitive() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         assert!(path_starts_with(
             Path::new(r"C:\Users\x\proj"),
             Path::new(r"c:\users\x")
@@ -1230,7 +1230,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn posix_root_is_a_stop_and_is_not_inspected() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         // `/tmp` exists on every Unix runner. If the root-stop ran *after*
         // has_marker, this would return Ok("/") instead of FilesystemRootReached.
         let options = RepositoryRootOptions {
@@ -1251,7 +1251,7 @@ mod tests {
 
     #[test]
     fn path_constraint_is_deferred_explicit_boundary_is_the_only_caller_ceiling() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         fs::create_dir_all(tmp.path().join(".git")).unwrap();
         let defaults = RepositoryRootOptions::with_markers([".git"]);
@@ -1266,7 +1266,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn follow_symlinks_ancestor_alias_is_not_a_loop() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         let repo = tmp.path().join("repo");
         fs::create_dir_all(repo.join(".git")).unwrap();
@@ -1287,7 +1287,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn symlink_ancestor_above_boundary_still_finds_markers() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         let real = tmp.path().join("real");
         fs::create_dir_all(real.join("repo/.git")).unwrap();
@@ -1307,7 +1307,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn relative_start_under_symlinked_home_finds_repo() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         let real = tmp.path().join("real");
         fs::create_dir_all(real.join("repo/.git")).unwrap();
@@ -1330,7 +1330,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn follow_symlinks_accepts_mismatched_symlink_start_and_boundary() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         let real = tmp.path().join("real");
         fs::create_dir_all(real.join(".git")).unwrap();
@@ -1360,7 +1360,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn follow_symlinks_accepts_symlinked_explicit_boundary() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         let real = tmp.path().join("real");
         fs::create_dir_all(real.join(".git")).unwrap();
@@ -1382,7 +1382,7 @@ mod tests {
 
     #[test]
     fn max_depth_equal_to_distance_finds_marker() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         fs::create_dir_all(tmp.path().join(".git")).unwrap();
         let nested = tmp.path().join("a/b/c");
@@ -1394,7 +1394,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn in_boundary_symlink_to_external_repo_is_rejected_in_both_modes() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let outside = TestDir::new();
         fs::create_dir_all(outside.path().join(".git")).unwrap();
         let inside = TestDir::new();
@@ -1459,28 +1459,28 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn regression_m1_back_to_explicit_ceiling_without_marker() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         check_alias_back_to_ceiling(false, false);
     }
 
     #[cfg(unix)]
     #[test]
     fn regression_m1_back_to_explicit_ceiling_with_marker() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         check_alias_back_to_ceiling(false, true);
     }
 
     #[cfg(unix)]
     #[test]
     fn regression_m1_back_to_home_ceiling_without_marker() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         check_alias_back_to_ceiling(true, false);
     }
 
     #[cfg(unix)]
     #[test]
     fn regression_m1_back_to_home_ceiling_with_marker() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         check_alias_back_to_ceiling(true, true);
     }
 
@@ -1545,42 +1545,42 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn regression_m1_trailing_separator_external_explicit_ceiling() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         check_trailing_separator_symlinks(false, "external");
     }
 
     #[cfg(unix)]
     #[test]
     fn regression_m1_trailing_separator_external_home_ceiling() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         check_trailing_separator_symlinks(true, "external");
     }
 
     #[cfg(unix)]
     #[test]
     fn regression_m1_trailing_separator_back_to_explicit_ceiling() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         check_trailing_separator_symlinks(false, "ceiling");
     }
 
     #[cfg(unix)]
     #[test]
     fn regression_m1_trailing_separator_back_to_home_ceiling() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         check_trailing_separator_symlinks(true, "ceiling");
     }
 
     #[cfg(unix)]
     #[test]
     fn regression_m1_trailing_separator_internal_explicit_ceiling() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         check_trailing_separator_symlinks(false, "internal");
     }
 
     #[cfg(unix)]
     #[test]
     fn regression_m1_trailing_separator_internal_home_ceiling() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         check_trailing_separator_symlinks(true, "internal");
     }
 
@@ -1608,28 +1608,28 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn regression_h1_aliased_boundary_physical_start() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         check_boundary_alias(0);
     }
 
     #[cfg(unix)]
     #[test]
     fn regression_h1_physical_boundary_aliased_start() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         check_boundary_alias(1);
     }
 
     #[cfg(unix)]
     #[test]
     fn regression_h1_aliased_home_physical_start() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         check_boundary_alias(2);
     }
 
     #[cfg(unix)]
     #[test]
     fn regression_h1_side_entrance_is_not_a_repository() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         let real = tmp.path().join("real");
         fs::create_dir_all(real.join("repo/.git")).unwrap();
@@ -1644,7 +1644,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn regression_m2_symlink_before_parent_start() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         let real = tmp.path().join("real");
         let outside = tmp.path().join("outside");
@@ -1672,7 +1672,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn regression_m2_symlink_before_parent_boundary() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         let real = tmp.path().join("real");
         let outside = tmp.path().join("outside");
@@ -1693,7 +1693,7 @@ mod tests {
     // platform's path resolution, must reject `missing/..` and `file/..`.
     #[test]
     fn regression_r5_parent_prefix_check_is_platform_neutral() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         fs::create_dir_all(tmp.path().join(".git")).unwrap();
         write_file(&tmp.path().join("file"), "x");
@@ -1721,7 +1721,7 @@ mod tests {
 
     #[test]
     fn regression_m2_missing_component_start() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         fs::create_dir_all(tmp.path().join(".git")).unwrap();
         for follow in [true, false] {
@@ -1736,7 +1736,7 @@ mod tests {
 
     #[test]
     fn regression_m2_missing_component_boundary() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         fs::create_dir_all(tmp.path().join(".git")).unwrap();
         for follow in [true, false] {
@@ -1751,7 +1751,7 @@ mod tests {
 
     #[test]
     fn regression_m2_non_directory_component() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         fs::create_dir_all(tmp.path().join(".git")).unwrap();
         write_file(&tmp.path().join("file"), "x");
@@ -1773,7 +1773,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn regression_m1_home_resolving_to_root_uses_cwd() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         fs::create_dir_all(tmp.path().join(".git")).unwrap();
         let work = tmp.path().join("work/deep");
@@ -1799,7 +1799,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn regression_m1_explicit_root_alias_is_not_inspected() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         let alias = tmp.path().join("root");
         std::os::unix::fs::symlink("/", &alias).unwrap();
@@ -1819,7 +1819,7 @@ mod tests {
 
     #[test]
     fn process_state_is_restored_after_panic() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         let home = env::var_os("HOME");
         let profile = env::var_os("USERPROFILE");

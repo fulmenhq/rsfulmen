@@ -154,6 +154,7 @@ mod tests {
 
     #[test]
     fn test_get_xdg_base_dirs() {
+        let _env = crate::ProcessEnvGuard::acquire();
         let dirs = get_xdg_base_dirs();
         // Just verify we get some paths back
         assert!(!dirs.config_home.as_os_str().is_empty());
@@ -163,18 +164,21 @@ mod tests {
 
     #[test]
     fn test_get_app_config_dir() {
+        let _env = crate::ProcessEnvGuard::acquire();
         let path = get_app_config_dir("testapp");
         assert!(path.ends_with("testapp"));
     }
 
     #[test]
     fn test_get_fulmen_config_dir() {
+        let _env = crate::ProcessEnvGuard::acquire();
         let path = get_fulmen_config_dir();
         assert!(path.ends_with("fulmen"));
     }
 
     #[test]
     fn test_get_app_config_paths() {
+        let _env = crate::ProcessEnvGuard::acquire();
         let paths = get_app_config_paths("newapp", &["oldapp", "legacyapp"]);
         assert_eq!(paths.len(), 3);
         assert!(paths[0].ends_with("newapp"));

@@ -399,7 +399,7 @@ mod tests {
 
     #[test]
     fn test_load_from_discovers_in_current_dir() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let _env = EnvVarGuard::unset(APP_IDENTITY_ENV);
         let tmp = TestDir::new();
         let file = tmp.path().join(".fulmen/app.yaml");
@@ -411,7 +411,7 @@ mod tests {
 
     #[test]
     fn test_load_from_discovers_in_parent_dir() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let _env = EnvVarGuard::unset(APP_IDENTITY_ENV);
         let tmp = TestDir::new();
         let file = tmp.path().join(".fulmen/app.yaml");
@@ -426,7 +426,7 @@ mod tests {
 
     #[test]
     fn test_load_from_not_found() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let _env = EnvVarGuard::unset(APP_IDENTITY_ENV);
         let tmp = TestDir::new();
 
@@ -535,7 +535,7 @@ mod tests {
 
     #[test]
     fn test_env_override_used_by_load_from() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         let override_file = tmp.path().join("override.yaml");
         write_identity(&override_file, "name: env-override\n");
@@ -550,7 +550,7 @@ mod tests {
 
     #[test]
     fn test_env_override_invalid_path_returns_io_error() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let tmp = TestDir::new();
         let missing = tmp.path().join("missing.yaml");
         let _env = EnvVarGuard::set(APP_IDENTITY_ENV, &missing);
