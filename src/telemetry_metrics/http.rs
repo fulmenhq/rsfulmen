@@ -4,9 +4,17 @@
 //! **templated** route (or a raw path that [`normalize_route`] will rewrite),
 //! status, and duration. No `axum` / `tower` / listen socket.
 
+use std::collections::{HashMap, HashSet};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use super::{Metrics, TelemetryError};
+
+const MAX_HTTP_SERIES: usize = 10_000;
+const OTHER_ROUTE: &str = "__other__";
+const STANDARD_METHODS: &[&str] = &[
+    "GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH",
+];
 
 /// Default duration buckets for `http_request_duration_seconds` (seconds).
 pub const HTTP_DURATION_BUCKETS_S: &[f64] = &[
@@ -56,6 +64,8 @@ pub fn normalize_route(path: &str) -> String {
             ":objectid"
         } else if is_numeric_id(segment) {
             ":id"
+        } else if is_token_segment(segment) {
+            ":token"
         } else {
             segment
         });
@@ -70,6 +80,30 @@ pub fn normalize_route(path: &str) -> String {
         "/".to_string()
     } else {
         out
+    }
+}
+
+fn is_token_segment(segment: &str) -> bool {
+    let bytes = segment.as_bytes();
+    if bytes.len() < 16 {
+        return false;
+    }
+    if bytes.iter().all(|b| b.is_ascii_hexdigit()) {
+        return true;
+    }
+    let base64ish = bytes
+        .iter()
+        .all(|b| b.is_ascii_alphanumeric() || matches!(*b, b'+' | b'/' | b'-' | b'_' | b'='));
+    let has_digit = bytes.iter().any(|b| b.is_ascii_digit());
+    base64ish && has_digit
+}
+
+fn canonical_method(method: &str) -> String {
+    let upper = method.to_ascii_uppercase();
+    if STANDARD_METHODS.iter().any(|item| *item == upper) {
+        upper
+    } else {
+        "OTHER".to_string()
     }
 }
 
@@ -174,6 +208,8 @@ pub struct HttpRecorder {
     metrics: Metrics,
     service: String,
     track_sizes: bool,
+    label_sets: Arc<Mutex<HashMap<String, HashSet<String>>>>,
+    label_cap: usize,
 }
 
 impl HttpRecorder {
@@ -183,6 +219,8 @@ impl HttpRecorder {
             metrics,
             service: service.into(),
             track_sizes: false,
+            label_sets: Arc::new(Mutex::new(HashMap::new())),
+            label_cap: MAX_HTTP_SERIES,
         }
     }
 
@@ -206,8 +244,8 @@ impl HttpRecorder {
 
     /// Record a completed request (counter + duration, optional sizes).
     pub fn record(&self, record: HttpRecord) -> Result<(), TelemetryError> {
-        let method = record.method.to_ascii_uppercase();
-        let route = if record.normalize {
+        let method = canonical_method(&record.method);
+        let mut route = if record.normalize {
             normalize_route(&record.route)
         } else {
             record.route
@@ -215,6 +253,16 @@ impl HttpRecorder {
         let status = record.status.to_string();
         let outcome = outcome_from_status(record.status);
         let service = self.service.as_str();
+        let signature = format!("{method}\n{route}\n{status}\n{outcome}");
+        {
+            let mut seen = self
+                .label_sets
+                .lock()
+                .expect("http label set lock poisoned");
+            if !admit_series(&mut seen, "http_requests_total", &signature, self.label_cap) {
+                route = OTHER_ROUTE.to_string();
+            }
+        }
 
         self.metrics
             .counter("http_requests_total")?
@@ -266,6 +314,29 @@ impl HttpRecorder {
     }
 }
 
+fn admit_series(
+    seen: &mut HashMap<String, HashSet<String>>,
+    metric: &str,
+    signature: &str,
+    cap: usize,
+) -> bool {
+    let set = seen.entry(metric.to_string()).or_default();
+    if set.contains(signature) {
+        return true;
+    }
+    let overflow = "__overflow__".to_string();
+    let reserved = set.contains(&overflow);
+    let limit = if reserved { cap } else { cap.saturating_sub(1) };
+    if set.len() < limit {
+        set.insert(signature.to_string());
+        return true;
+    }
+    if !reserved {
+        set.insert(overflow);
+    }
+    false
+}
+
 /// Guard that decrements `http_active_requests` when dropped.
 #[derive(Debug)]
 pub struct ActiveHttpRequest {
@@ -299,6 +370,13 @@ mod tests {
         assert_eq!(
             normalize_route("/docs/507f1f77bcf86cd799439011"),
             "/docs/:objectid"
+        );
+        assert_eq!(
+            normalize_route("/password-reset/9f8e7d6c5b4a39281716151413121110"),
+            "/password-reset/:token"
+        );
+        assert!(
+            !normalize_route("/password-reset/9f8e7d6c5b4a39281716151413121110").contains("9f8e")
         );
         assert_eq!(normalize_route("/"), "/");
     }
@@ -349,6 +427,25 @@ mod tests {
         };
         assert_eq!(h.count, 1);
         assert!((h.sum - 0.02).abs() < 1e-9);
+    }
+
+    #[test]
+    fn label_sets_collapse_past_cap_and_unknown_methods() {
+        let metrics = Metrics::new();
+        let mut rec = HttpRecorder::new(metrics.clone(), "api");
+        rec.label_cap = 3;
+        for i in 0..5 {
+            rec.record(HttpRecord::new("GET", format!("/only-{i}"), 404))
+                .unwrap();
+        }
+        rec.record(HttpRecord::new("NOPE", "/only-0", 404)).unwrap();
+        let text = metrics.export_prometheus_text().unwrap();
+        assert!(text.contains("route=\"/only-0\""), "{text}");
+        assert!(text.contains("route=\"__other__\""), "{text}");
+        assert!(!text.contains("/only-3"), "{text}");
+        assert!(!text.contains("/only-4"), "{text}");
+        assert!(text.contains("method=\"OTHER\""), "{text}");
+        assert!(!text.contains("9f8e"), "{text}");
     }
 
     #[test]
