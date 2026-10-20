@@ -6,10 +6,14 @@
 //!
 //! Handler panics are isolated (`catch_unwind`): the payload is logged after
 //! redaction, later handlers still run, and TERM/INT always enter the shutdown
-//! chain. Shutdown hooks run under the catalog `timeout_seconds` grace period
+//! chain. On the listen path that chain runs off the listener thread, so a
+//! second SIGINT during shutdown still reaches the double-tap exit.
+//! Shutdown hooks run under the catalog `timeout_seconds` grace period
 //! (30s for SIGTERM, 5s for SIGINT; 30s when the field is absent; `0` takes
 //! the force-exit path immediately). Force-exit is `process::exit` unless a
-//! test/embedder installs [`SignalManager::set_force_exit`].
+//! test/embedder installs [`SignalManager::set_force_exit`]. Direct
+//! `dispatch_signal` callers still run the chain to completion before
+//! returning.
 
 use std::collections::HashMap;
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -287,6 +291,7 @@ struct Inner {
     runtime_logger: Mutex<Option<Arc<RuntimeLogFn>>>,
     force_exit: Mutex<Option<Arc<ForceExitFn>>>,
     shutdown_grace_override: Mutex<Option<Duration>>,
+    shutdown_started: AtomicBool,
 }
 
 impl Inner {
@@ -372,6 +377,7 @@ impl SignalManager {
                 runtime_logger: Mutex::new(None),
                 force_exit: Mutex::new(None),
                 shutdown_grace_override: Mutex::new(None),
+                shutdown_started: AtomicBool::new(false),
             }),
         }
     }
@@ -762,6 +768,7 @@ impl SignalManager {
         }
 
         self.inner.stop_flag.store(false, Ordering::SeqCst);
+        self.inner.shutdown_started.store(false, Ordering::SeqCst);
         self.inner.set_listening_state(true);
         let _guard = ListeningGuard {
             inner: Arc::clone(&self.inner),
@@ -828,7 +835,7 @@ impl SignalManager {
         let mut first_sigint_at = None;
         while !self.inner.stop_flag.load(Ordering::SeqCst) {
             for signal in signals.pending() {
-                self.dispatch_signal(signal, &mut first_sigint_at);
+                self.dispatch_from_listener(signal, &mut first_sigint_at);
             }
 
             self.drain_injected(&mut first_sigint_at)?;
@@ -861,12 +868,15 @@ impl SignalManager {
         }
 
         for signal in pending {
-            self.dispatch_signal(signal, first_sigint_at);
+            self.dispatch_from_listener(signal, first_sigint_at);
         }
 
         Ok(())
     }
 
+    /// Synchronous dispatch used by unit tests. The listen loop uses
+    /// [`Self::dispatch_from_listener`] so shutdown does not block the loop.
+    #[cfg(test)]
     fn dispatch_signal(&self, signal: i32, first_sigint_at: &mut Option<Instant>) {
         self.run_signal_handlers(signal);
 
@@ -883,6 +893,36 @@ impl SignalManager {
             self.run_shutdown_chain(signal);
             self.stop();
         }
+    }
+
+    /// Listen-loop dispatch. Shutdown runs on another thread so this loop can
+    /// observe a second SIGINT and take the double-tap exit.
+    fn dispatch_from_listener(&self, signal: i32, first_sigint_at: &mut Option<Instant>) {
+        self.run_signal_handlers(signal);
+
+        if signal == sigint_number() {
+            self.maybe_handle_double_tap(first_sigint_at);
+        }
+
+        if signal == sighup_number() {
+            self.run_reload_chain();
+            return;
+        }
+
+        if signal == sigint_number() || signal == sigterm_number() {
+            self.start_listener_shutdown(signal);
+        }
+    }
+
+    fn start_listener_shutdown(&self, signal: i32) {
+        if self.inner.shutdown_started.swap(true, Ordering::SeqCst) {
+            return;
+        }
+        let manager = self.clone();
+        thread::spawn(move || {
+            manager.run_shutdown_chain(signal);
+            manager.stop();
+        });
     }
 
     fn maybe_handle_double_tap(&self, first_sigint_at: &mut Option<Instant>) {
@@ -2055,6 +2095,59 @@ mod tests {
         thread::sleep(Duration::from_millis(50));
         // Window expired: second SIGINT must not call process::exit.
         manager.dispatch_signal(sigint_number(), &mut first_sigint_at);
+    }
+
+    #[test]
+    fn second_sigint_during_shutdown_force_exits() {
+        if std::env::var_os("RSFULMEN_DOUBLE_TAP_CHILD").is_some() {
+            second_sigint_during_shutdown_child();
+            return;
+        }
+
+        let exe = std::env::current_exe().expect("test executable");
+        let output = std::process::Command::new(exe)
+            .env("RSFULMEN_DOUBLE_TAP_CHILD", "1")
+            .args([
+                "signals::tests::second_sigint_during_shutdown_force_exits",
+                "--exact",
+                "--test-threads=1",
+            ])
+            .output()
+            .expect("spawn double-tap child");
+        assert_eq!(
+            output.status.code(),
+            Some(99),
+            "stdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    fn second_sigint_during_shutdown_child() {
+        let manager = SignalManager::new();
+        manager.enable_double_tap(DoubleTapConfig {
+            window: Duration::from_secs(2),
+            message: String::new(),
+            exit_code: 99,
+        });
+        manager.on_shutdown(|| {
+            thread::sleep(Duration::from_millis(300));
+            Ok(())
+        });
+
+        let injector = testing::SignalInjector::new(&manager);
+        let manager_listen = manager.clone();
+        let listener = thread::spawn(move || manager_listen.listen());
+        injector
+            .wait_for_listen(Duration::from_secs(1))
+            .expect("listener should start");
+        injector.inject(sigint_number()).expect("first SIGINT");
+        thread::sleep(Duration::from_millis(50));
+        injector.inject(sigint_number()).expect("second SIGINT");
+
+        let _ = listener.join();
+        // Double-tap should have exited 99 before the hook finished.
+        std::process::exit(1);
     }
 
     #[test]
