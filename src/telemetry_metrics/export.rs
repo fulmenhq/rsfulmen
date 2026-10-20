@@ -103,7 +103,19 @@ pub fn render_json_lines(events: &[MetricsEvent]) -> Result<String, TelemetryErr
 /// Counters (`*_total`, `*_count`, `*_errors`, plus remaining `count` units)
 /// are summed. Gauges (`active` / `inflight` / `percent`) keep the last value.
 /// Histograms emit `_bucket`, `_sum`, `_count`, and `le="+Inf"`.
-pub fn render_prometheus_text(events: &[MetricsEvent]) -> String {
+///
+/// # Errors
+///
+/// [`TelemetryError::InvalidPrometheusLabel`] when any tag key is not a valid
+/// Prometheus label name (see [`validate_prometheus_label`]). Nothing is
+/// rendered in that case; JSON export keeps accepting such tags.
+pub fn render_prometheus_text(events: &[MetricsEvent]) -> Result<String, TelemetryError> {
+    for event in events {
+        let histogram = matches!(event.value, MetricValue::Histogram(_));
+        for key in event.tags.iter().flat_map(|tags| tags.keys()) {
+            validate_prometheus_label(&event.name, key, histogram)?;
+        }
+    }
     let mut counters: BTreeMap<(String, BTreeMap<String, String>), f64> = BTreeMap::new();
     let mut gauges: BTreeMap<(String, BTreeMap<String, String>), f64> = BTreeMap::new();
     let mut hists: BTreeMap<(String, BTreeMap<String, String>), HistogramSummary> = BTreeMap::new();
@@ -190,7 +202,40 @@ pub fn render_prometheus_text(events: &[MetricsEvent]) -> String {
             }
         }
     }
-    out
+    Ok(out)
+}
+
+/// Check that `label` is a Prometheus label name usable on `metric`.
+///
+/// Accepts `[a-zA-Z_][a-zA-Z0-9_]*`. Rejects names starting with `__`
+/// (reserved for Prometheus internals) and, when `histogram` is true, `le`
+/// (written by the exporter for buckets).
+pub fn validate_prometheus_label(
+    metric: &str,
+    label: &str,
+    histogram: bool,
+) -> Result<(), TelemetryError> {
+    let err = |reason| TelemetryError::InvalidPrometheusLabel {
+        metric: metric.to_string(),
+        label: label.to_string(),
+        reason,
+    };
+    let mut chars = label.chars();
+    match chars.next() {
+        None => return Err(err("empty label name")),
+        Some(c) if c.is_ascii_alphabetic() || c == '_' => {}
+        Some(_) => return Err(err("must start with an ASCII letter or '_'")),
+    }
+    if !chars.all(|c| c.is_ascii_alphanumeric() || c == '_') {
+        return Err(err("only ASCII letters, digits and '_' are allowed"));
+    }
+    if label.starts_with("__") {
+        return Err(err("names starting with '__' are reserved"));
+    }
+    if histogram && label == "le" {
+        return Err(err("'le' is reserved for histogram buckets"));
+    }
+    Ok(())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -293,7 +338,9 @@ impl Metrics {
     /// snapshot so this scrape stays stable.
     pub fn export_prometheus_text(&self) -> Result<String, TelemetryError> {
         let started = Instant::now();
-        let result = self.export().map(|events| render_prometheus_text(&events));
+        let result = self
+            .export()
+            .and_then(|events| render_prometheus_text(&events));
         let secs = started.elapsed().as_secs_f64();
         match &result {
             Ok(_) => {
@@ -374,7 +421,7 @@ mod tests {
             .set(3.0)
             .unwrap();
 
-        let text = render_prometheus_text(&metrics.export().unwrap());
+        let text = render_prometheus_text(&metrics.export().unwrap()).unwrap();
         assert!(text.contains("# TYPE http_requests_total counter"));
         assert!(text.contains(
             "http_requests_total{method=\"GET\",route=\"/users/:id\",service=\"api\",status=\"200\"} 2.0"
@@ -388,11 +435,71 @@ mod tests {
         let metrics = Metrics::new();
         let hist = metrics.histogram("http_request_duration_seconds").unwrap();
         hist.observe(0.01).unwrap();
-        let text = render_prometheus_text(&metrics.export().unwrap());
+        let text = render_prometheus_text(&metrics.export().unwrap()).unwrap();
         assert!(text.contains("# TYPE http_request_duration_seconds histogram"));
         assert!(text.contains("le=\"+Inf\""));
         assert!(text.contains("http_request_duration_seconds_count"));
         assert!(text.contains("http_request_duration_seconds_sum"));
+    }
+
+    #[test]
+    fn prometheus_rejects_hyphenated_label() {
+        let metrics = Metrics::new();
+        metrics
+            .counter("http_requests_total")
+            .unwrap()
+            .with_tag("request-id", "x")
+            .inc(None)
+            .unwrap();
+        let events = metrics.export().unwrap();
+        let err = render_prometheus_text(&events).unwrap_err();
+        assert_eq!(
+            err,
+            TelemetryError::InvalidPrometheusLabel {
+                metric: "http_requests_total".to_string(),
+                label: "request-id".to_string(),
+                reason: "only ASCII letters, digits and '_' are allowed",
+            }
+        );
+        // The wider JSON tag contract is unchanged.
+        assert!(render_json_lines(&events).unwrap().contains("request-id"));
+        assert!(matches!(
+            metrics.export_prometheus_text(),
+            Err(TelemetryError::InvalidPrometheusLabel { .. })
+        ));
+    }
+
+    #[test]
+    fn prometheus_label_grammar() {
+        for ok in ["a", "_x", "route", "status_code", "A9_b"] {
+            assert!(validate_prometheus_label("m", ok, false).is_ok(), "{ok}");
+        }
+        for bad in ["", "9a", "a-b", "a.b", "a b", "é", "__name__", "__x"] {
+            assert!(validate_prometheus_label("m", bad, false).is_err(), "{bad}");
+        }
+        assert!(validate_prometheus_label("m", "le", false).is_ok());
+        assert!(validate_prometheus_label("m", "le", true).is_err());
+    }
+
+    #[test]
+    fn prometheus_rejects_reserved_and_histogram_le() {
+        let metrics = Metrics::new();
+        metrics
+            .counter("http_requests_total")
+            .unwrap()
+            .with_tag("__name__", "spoof")
+            .inc(None)
+            .unwrap();
+        assert!(render_prometheus_text(&metrics.export().unwrap()).is_err());
+
+        let metrics = Metrics::new();
+        metrics
+            .histogram("http_request_duration_seconds")
+            .unwrap()
+            .with_tag("le", "1")
+            .observe(0.01)
+            .unwrap();
+        assert!(render_prometheus_text(&metrics.export().unwrap()).is_err());
     }
 
     #[test]
