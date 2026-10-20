@@ -18,11 +18,16 @@ pub const DEFAULT_REDACTION_REPLACEMENT: &str = "[REDACTED]";
 /// Default field names (case-insensitive) aligned with gofulmen / tsfulmen.
 pub const DEFAULT_SECRET_KEYS: &[&str] = &[
     "password",
+    "passwd",
+    "pwd",
     "token",
     "apikey",
     "api_key",
     "authorization",
     "secret",
+    "private_key",
+    "privatekey",
+    "credential",
     "cardnumber",
     "card_number",
     "cvv",
@@ -33,8 +38,17 @@ pub const DEFAULT_SECRET_KEYS: &[&str] = &[
     "refresh_token",
 ];
 
-/// Default regex patterns aligned with gofulmen / tsfulmen.
+/// Default regex patterns.
+///
+/// Assignment patterns run before name-only patterns so `TOKEN=value` does not
+/// leave `value` in the sink. Unknown secret shapes can still pass; this is a
+/// best-effort scan, not a guarantee that every secret is recognized.
 pub const DEFAULT_SECRET_PATTERNS: &[&str] = &[
+    r"(?i)\b[A-Z0-9_]*(?:TOKEN|SECRET|KEY|PASSWORD|PASSWD|PWD)[A-Z0-9_]*\s*[=:]\s*\S+",
+    r"(?i)\bBearer\s+\S+",
+    r"\bgh[pousr]_[A-Za-z0-9_]+",
+    r"\bgithub_pat_[A-Za-z0-9_]+",
+    r"\bAKIA[0-9A-Z]{16}\b",
     r"SECRET_[A-Z0-9_]+",
     r"[A-Z0-9_]*TOKEN[A-Z0-9_]*",
     r"[A-Z0-9_]*KEY[A-Z0-9_]*",
@@ -157,8 +171,13 @@ impl SensitiveKeyMiddleware {
     }
 
     fn is_secret(keys_lower: &[String], key: &str) -> bool {
-        let lower = key.to_ascii_lowercase();
-        keys_lower.iter().any(|k| k == &lower)
+        // Oversized names take the fail-closed scan path instead of a
+        // wholesale value replacement.
+        if key.len() > MAX_PATTERN_SCAN_SIZE {
+            return false;
+        }
+        let normalized = key.to_ascii_lowercase().replace('-', "_");
+        keys_lower.iter().any(|k| normalized.contains(k))
     }
 }
 
@@ -178,7 +197,11 @@ impl Middleware for SensitiveKeyMiddleware {
     }
 }
 
-/// Field + pattern redaction. Secrets must never reach the sink.
+/// Field + pattern redaction.
+///
+/// Configured secret keys and the default patterns are removed before a
+/// record reaches the sink. The scan is best-effort: a shape that matches
+/// none of the keys or patterns is left unchanged.
 ///
 /// Values under secret keys are replaced outright. Every other string the
 /// sink emits from the record (message, logger name, component, correlation
@@ -439,7 +462,68 @@ mod tests {
             "field leaked: {}",
             record.fields[0].1
         );
+        assert!(
+            !record.message.contains("abc"),
+            "token value leaked: {}",
+            record.message
+        );
+        assert!(
+            !record.fields[0].1.contains("zzzz"),
+            "field value leaked: {}",
+            record.fields[0].1
+        );
         assert!(record.message.contains(DEFAULT_REDACTION_REPLACEMENT));
+    }
+
+    #[test]
+    fn redact_patterns_remove_assignment_values_and_known_token_shapes() {
+        let mw = RedactSecretsMiddleware::defaults().unwrap();
+        let cases = [
+            "export GITHUB_TOKEN=ghp_realvalue123",
+            "AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG",
+            "API_KEY: abc123",
+            "ghp_abcdefghijklmnopqrstuvwxyz0123456789",
+            "Authorization: Bearer abcDEF123xyz",
+            "AKIAIOSFODNN7EXAMPLE",
+        ];
+        let secrets = [
+            "ghp_realvalue123",
+            "wJalrXUtnFEMI/K7MDENG",
+            "abc123",
+            "ghp_abcdefghijklmnopqrstuvwxyz0123456789",
+            "abcDEF123xyz",
+            "AKIAIOSFODNN7EXAMPLE",
+        ];
+        for (message, secret) in cases.into_iter().zip(secrets) {
+            let mut record = rec(message, &[]);
+            mw.process(&mut record);
+            assert!(
+                !record.message.contains(secret),
+                "value leaked from {message:?}: {}",
+                record.message
+            );
+        }
+    }
+
+    #[test]
+    fn sensitive_keys_match_by_needle() {
+        let mw = RedactSecretsMiddleware::defaults().unwrap();
+        let mut record = rec(
+            "ok",
+            &[
+                ("db_password", "hunter2"),
+                ("client_secret", "sekrit"),
+                ("x-api-key", "abcd"),
+                ("passwd", "pw"),
+                ("private_key", "pem"),
+            ],
+        );
+        mw.process(&mut record);
+        for (_, value) in &record.fields {
+            assert_eq!(value, DEFAULT_REDACTION_REPLACEMENT);
+        }
+        assert!(!format!("{record:?}").contains("hunter2"));
+        assert!(!format!("{record:?}").contains("sekrit"));
     }
 
     fn oversized_with_trailing_secret() -> String {

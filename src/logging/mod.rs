@@ -1098,6 +1098,20 @@ mod tests {
     }
 
     #[test]
+    fn test_middleware_redacts_assignment_value_at_sink() {
+        let buf = SharedBuffer::new();
+        let chain = MiddlewareChain::new().with(RedactSecretsMiddleware::defaults().unwrap());
+        let log = logger_with_buffer("app", Severity::Trace, Profile::Simple, &buf)
+            .with_middleware_chain(chain);
+        log.info("handler failed: GITHUB_TOKEN=abc123", &[]);
+        let output = buf.contents();
+        assert!(
+            !output.contains("abc123"),
+            "assignment value reached the sink: {output}"
+        );
+    }
+
+    #[test]
     fn test_redaction_fails_closed_for_oversized_strings_at_sink() {
         let mut big = "x ".repeat(MAX_PATTERN_SCAN_SIZE / 2 + 512);
         big.push_str("tail-secret-zz9");
