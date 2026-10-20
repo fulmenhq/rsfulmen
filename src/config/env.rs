@@ -362,7 +362,7 @@ mod tests {
 
     #[test]
     fn test_load_env_overrides_string() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let _guard = EnvGuard::set(&[("RSF_ENV_APP_NAME", "myapp")]);
         let specs = vec![EnvVarSpec {
             name: "RSF_ENV_APP_NAME".to_string(),
@@ -387,7 +387,7 @@ mod tests {
 
     #[test]
     fn test_load_env_overrides_int() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let _guard = EnvGuard::set(&[("RSF_ENV_APP_PORT", "8080")]);
         let specs = vec![EnvVarSpec {
             name: "RSF_ENV_APP_PORT".to_string(),
@@ -412,7 +412,7 @@ mod tests {
 
     #[test]
     fn test_load_env_overrides_bool_flexible() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let specs = vec![EnvVarSpec {
             name: "RSF_ENV_APP_FLAG".to_string(),
             path: vec!["debug".to_string()],
@@ -449,7 +449,7 @@ mod tests {
 
     #[test]
     fn test_load_env_overrides_parse_error() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let _guard = EnvGuard::set(&[("RSF_ENV_APP_PORT", "notanumber")]);
         let specs = vec![EnvVarSpec {
             name: "RSF_ENV_APP_PORT".to_string(),
@@ -464,7 +464,7 @@ mod tests {
 
     #[test]
     fn test_alias_takes_precedence() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let _guard = EnvGuard::set(&[("RSF_ENV_APP_PORT", "8080"), ("RSF_ENV_PORT", "9090")]);
         let specs = vec![EnvVarSpec {
             name: "RSF_ENV_APP_PORT".to_string(),
@@ -489,7 +489,7 @@ mod tests {
 
     #[test]
     fn test_conflict_detected_different_values() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let _guard = EnvGuard::set(&[("RSF_ENV_APP_PORT", "8080"), ("RSF_ENV_PORT", "9090")]);
         let specs = vec![EnvVarSpec {
             name: "RSF_ENV_APP_PORT".to_string(),
@@ -507,7 +507,7 @@ mod tests {
 
     #[test]
     fn test_no_conflict_when_values_match_after_trim() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let _guard = EnvGuard::set(&[("RSF_ENV_APP_PORT", "8080"), ("RSF_ENV_PORT", " 8080 ")]);
         let specs = vec![EnvVarSpec {
             name: "RSF_ENV_APP_PORT".to_string(),
@@ -522,7 +522,7 @@ mod tests {
 
     #[test]
     fn test_sensitive_value_masking() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let _guard = EnvGuard::set(&[
             ("RSF_ENV_APP_SECRET_KEY", "mysecret"),
             ("RSF_ENV_SECRET_KEY", "othersecret"),
@@ -553,7 +553,7 @@ mod tests {
 
     #[test]
     fn test_unset_env_var_skipped() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let _guard = EnvGuard::unset(&["RSF_ENV_APP_MISSING"]);
         let specs = vec![EnvVarSpec {
             name: "RSF_ENV_APP_MISSING".to_string(),
@@ -569,7 +569,7 @@ mod tests {
 
     #[test]
     fn test_nested_path_creates_intermediate_maps() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let _guard = EnvGuard::set(&[("RSF_ENV_DB_HOST", "localhost")]);
         let specs = vec![EnvVarSpec {
             name: "RSF_ENV_DB_HOST".to_string(),
@@ -603,7 +603,7 @@ mod tests {
 
     #[test]
     fn test_report_applied_tracks_source() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let _guard = EnvGuard::set(&[("RSF_ENV_PORT", "8080")]);
         let specs = vec![EnvVarSpec {
             name: "RSF_ENV_APP_PORT".to_string(),
@@ -622,7 +622,7 @@ mod tests {
 
     #[test]
     fn test_parse_error_masks_sensitive_values() {
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let _guard = EnvGuard::set(&[("RSF_ENV_DB_PASSWORD", "not-a-bool")]);
         let specs = vec![EnvVarSpec {
             name: "RSF_ENV_DB_PASSWORD".to_string(),
@@ -642,7 +642,7 @@ mod tests {
     fn test_integration_with_three_layer() {
         use crate::config::three_layer::{load_three_layer, ThreeLayerOptions};
 
-        let _lock = crate::test_env_lock();
+        let _lock = crate::acquire_process_env_lock();
         let _guard = EnvGuard::set(&[("RSF_ENV_TERMINAL_LANG", "fr")]);
 
         let specs = vec![EnvVarSpec {

@@ -195,11 +195,77 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Updated automatically by `make sync-ssot`.
 pub const CRUCIBLE_VERSION: &str = "v0.4.19";
 
-// Shared by tests that read or mutate process environment / working directory.
+/// Crate-wide lock for tests that read or mutate the process environment.
+///
+/// Prefer [`ProcessEnvGuard`] so changed keys are restored on unwind.
 #[cfg(test)]
-fn test_env_lock() -> std::sync::MutexGuard<'static, ()> {
-    static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
-    LOCK.lock().unwrap_or_else(|err| err.into_inner())
+pub(crate) fn process_env_lock() -> &'static std::sync::Mutex<()> {
+    static LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
+    LOCK.get_or_init(|| std::sync::Mutex::new(()))
+}
+
+/// Acquire [`process_env_lock`], recovering a poisoned lock so one failed
+/// assertion cannot cascade into unrelated tests.
+#[cfg(test)]
+pub(crate) fn acquire_process_env_lock() -> std::sync::MutexGuard<'static, ()> {
+    process_env_lock()
+        .lock()
+        .unwrap_or_else(|error| error.into_inner())
+}
+
+/// Holds the process-env lock and restores every key this guard changed.
+///
+/// `Drop` runs on unwind, so a panicked writer cannot leak values to later
+/// tests. Poison recovery still applies via [`acquire_process_env_lock`].
+#[cfg(test)]
+pub(crate) struct ProcessEnvGuard {
+    _lock: std::sync::MutexGuard<'static, ()>,
+    previous: Vec<(std::ffi::OsString, Option<std::ffi::OsString>)>,
+}
+
+#[cfg(test)]
+impl ProcessEnvGuard {
+    pub(crate) fn acquire() -> Self {
+        Self {
+            _lock: acquire_process_env_lock(),
+            previous: Vec::new(),
+        }
+    }
+
+    fn remember(&mut self, key: &std::ffi::OsStr) {
+        if !self.previous.iter().any(|(k, _)| k == key) {
+            self.previous
+                .push((key.to_os_string(), std::env::var_os(key)));
+        }
+    }
+
+    pub(crate) fn set(
+        &mut self,
+        key: impl AsRef<std::ffi::OsStr>,
+        value: impl AsRef<std::ffi::OsStr>,
+    ) {
+        let key = key.as_ref();
+        self.remember(key);
+        std::env::set_var(key, value);
+    }
+
+    pub(crate) fn remove(&mut self, key: impl AsRef<std::ffi::OsStr>) {
+        let key = key.as_ref();
+        self.remember(key);
+        std::env::remove_var(key);
+    }
+}
+
+#[cfg(test)]
+impl Drop for ProcessEnvGuard {
+    fn drop(&mut self) {
+        for (key, previous) in self.previous.drain(..).rev() {
+            match previous {
+                Some(value) => std::env::set_var(&key, value),
+                None => std::env::remove_var(&key),
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -223,6 +289,51 @@ mod tests {
         assert!(
             CRUCIBLE_VERSION.starts_with('v'),
             "CRUCIBLE_VERSION should start with 'v'"
+        );
+    }
+
+    #[test]
+    fn process_env_guard_restores_env_after_panic() {
+        const KEY: &str = "RSFULMEN_TEST_PROCESS_ENV_LOCK";
+        let before = std::env::var_os(KEY);
+        let panicked = std::panic::catch_unwind(|| {
+            let mut guard = ProcessEnvGuard::acquire();
+            guard.set(KEY, "during-panic");
+            panic!("intentional lock poison");
+        });
+        assert!(panicked.is_err());
+        let _reader = ProcessEnvGuard::acquire();
+        assert_eq!(std::env::var_os(KEY), before);
+    }
+
+    #[test]
+    fn process_env_guard_serializes_reader_until_writer_drops() {
+        use std::sync::{Arc, Barrier, TryLockError};
+
+        const KEY: &str = "RSFULMEN_TEST_PROCESS_ENV_BARRIER";
+        let before = std::env::var_os(KEY);
+        let writer_holding = Arc::new(Barrier::new(2));
+        let reader_saw_hold = Arc::new(Barrier::new(2));
+        let w_hold = writer_holding.clone();
+        let w_seen = reader_saw_hold.clone();
+        let writer = std::thread::spawn(move || {
+            let mut guard = ProcessEnvGuard::acquire();
+            guard.set(KEY, "writer-temp");
+            w_hold.wait();
+            w_seen.wait();
+        });
+        writer_holding.wait();
+        match process_env_lock().try_lock() {
+            Err(TryLockError::WouldBlock) => {}
+            other => panic!("reader must not acquire while the writer holds, got {other:?}"),
+        }
+        reader_saw_hold.wait();
+        writer.join().expect("writer thread");
+        let _reader = ProcessEnvGuard::acquire();
+        assert_eq!(
+            std::env::var_os(KEY),
+            before,
+            "reader must observe the restored value after the writer drops"
         );
     }
 }
