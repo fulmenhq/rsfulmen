@@ -21,6 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   signature or MAC for adversarial inputs. Binary serde formats (bincode,
   postcard) keep the compact v0.2.1 `Digest` layout (`algorithm`, `bytes`);
   self-describing formats (JSON, YAML) use the field set described above.
+- **Foundry Crucible v0.4.19 extras** — `foundry::simplified_modes`
+  (`SimplifiedMode`, `SimplifiedCode`, `SimplifiedModeInfo`,
+  `map_to_simplified`, `list_simplified_modes`, `get_simplified_mode_info`);
+  BSD compatibility via `BsdMapping`, `map_bsd_to_fulmen`,
+  `map_fulmen_to_bsd` and `list_bsd_mappings`; `ExitCategory::id`; new
+  `ExitCode` catalog fields (`context`, `retry_hint`, `bsd_equivalent`,
+  `python_note`); `Signal::double_tap_behavior` /
+  `double_tap_exit_code`; and `MAX_SIGNAL_GLOB_PATTERN`.
 
 ### Changed
 
@@ -39,6 +47,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `None` to match the Crucible signal-resolution fixtures. Callers that
   still accept `kill --signal -N` input should strip a leading `-` before
   calling `resolve_signal`.
+- **`foundry::signals::match_signal_names`** — glob matching is iterative,
+  and patterns longer than `MAX_SIGNAL_GLOB_PATTERN` (64) characters now
+  return an empty list.
 - **`foundry::exit_codes::ExitCode` and `BsdMapping`** are `#[non_exhaustive]`.
   New catalog fields (`context`, `retry_hint`, `bsd_equivalent`,
   `python_note`) were added. Construct via `lookup_exit_code` /
