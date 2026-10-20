@@ -325,12 +325,7 @@ impl HistogramState {
                 return;
             }
         }
-
-        // Value above max boundary: treat the final bucket as +Inf so the last
-        // bucket count always equals the total observation count.
-        if let Some(last) = self.cumulative_counts.last_mut() {
-            *last += 1;
-        }
+        // Above every finite boundary. `count` is the +Inf cumulative.
     }
 
     fn snapshot(&self) -> HistogramSummary {
@@ -843,9 +838,48 @@ mod tests {
         let le10 = h.buckets.iter().find(|b| b.le == 10.0).unwrap();
         assert_eq!(le10.count, 2);
 
-        // Overflow values are counted in the final bucket (+Inf semantics).
+        // 50_000 is above the last finite boundary (10_000) and stays out of it.
         let last = h.buckets.last().unwrap();
-        assert_eq!(last.count, 4);
+        assert_eq!(last.le, 10_000.0);
+        assert_eq!(last.count, 3);
+        assert_eq!(h.count, 4);
+
+        let text = crate::telemetry_metrics::render_prometheus_text(&exported).unwrap();
+        assert!(
+            text.contains("config_load_ms_bucket{le=\"10000.0\"} 3.0"),
+            "{text}"
+        );
+        assert!(
+            text.contains("config_load_ms_bucket{le=\"+Inf\"} 4.0"),
+            "{text}"
+        );
+        assert!(!text.contains("le=\"10000.0\"} 4.0"), "{text}");
+    }
+
+    #[test]
+    fn test_histogram_overflow_is_only_the_inf_bucket() {
+        let metrics = Metrics::new();
+        let hist = metrics
+            .histogram_with_buckets("config_load_ms", vec![1.0, 10.0])
+            .unwrap();
+        hist.observe(100.0).unwrap();
+
+        let exported = metrics.export().unwrap();
+        let event = exported
+            .iter()
+            .find(|e| e.name == "config_load_ms")
+            .unwrap();
+        let MetricValue::Histogram(h) = &event.value else {
+            panic!("expected histogram");
+        };
+        assert_eq!(h.count, 1);
+        assert_eq!(h.buckets[0].count, 0);
+        assert_eq!(h.buckets[1].count, 0);
+
+        let text = crate::telemetry_metrics::render_prometheus_text(&exported).unwrap();
+        assert!(text.contains("le=\"10.0\"} 0.0"), "{text}");
+        assert!(text.contains("le=\"+Inf\"} 1.0"), "{text}");
+        assert!(!text.contains("le=\"10.0\"} 1.0"), "{text}");
     }
 
     #[test]
