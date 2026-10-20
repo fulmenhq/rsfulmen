@@ -73,6 +73,34 @@ pub enum TelemetryError {
         /// Why the name is rejected.
         reason: &'static str,
     },
+
+    /// The name was already acquired as a different instrument kind.
+    #[error("metric {name} is already a {existing}, not a {requested}")]
+    InstrumentKindConflict {
+        /// Metric name.
+        name: String,
+        /// Kind already registered for `name`.
+        existing: &'static str,
+        /// Kind the caller tried to acquire.
+        requested: &'static str,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum InstrumentKind {
+    Counter,
+    Gauge,
+    Histogram,
+}
+
+impl InstrumentKind {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Counter => "counter",
+            Self::Gauge => "gauge",
+            Self::Histogram => "histogram",
+        }
+    }
 }
 
 /// Metric unit (aligned with the metrics taxonomy).
@@ -353,6 +381,7 @@ struct Inner {
     events: Vec<MetricsEvent>,
     gauges: HashMap<MetricKey, f64>,
     histograms: HashMap<MetricKey, HistogramState>,
+    kinds: HashMap<String, InstrumentKind>,
 }
 
 /// In-memory telemetry registry.
@@ -376,6 +405,7 @@ impl Metrics {
             .unit_for(name)
             .ok_or_else(|| TelemetryError::UnknownMetricName(name.to_string()))?;
 
+        self.claim_kind(name, InstrumentKind::Counter)?;
         Ok(Counter {
             metrics: self.clone(),
             name: name.to_string(),
@@ -390,6 +420,7 @@ impl Metrics {
             .unit_for(name)
             .ok_or_else(|| TelemetryError::UnknownMetricName(name.to_string()))?;
 
+        self.claim_kind(name, InstrumentKind::Gauge)?;
         Ok(Gauge {
             metrics: self.clone(),
             name: name.to_string(),
@@ -405,7 +436,9 @@ impl Metrics {
             .ok_or_else(|| TelemetryError::UnknownMetricName(name.to_string()))?;
 
         let buckets = TAXONOMY.default_buckets_for(name, unit);
-        Histogram::new(self.clone(), name.to_string(), unit, buckets)
+        let hist = Histogram::new(self.clone(), name.to_string(), unit, buckets)?;
+        self.claim_kind(name, InstrumentKind::Histogram)?;
+        Ok(hist)
     }
 
     /// Acquire a histogram instrument with explicit bucket boundaries.
@@ -418,7 +451,25 @@ impl Metrics {
             .unit_for(name)
             .ok_or_else(|| TelemetryError::UnknownMetricName(name.to_string()))?;
 
-        Histogram::new(self.clone(), name.to_string(), unit, buckets)
+        let hist = Histogram::new(self.clone(), name.to_string(), unit, buckets)?;
+        self.claim_kind(name, InstrumentKind::Histogram)?;
+        Ok(hist)
+    }
+
+    fn claim_kind(&self, name: &str, kind: InstrumentKind) -> Result<(), TelemetryError> {
+        let mut inner = self.inner.lock().expect("metrics lock poisoned");
+        match inner.kinds.get(name).copied() {
+            Some(existing) if existing != kind => Err(TelemetryError::InstrumentKindConflict {
+                name: name.to_string(),
+                existing: existing.as_str(),
+                requested: kind.as_str(),
+            }),
+            Some(_) => Ok(()),
+            None => {
+                inner.kinds.insert(name.to_string(), kind);
+                Ok(())
+            }
+        }
     }
 
     /// Export current metric events (does not clear state).
@@ -812,6 +863,44 @@ mod tests {
             .unwrap();
 
         assert_eq!(last.value, MetricValue::Scalar(1.0));
+    }
+
+    #[test]
+    fn test_mixed_instrument_kind_is_rejected() {
+        let metrics = Metrics::new();
+        metrics
+            .counter("schema_validations")
+            .unwrap()
+            .inc(Some(1))
+            .unwrap();
+        let err = metrics.gauge("schema_validations").unwrap_err();
+        assert_eq!(
+            err,
+            TelemetryError::InstrumentKindConflict {
+                name: "schema_validations".to_string(),
+                existing: "counter",
+                requested: "gauge",
+            }
+        );
+        let hist_metrics = Metrics::new();
+        hist_metrics
+            .counter("config_load_ms")
+            .unwrap()
+            .inc(None)
+            .unwrap();
+        let hist_err = hist_metrics.histogram("config_load_ms").unwrap_err();
+        assert!(matches!(
+            hist_err,
+            TelemetryError::InstrumentKindConflict {
+                requested: "histogram",
+                ..
+            }
+        ));
+
+        let text = metrics.export_prometheus_text().unwrap();
+        assert!(text.contains("# TYPE schema_validations counter"), "{text}");
+        assert!(text.contains("schema_validations 1.0"), "{text}");
+        assert!(!text.contains("gauge"), "{text}");
     }
 
     #[test]
