@@ -124,6 +124,10 @@ Optional foundry extras (each adds deps):
 | `foundry-patterns`    | `regex`, `glob`               |
 | `foundry-correlation` | `uuid` (UUIDv7 correlation IDs) |
 
+Catalog-driven extras on `foundry-core` (Crucible v0.4.19):
+`simplified_modes::map_to_simplified`, `exit_codes::map_bsd_to_fulmen`,
+and signal-resolution fixtures for `resolve_signal` / `match_signal_names`.
+
 ### Logging (`logging`)
 
 Crucible observability profiles. `Simple` is human-readable on stderr;
@@ -145,24 +149,51 @@ rather than installing a global logger.
 ### Pathfinder (`pathfinder`)
 
 Safe discovery with glob include/exclude, traversal protection, and repository
-root detection (`.git` directory or file).
+root detection.
+
+`find_repository_root` is the historical `.git`-only unbounded `Option` walk.
+`discover_repository_root` is the bounded marker API: markers, max depth
+(default 10), home or explicit ancestor ceiling, and structured errors.
+`HOME=/` or `/root` falls back to the current working directory. A home
+that is not an ancestor stops with `BoundaryReached`. PathConstraint /
+RespectConstraints is deferred; pass `boundary` instead.
+The default `follow_symlinks: false` mode rejects `..` components in start and
+boundary paths and hides repository markers behind symlinked directories below
+the ceiling. Aliases at or above the ceiling remain allowed.
 
 ```rust
-use rsfulmen::pathfinder;
+use rsfulmen::pathfinder::{
+    discover_repository_root, find_repository_root, RepositoryRootOptions,
+};
 use std::path::Path;
 
-let root = pathfinder::find_repository_root(Path::new("."));
+let _ = find_repository_root(Path::new("."));
+
+let opts = RepositoryRootOptions::with_markers([".git", "Cargo.toml"]);
+let _ = discover_repository_root(Path::new("."), &opts);
 ```
 
 ### Fulhash (`fulhash`)
 
 Portable `algo:hex` digests shared with gofulmen / tsfulmen / pyfulmen.
+Algorithms: xxh3-128 (default), sha256, crc32 (IEEE), crc32c (Castagnoli).
+`multi_hash` / `multi_hash_reader` compute several digests in one pass.
+CRC and xxHash detect accidental corruption only; they are not an
+authenticity check. For adversarial inputs use SHA-256 with an
+authenticated expected digest, a signature, or a MAC.
+
+Serialized `Algorithm` values emit catalog ids. v0.2.1 tags `Xxh3_128`
+and `Sha256` still deserialize. `Digest` is constructed with
+`Digest::new` (length-checked) or the hash APIs.
 
 ```rust
-use rsfulmen::fulhash;
+use rsfulmen::fulhash::{self, Algorithm};
 
 let digest = fulhash::hash_string("hello", None).unwrap();
 assert!(fulhash::verify(b"hello", &digest));
+
+let many = fulhash::multi_hash(b"hello", &[Algorithm::Sha256, Algorithm::Crc32]).unwrap();
+assert_eq!(many.len(), 2);
 ```
 
 ### Signals (`foundry-core`)

@@ -464,19 +464,42 @@ mod tests {
             .expect("tempdir")
     }
 
-    fn git_in(dir: &Path, args: &[&str]) {
-        let status = Command::new("git")
-            .current_dir(dir)
-            .args(args)
-            .env("GIT_AUTHOR_NAME", "rsfulmen-hostid")
+    // Fixture git must never inherit repository locators from the caller: under a
+    // git hook (pre-push), GIT_DIR / GIT_WORK_TREE / GIT_INDEX_FILE point at the
+    // real checkout, so `git init` / `git commit` would write into it instead of
+    // the temp dir. Rebuild the env from `inherited` minus the stripped set.
+    fn fixture_git_cmd<I>(dir: &Path, args: &[&str], inherited: I) -> Command
+    where
+        I: IntoIterator<Item = (String, String)>,
+    {
+        let mut cmd = Command::new("git");
+        cmd.current_dir(dir).args(args).env_clear();
+        for (k, v) in inherited {
+            if !is_stripped_git_env(&k) {
+                cmd.env(k, v);
+            }
+        }
+        cmd.env("GIT_AUTHOR_NAME", "rsfulmen-hostid")
             .env("GIT_AUTHOR_EMAIL", "hostid@example.test")
             .env("GIT_COMMITTER_NAME", "rsfulmen-hostid")
             .env("GIT_COMMITTER_EMAIL", "hostid@example.test")
             .stdout(Stdio::null())
-            .stderr(Stdio::null())
+            .stderr(Stdio::null());
+        cmd
+    }
+
+    fn git_in_with<I>(dir: &Path, args: &[&str], inherited: I)
+    where
+        I: IntoIterator<Item = (String, String)>,
+    {
+        let status = fixture_git_cmd(dir, args, inherited)
             .status()
             .expect("spawn git");
         assert!(status.success(), "git {args:?} failed in {}", dir.display());
+    }
+
+    fn git_in(dir: &Path, args: &[&str]) {
+        git_in_with(dir, args, env::vars());
     }
 
     fn init_repo(dir: &Path, marker: &str, guard: &crate::ProcessEnvGuard) -> String {
@@ -532,6 +555,43 @@ mod tests {
         env_map.insert("FULMEN_HOST_COMMIT".into(), "abc".into());
         let result = probe_at(dir.path(), env_map);
         assert_eq!(result.stamps.platform, "linux/amd64");
+    }
+
+    // Revert proof: hook-style GIT_DIR / GIT_WORK_TREE / GIT_INDEX_FILE in the
+    // inherited env must not redirect fixture git into another repository.
+    #[test]
+    fn fixture_git_ignores_inherited_repo_locators() {
+        let guard = crate::ProcessEnvGuard::acquire();
+        let decoy = temp_prefix("rsfulmen-hostid-decoy-");
+        let decoy_sha = init_repo(decoy.path(), "decoy\n", &guard);
+        let own = temp_prefix("rsfulmen-hostid-hook-");
+        let mut inherited: Vec<(String, String)> = env::vars().collect();
+        let decoy_git = decoy.path().join(".git");
+        inherited.push(("GIT_DIR".into(), decoy_git.to_string_lossy().into()));
+        inherited.push((
+            "GIT_WORK_TREE".into(),
+            decoy.path().to_string_lossy().into(),
+        ));
+        inherited.push((
+            "GIT_INDEX_FILE".into(),
+            decoy_git.join("index").to_string_lossy().into(),
+        ));
+        git_in_with(own.path(), &["init"], inherited.clone());
+        fs::write(own.path().join("README"), "own\n").unwrap();
+        git_in_with(own.path(), &["add", "README"], inherited.clone());
+        git_in_with(own.path(), &["commit", "-m", "own"], inherited);
+        assert!(
+            own.path().join(".git/HEAD").is_file(),
+            "init escaped temp dir"
+        );
+        assert_eq!(
+            git_head(decoy.path(), &base_env(&guard)).as_deref(),
+            Some(decoy_sha.as_str())
+        );
+        assert_ne!(
+            git_head(own.path(), &base_env(&guard)).as_deref(),
+            Some(decoy_sha.as_str())
+        );
     }
 
     #[test]

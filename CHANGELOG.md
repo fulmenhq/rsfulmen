@@ -7,7 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Bounded repository discovery via `pathfinder::discover_repository_root`,
+  `RepositoryRootOptions`, structured errors and stop reasons, and public marker
+  and depth constants. Supports explicit ceilings and optional symlink following.
+- **FulHash CRC-32 / CRC-32C and MultiHash** — `Algorithm::Crc32` (IEEE) and
+  `Algorithm::Crc32c` (Castagnoli) via the new optional `crc` dependency
+  (`fulhash` feature), plus single-pass `multi_hash`, `multi_hash_string` and
+  `multi_hash_reader`. `Digest::new`, `Digest::algorithm()` and
+  `Digest::bytes()` construct and read digests. CRC and xxHash detect
+  accidental corruption only; use SHA-256 with an authenticated digest,
+  signature or MAC for adversarial inputs. Binary serde formats (bincode,
+  postcard) keep the compact v0.2.1 `Digest` layout (`algorithm`, `bytes`);
+  self-describing formats (JSON, YAML) use the field set described above.
+- **Foundry Crucible v0.4.19 extras** — `foundry::simplified_modes`
+  (`SimplifiedMode`, `SimplifiedCode`, `SimplifiedModeInfo`,
+  `map_to_simplified`, `list_simplified_modes`, `get_simplified_mode_info`);
+  BSD compatibility via `BsdMapping`, `map_bsd_to_fulmen`,
+  `map_fulmen_to_bsd` and `list_bsd_mappings`; `ExitCategory::id`; new
+  `ExitCode` catalog fields (`context`, `retry_hint`, `bsd_equivalent`,
+  `python_note`); `Signal::double_tap_behavior` /
+  `double_tap_exit_code`; and `MAX_SIGNAL_GLOB_PATTERN`.
+
+### Changed
+
+- **FulHash serde tags** — `Algorithm` serializes as catalog ids
+  (`xxh3-128`, `sha256`, `crc32`, `crc32c`). v0.2.1 payloads that used
+  derived tags (`Xxh3_128`, `Sha256`) still deserialize via aliases;
+  new writes emit only the catalog ids. `Algorithm` is `#[non_exhaustive]`;
+  downstream `match` arms need a wildcard. `Digest` fields are private:
+  construct with `Digest::new` or the hash APIs, and read via
+  `algorithm()` / `bytes()`. Wrong-length serde input is rejected.
+  Serialized `Digest` now emits the `digest.schema.json` fields
+  `{algorithm, hex, formatted, bytes}`; deserialization still accepts
+  the older `{algorithm, bytes}` form.
+- **`foundry::signals::resolve_signal`** — only positive numeric forms are
+  accepted (`"15"`). Kill-style negatives such as `"-15"` now return
+  `None` to match the Crucible signal-resolution fixtures. Callers that
+  still accept `kill --signal -N` input should strip a leading `-` before
+  calling `resolve_signal`.
+- **`foundry::signals::match_signal_names`** — glob matching is iterative,
+  and patterns longer than `MAX_SIGNAL_GLOB_PATTERN` (64) characters now
+  return an empty list.
+- **`foundry::exit_codes::ExitCode` and `BsdMapping`** are `#[non_exhaustive]`.
+  New catalog fields (`context`, `retry_hint`, `bsd_equivalent`,
+  `python_note`) were added. Construct via `lookup_exit_code` /
+  `list_exit_codes` / `list_bsd_mappings` and match with `..`. Do not
+  write struct literals in downstream crates.
+- **`foundry::signals::Signal`** is `#[non_exhaustive]` after adding
+  `double_tap_behavior` and `double_tap_exit_code`. Construct via
+  `lookup_signal` / `list_signals` and match with `..`.
+- **`map_bsd_to_fulmen` / `map_fulmen_to_bsd` are not inverses.** The
+  table maps 71→33, 74→54, 75→34; per-row `bsd_equivalent` maps 73→76.
+  Those pairs do not round-trip.
+
 ### Fixed
+
+- **ZIP security advisories** — upgrade optional `zip` from 2.4.2 to 9.0.5
+  (RUSTSEC-2026-0367, RUSTSEC-2026-0368, RUSTSEC-2026-0369), keeping only
+  deflate support, Rust 1.88 compatibility, and CP437 entry name handling.
+
+- Catalog indexing skips only parse failures; access, containment, and IO failures abort resolver construction.
 
 - **Windows `file://` schema containment** — catalog roots from
   `fs::canonicalize` use `\\?\` verbatim prefixes; `Url::to_file_path`

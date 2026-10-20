@@ -510,7 +510,7 @@ rsfulmen = { version = "0.1", default-features = false, features = ["schema-vali
 | `appidentity`         | `rsfulmen::appidentity`                       | `.fulmen/app.yaml` discovery (adds `serde_json`) |
 | `json`                | `serde_json`                                  | Named so HTTP `/admin/signal` can `cfg` it     |
 | `logging`             | `rsfulmen::logging`                           | Simple/Structured + opt-in middleware (adds `json` + `regex`) |
-| `fulhash`             | `rsfulmen::fulhash`                           | xxh3-128 + SHA-256 (adds `xxhash-rust`/`sha2`/`hex`) |
+| `fulhash`             | `rsfulmen::fulhash`                           | xxh3-128 + SHA-256 + CRC32/CRC32C (adds `xxhash-rust`/`sha2`/`hex`/`crc`) |
 | `pathfinder`          | `rsfulmen::pathfinder`                        | Safe FS discovery (adds `walkdir`/`glob`)    |
 | `fulpack`             | `rsfulmen::fulpack`                           | Archive ops info/scan/create/extract/verify (adds `tar`/`flate2`/`zip`) |
 | `ascii`               | `rsfulmen::ascii`                             | Terminal/Unicode width (adds `unicode-width`) |

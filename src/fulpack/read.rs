@@ -164,7 +164,8 @@ fn read_zip<R: Read + std::io::Seek>(
             EntryType::File
         };
 
-        let path = normalize_scan_path(file.name());
+        let name = super::zip_name::zip_name(&file, archive)?;
+        let path = normalize_scan_path(&name);
         let size = file.size();
         let compressed_size = Some(file.compressed_size());
         let (modified, mode) = if opts.include_metadata {
