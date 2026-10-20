@@ -195,6 +195,13 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Updated automatically by `make sync-ssot`.
 pub const CRUCIBLE_VERSION: &str = "v0.4.19";
 
+// Shared by tests that read or mutate process environment / working directory.
+#[cfg(test)]
+fn test_env_lock() -> std::sync::MutexGuard<'static, ()> {
+    static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    LOCK.lock().unwrap_or_else(|err| err.into_inner())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

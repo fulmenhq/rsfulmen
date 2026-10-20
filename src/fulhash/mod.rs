@@ -162,6 +162,20 @@ impl Digest {
 
 impl Serialize for Digest {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        if !serializer.is_human_readable() {
+            // Binary formats get the compact v0.2.1 layout (algorithm, bytes):
+            // no length-prefixed strings for a reader to pre-allocate.
+            #[derive(Serialize)]
+            struct BinaryWire<'a> {
+                algorithm: Algorithm,
+                bytes: &'a [u8],
+            }
+            return BinaryWire {
+                algorithm: self.algorithm,
+                bytes: &self.bytes,
+            }
+            .serialize(serializer);
+        }
         #[derive(Serialize)]
         struct Wire<'a> {
             algorithm: Algorithm,
@@ -187,6 +201,19 @@ const MAX_DIGEST_HEX: usize = MAX_DIGEST_BYTES * 2;
 
 impl<'de> Deserialize<'de> for Digest {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        if !deserializer.is_human_readable() {
+            // Binary formats (bincode, postcard) are not self-describing: read
+            // the compact (algorithm, bytes) layout with a typed sequence
+            // visitor that rejects a declared length over the cap up front.
+            #[derive(Deserialize)]
+            struct BinaryWire {
+                algorithm: Algorithm,
+                #[serde(deserialize_with = "deserialize_bounded_bytes_typed")]
+                bytes: Vec<u8>,
+            }
+            let wire = BinaryWire::deserialize(deserializer)?;
+            return Digest::new(wire.algorithm, wire.bytes).map_err(serde::de::Error::custom);
+        }
         #[derive(Deserialize)]
         struct Wire {
             algorithm: Algorithm,
@@ -198,52 +225,57 @@ impl<'de> Deserialize<'de> for Digest {
             bytes: Option<Vec<u8>>,
         }
         let wire = Wire::deserialize(deserializer)?;
-        let from_hex = match wire.hex.as_deref() {
-            Some(hex_str) => {
-                if hex_str
-                    .chars()
-                    .any(|c| !c.is_ascii_hexdigit() || c.is_ascii_uppercase())
-                {
-                    return Err(serde::de::Error::custom("digest hex must be lowercase"));
-                }
-                Some(hex::decode(hex_str).map_err(|e| serde::de::Error::custom(e.to_string()))?)
-            }
-            None => None,
-        };
-        let from_formatted = match wire.formatted.as_deref() {
-            Some(formatted) => {
-                let parsed = parse_digest(formatted).map_err(serde::de::Error::custom)?;
-                if parsed.algorithm != wire.algorithm {
-                    return Err(serde::de::Error::custom(format!(
-                        "formatted algorithm {} does not match {}",
-                        parsed.algorithm.tag(),
-                        wire.algorithm.tag()
-                    )));
-                }
-                Some(parsed.bytes)
-            }
-            None => None,
-        };
-        let bytes = match (from_hex, from_formatted, wire.bytes) {
-            (Some(a), Some(b), _) if a != b => {
-                return Err(serde::de::Error::custom(
-                    "hex and formatted digest bytes disagree",
-                ));
-            }
-            (Some(a), _, Some(c)) | (_, Some(a), Some(c)) if a != c => {
-                return Err(serde::de::Error::custom(
-                    "bytes do not match hex/formatted digest",
-                ));
-            }
-            (Some(a), _, _) | (_, Some(a), _) | (_, _, Some(a)) => a,
-            (None, None, None) => {
-                return Err(serde::de::Error::custom(
-                    "digest requires hex, formatted, or bounded bytes",
-                ));
-            }
-        };
-        Digest::new(wire.algorithm, bytes).map_err(serde::de::Error::custom)
+        digest_from_wire(wire.algorithm, wire.hex, wire.formatted, wire.bytes)
     }
+}
+
+fn digest_from_wire<E: serde::de::Error>(
+    algorithm: Algorithm,
+    hex: Option<String>,
+    formatted: Option<String>,
+    bytes_field: Option<Vec<u8>>,
+) -> Result<Digest, E> {
+    let from_hex = match hex.as_deref() {
+        Some(hex_str) => {
+            if hex_str
+                .chars()
+                .any(|c| !c.is_ascii_hexdigit() || c.is_ascii_uppercase())
+            {
+                return Err(E::custom("digest hex must be lowercase"));
+            }
+            Some(hex::decode(hex_str).map_err(|e| E::custom(e.to_string()))?)
+        }
+        None => None,
+    };
+    let from_formatted = match formatted.as_deref() {
+        Some(formatted) => {
+            let parsed = parse_digest(formatted).map_err(E::custom)?;
+            if parsed.algorithm != algorithm {
+                return Err(E::custom(format!(
+                    "formatted algorithm {} does not match {}",
+                    parsed.algorithm.tag(),
+                    algorithm.tag()
+                )));
+            }
+            Some(parsed.bytes)
+        }
+        None => None,
+    };
+    let bytes = match (from_hex, from_formatted, bytes_field) {
+        (Some(a), Some(b), _) if a != b => {
+            return Err(E::custom("hex and formatted digest bytes disagree"));
+        }
+        (Some(a), _, Some(c)) | (_, Some(a), Some(c)) if a != c => {
+            return Err(E::custom("bytes do not match hex/formatted digest"));
+        }
+        (Some(a), _, _) | (_, Some(a), _) | (_, _, Some(a)) => a,
+        (None, None, None) => {
+            return Err(E::custom(
+                "digest requires hex, formatted, or bounded bytes",
+            ));
+        }
+    };
+    Digest::new(algorithm, bytes).map_err(E::custom)
 }
 
 fn deserialize_bounded_hex<'de, D: Deserializer<'de>>(
@@ -264,6 +296,16 @@ fn deserialize_bounded_formatted<'de, D: Deserializer<'de>>(
         MAX_DIGEST_HEX + 16,
         "formatted digest is too long",
     )
+}
+
+fn deserialize_bounded_bytes_typed<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Vec<u8>, D::Error> {
+    required(bounded_bytes(deserializer, true))
+}
+
+fn required<T, E: serde::de::Error>(value: Result<Option<T>, E>) -> Result<T, E> {
+    value?.ok_or_else(|| E::custom("missing digest field"))
 }
 
 fn bounded_optional_string<'de, D: Deserializer<'de>>(
@@ -309,6 +351,13 @@ fn bounded_optional_string<'de, D: Deserializer<'de>>(
 fn deserialize_bounded_bytes<'de, D: Deserializer<'de>>(
     deserializer: D,
 ) -> Result<Option<Vec<u8>>, D::Error> {
+    bounded_bytes(deserializer, false)
+}
+
+fn bounded_bytes<'de, D: Deserializer<'de>>(
+    deserializer: D,
+    typed: bool,
+) -> Result<Option<Vec<u8>>, D::Error> {
     struct Bounded;
     impl<'de> serde::de::Visitor<'de> for Bounded {
         type Value = Option<Vec<u8>>;
@@ -343,7 +392,11 @@ fn deserialize_bounded_bytes<'de, D: Deserializer<'de>>(
             Ok(Some(out))
         }
     }
-    deserializer.deserialize_any(Bounded)
+    if typed {
+        deserializer.deserialize_seq(Bounded)
+    } else {
+        deserializer.deserialize_any(Bounded)
+    }
 }
 
 impl fmt::Display for Digest {
@@ -1454,6 +1507,55 @@ mod tests {
         let xxh: Algorithm = serde_yaml::from_str("Xxh3_128\n").unwrap();
         assert_eq!(xxh, Algorithm::Xxh3_128);
         assert_eq!(serde_yaml::to_string(&xxh).unwrap().trim(), "xxh3-128");
+    }
+
+    // Revert proof for round-1 devrev M1 and round-2 secrev M1: binary
+    // formats (postcard rejects deserialize_any) round-trip every algorithm
+    // in the compact (algorithm, bytes) layout, with no length-prefixed
+    // strings, and still read v0.2.1 derived payloads.
+    #[test]
+    fn test_digest_serde_binary_is_compact_and_round_trips() {
+        for algorithm in [
+            Algorithm::Xxh3_128,
+            Algorithm::Sha256,
+            Algorithm::Crc32,
+            Algorithm::Crc32c,
+        ] {
+            let digest = hash(b"hello world", Some(algorithm)).unwrap();
+            let encoded = postcard::to_allocvec(&digest).unwrap();
+            // variant index (1 byte) + byte length (1 byte) + raw bytes
+            assert_eq!(
+                encoded.len(),
+                2 + algorithm.digest_len(),
+                "{}",
+                algorithm.tag()
+            );
+            let decoded: Digest = postcard::from_bytes(&encoded)
+                .unwrap_or_else(|e| panic!("{}: {e}", algorithm.tag()));
+            assert_eq!(decoded, digest);
+        }
+        #[derive(Serialize)]
+        enum LegacyAlgorithm {
+            #[allow(dead_code)]
+            Xxh3_128,
+            Sha256,
+        }
+        #[derive(Serialize)]
+        struct LegacyDigest {
+            algorithm: LegacyAlgorithm,
+            bytes: Vec<u8>,
+        }
+        let sha = hash(b"hello world", Some(Algorithm::Sha256)).unwrap();
+        let legacy = postcard::to_allocvec(&LegacyDigest {
+            algorithm: LegacyAlgorithm::Sha256,
+            bytes: sha.bytes().to_vec(),
+        })
+        .unwrap();
+        assert_eq!(postcard::from_bytes::<Digest>(&legacy).unwrap(), sha);
+        // Wrong length and an oversized declared length are rejected.
+        let crc = postcard::to_allocvec(&hash(b"x", Some(Algorithm::Crc32)).unwrap()).unwrap();
+        assert!(postcard::from_bytes::<Digest>(&crc[..crc.len() - 1]).is_err());
+        assert!(postcard::from_bytes::<Digest>(&[0, 0xff, 0xff, 0xff, 0xff, 0x0f]).is_err());
     }
 
     #[test]
