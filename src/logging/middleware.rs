@@ -43,7 +43,15 @@ pub const DEFAULT_SECRET_PATTERNS: &[&str] = &[
     r"\b\d{13,19}\b",
 ];
 
-const MAX_PATTERN_SCAN_SIZE: usize = 10 * 1024;
+/// Largest string, in UTF-8 bytes, that [`RedactSecretsMiddleware`] scans
+/// with its regex patterns.
+pub const MAX_PATTERN_SCAN_SIZE: usize = 10 * 1024;
+
+/// Replacement for a message or non-secret field value longer than
+/// [`MAX_PATTERN_SCAN_SIZE`]. Redaction fails closed: the whole value is
+/// replaced, because it is too large to scan.
+pub const OVERSIZED_REDACTION_MARKER: &str =
+    "[REDACTED: value exceeds 10240-byte redaction scan limit]";
 
 /// Outcome of one middleware step.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -171,6 +179,11 @@ impl Middleware for SensitiveKeyMiddleware {
 }
 
 /// Field + pattern redaction. Secrets must never reach the sink.
+///
+/// Values under secret keys are replaced outright. The message and other
+/// field values are scanned with the patterns; a value longer than
+/// [`MAX_PATTERN_SCAN_SIZE`] bytes is not scanned and is replaced in full with
+/// [`OVERSIZED_REDACTION_MARKER`] (fail closed).
 pub struct RedactSecretsMiddleware {
     keys_lower: Vec<String>,
     patterns: Vec<Regex>,
@@ -202,7 +215,8 @@ impl RedactSecretsMiddleware {
 
     fn redact_string(&self, value: &str) -> String {
         if value.len() > MAX_PATTERN_SCAN_SIZE {
-            return value.to_string();
+            // Fail closed: too large to scan, so never emit any of it.
+            return OVERSIZED_REDACTION_MARKER.to_string();
         }
         let mut out = value.to_string();
         for pattern in &self.patterns {
@@ -413,6 +427,55 @@ mod tests {
             "field leaked: {}",
             record.fields[0].1
         );
+        assert!(record.message.contains(DEFAULT_REDACTION_REPLACEMENT));
+    }
+
+    fn oversized_with_trailing_secret() -> String {
+        let mut value = "x ".repeat(MAX_PATTERN_SCAN_SIZE / 2 + 512);
+        value.push_str("GITHUB_TOKEN=ghp_tail_secret");
+        assert!(value.len() > MAX_PATTERN_SCAN_SIZE);
+        value
+    }
+
+    #[test]
+    fn oversized_message_fails_closed() {
+        let mw = RedactSecretsMiddleware::defaults().unwrap();
+        let mut record = rec(&oversized_with_trailing_secret(), &[]);
+        assert_eq!(mw.process(&mut record), MiddlewareAction::Emit);
+        assert_eq!(record.message, OVERSIZED_REDACTION_MARKER);
+        assert!(!record.message.contains("ghp_tail_secret"));
+        assert!(OVERSIZED_REDACTION_MARKER.contains(&MAX_PATTERN_SCAN_SIZE.to_string()));
+        assert!(record.redaction_flags.contains(&"redacted".to_string()));
+    }
+
+    #[test]
+    fn oversized_ordinary_field_fails_closed() {
+        let mw = RedactSecretsMiddleware::defaults().unwrap();
+        let big = oversized_with_trailing_secret();
+        let mut record = rec("ok", &[("note", big.as_str()), ("user", "ada")]);
+        mw.process(&mut record);
+        assert_eq!(record.message, "ok");
+        assert_eq!(record.fields[0].1, OVERSIZED_REDACTION_MARKER);
+        assert_eq!(record.fields[1].1, "ada");
+        assert!(!record
+            .fields
+            .iter()
+            .any(|(_, v)| v.contains("ghp_tail_secret")));
+        assert!(record.redaction_flags.contains(&"redacted".to_string()));
+    }
+
+    #[test]
+    fn value_at_scan_limit_is_pattern_scanned() {
+        let mw = RedactSecretsMiddleware::defaults().unwrap();
+        let tail = "GITHUB_TOKEN=ghp_tail_secret";
+        let mut value = "x".repeat(MAX_PATTERN_SCAN_SIZE - tail.len() - 1);
+        value.push(' ');
+        value.push_str(tail);
+        assert_eq!(value.len(), MAX_PATTERN_SCAN_SIZE);
+        let mut record = rec(&value, &[]);
+        mw.process(&mut record);
+        assert_ne!(record.message, OVERSIZED_REDACTION_MARKER);
+        assert!(!record.message.contains("GITHUB_TOKEN"));
         assert!(record.message.contains(DEFAULT_REDACTION_REPLACEMENT));
     }
 

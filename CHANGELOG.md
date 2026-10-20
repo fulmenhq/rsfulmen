@@ -64,6 +64,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Logging redaction fails closed for oversized values** —
+  `RedactSecretsMiddleware` returned a message or non-secret field value
+  longer than 10,240 bytes unscanned, so a secret past that point reached
+  the sink. Such values are now replaced in full with
+  `OVERSIZED_REDACTION_MARKER` and the record is flagged `redacted`.
+  `MAX_PATTERN_SCAN_SIZE` is now public.
+
 - **ZIP security advisories** — upgrade optional `zip` from 2.4.2 to 9.0.5
   (RUSTSEC-2026-0367, RUSTSEC-2026-0368, RUSTSEC-2026-0369), keeping only
   deflate support, Rust 1.88 compatibility, and CP437 entry name handling.

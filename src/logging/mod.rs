@@ -64,6 +64,7 @@ pub use middleware::{
     CorrelationMiddleware, LogRecord, Middleware, MiddlewareAction, MiddlewareChain,
     RedactSecretsMiddleware, SensitiveKeyMiddleware, ThrottleMiddleware,
     DEFAULT_REDACTION_REPLACEMENT, DEFAULT_SECRET_KEYS, DEFAULT_SECRET_PATTERNS,
+    MAX_PATTERN_SCAN_SIZE, OVERSIZED_REDACTION_MARKER,
 };
 pub use policy::{LoggingPolicy, PolicyError, PolicyProfile, PolicyValidationOptions};
 
