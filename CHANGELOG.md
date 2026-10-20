@@ -7,7 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Bounded repository discovery via `pathfinder::discover_repository_root`,
+  `RepositoryRootOptions`, structured errors and stop reasons, and public marker
+  and depth constants. Supports explicit ceilings and optional symlink following.
+
 ### Fixed
+
+- **ZIP security advisories** — upgrade optional `zip` from 2.4.2 to 9.0.5
+  (RUSTSEC-2026-0367, RUSTSEC-2026-0368, RUSTSEC-2026-0369), keeping only
+  deflate support, Rust 1.88 compatibility, and CP437 entry name handling.
+
+- Catalog indexing skips only parse failures; access, containment, and IO failures abort resolver construction.
 
 - **Windows `file://` schema containment** — catalog roots from
   `fs::canonicalize` use `\\?\` verbatim prefixes; `Url::to_file_path`

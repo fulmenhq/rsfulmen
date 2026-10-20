@@ -37,6 +37,7 @@ mod format;
 mod read;
 mod types;
 mod verify;
+mod zip_name;
 
 pub use create::create;
 pub use error::FulpackError;
@@ -324,6 +325,158 @@ mod tests {
             writer.finish().expect("finish zip");
         }
         cursor.into_inner()
+    }
+
+    // Raw name, general-purpose flags, extra fields, and payload.
+    type RawZipEntry<'a> = (&'a [u8], u16, &'a [u8], &'a [u8]);
+
+    // Build stored ZIPs directly so the writer cannot normalize names or flags.
+    // Both headers carry the identical raw name, flags, and extra field.
+    fn raw_name_zip(entries: &[RawZipEntry<'_>]) -> Vec<u8> {
+        fn u16le(out: &mut Vec<u8>, value: u16) {
+            out.extend_from_slice(&value.to_le_bytes());
+        }
+        fn u32le(out: &mut Vec<u8>, value: u32) {
+            out.extend_from_slice(&value.to_le_bytes());
+        }
+        let mut out = Vec::new();
+        let mut central = Vec::new();
+        for &(name, flags, extra, data) in entries {
+            let offset = out.len() as u32;
+            let crc = zip_test_crc32(data);
+            u32le(&mut out, 0x04034b50);
+            for value in [20, flags, 0, 0, 0] {
+                u16le(&mut out, value);
+            }
+            for value in [crc, data.len() as u32, data.len() as u32] {
+                u32le(&mut out, value);
+            }
+            u16le(&mut out, name.len() as u16);
+            u16le(&mut out, extra.len() as u16);
+            out.extend_from_slice(name);
+            out.extend_from_slice(extra);
+            out.extend_from_slice(data);
+
+            u32le(&mut central, 0x02014b50);
+            for value in [20, 20, flags, 0, 0, 0] {
+                u16le(&mut central, value);
+            }
+            for value in [crc, data.len() as u32, data.len() as u32] {
+                u32le(&mut central, value);
+            }
+            for value in [name.len() as u16, extra.len() as u16, 0, 0, 0] {
+                u16le(&mut central, value);
+            }
+            u32le(&mut central, 0);
+            u32le(&mut central, offset);
+            central.extend_from_slice(name);
+            central.extend_from_slice(extra);
+        }
+        let central_offset = out.len() as u32;
+        out.extend_from_slice(&central);
+        u32le(&mut out, 0x06054b50);
+        for value in [0, 0, entries.len() as u16, entries.len() as u16] {
+            u16le(&mut out, value);
+        }
+        u32le(&mut out, central.len() as u32);
+        u32le(&mut out, central_offset);
+        u16le(&mut out, 0);
+        out
+    }
+
+    fn zip_test_crc32(data: &[u8]) -> u32 {
+        let mut crc = !0u32;
+        for byte in data {
+            crc ^= u32::from(*byte);
+            for _ in 0..8 {
+                crc = (crc >> 1) ^ (0xedb88320 & 0u32.wrapping_sub(crc & 1));
+            }
+        }
+        !crc
+    }
+
+    fn cp437_collision_zip() -> Vec<u8> {
+        raw_name_zip(&[
+            (b"\xc3\xa9.txt", 0, b"", b"first"),
+            (b"\x82.txt", 0, b"", b"second"),
+        ])
+    }
+
+    #[test]
+    fn zip_cp437_scan_and_verify_preserve_distinct_names() {
+        let tmp = TestDir::new();
+        let archive = tmp.materialize("cp437.zip", &cp437_collision_zip());
+        let entries = scan(&archive, None).unwrap();
+        assert_eq!(paths(&entries), ["├⌐.txt", "é.txt"]);
+        let result = verify(&archive).unwrap();
+        assert!(result.valid, "{:?}", result.errors);
+        assert_eq!(result.entry_count, 2);
+    }
+
+    #[test]
+    fn zip_cp437_extract_preserves_both_payloads_with_overwrite() {
+        let tmp = TestDir::new();
+        let archive = tmp.materialize("cp437.zip", &cp437_collision_zip());
+        for overwrite in [OverwriteMode::Overwrite, OverwriteMode::Error] {
+            let dest = tmp.path.join(format!("{overwrite:?}"));
+            let options = ExtractOptions {
+                overwrite: Some(overwrite),
+                ..Default::default()
+            };
+            let result = extract(&archive, &dest, Some(&options)).unwrap();
+            assert_eq!(result.extracted_count, 2);
+            assert_eq!(fs::read(dest.join("├⌐.txt")).unwrap(), b"first");
+            assert_eq!(fs::read(dest.join("é.txt")).unwrap(), b"second");
+        }
+    }
+
+    #[test]
+    fn zip_invalid_flagged_utf8_is_corrupt_in_all_operations() {
+        let tmp = TestDir::new();
+        let archive = tmp.materialize(
+            "invalid.zip",
+            &raw_name_zip(&[(b"\x82.txt", 1 << 11, b"", b"data")]),
+        );
+        let errors = [
+            scan(&archive, None).unwrap_err(),
+            verify(&archive).unwrap_err(),
+            extract(&archive, &tmp.path.join("out"), None).unwrap_err(),
+        ];
+        for error in errors {
+            assert_eq!(error.code(), "ARCHIVE_CORRUPT");
+            match error {
+                FulpackError::Corrupt { path, message } => {
+                    assert_eq!(path, archive);
+                    assert!(message.contains("utf-8"), "{message}");
+                }
+                _ => panic!("expected corrupt archive"),
+            }
+        }
+    }
+
+    #[test]
+    fn zip_unicode_path_extra_and_flagged_utf8_are_preserved() {
+        let tmp = TestDir::new();
+        let raw = b"legacy.txt";
+        let name = "日本.txt";
+        let mut extra = vec![0x75, 0x70];
+        extra.extend_from_slice(&((5 + name.len()) as u16).to_le_bytes());
+        extra.push(1);
+        extra.extend_from_slice(&zip_test_crc32(raw).to_le_bytes());
+        extra.extend_from_slice(name.as_bytes());
+        let archive = tmp.materialize(
+            "unicode.zip",
+            &raw_name_zip(&[
+                (raw, 0, &extra, b"unicode extra"),
+                ("é.txt".as_bytes(), 1 << 11, b"", b"flagged utf8"),
+            ]),
+        );
+        assert_eq!(paths(&scan(&archive, None).unwrap()), [name, "é.txt"]);
+        assert_eq!(verify(&archive).unwrap().entry_count, 2);
+        let dest = tmp.path.join("out");
+        extract(&archive, &dest, None).unwrap();
+        assert_eq!(fs::read(dest.join(name)).unwrap(), b"unicode extra");
+        assert_eq!(fs::read(dest.join("é.txt")).unwrap(), b"flagged utf8");
     }
 
     #[test]
