@@ -23,8 +23,8 @@ pub mod export;
 pub mod http;
 
 pub use export::{
-    render_json_array, render_json_lines, render_prometheus_text, Exporter, JsonLinesExporter,
-    PrometheusTextExporter,
+    render_json_array, render_json_lines, render_prometheus_text, validate_prometheus_label,
+    Exporter, JsonLinesExporter, PrometheusTextExporter,
 };
 pub use http::{
     normalize_route, outcome_from_status, ActiveHttpRequest, HttpRecord, HttpRecorder,
@@ -49,6 +49,30 @@ pub enum TelemetryError {
     /// Writer failed while exporting.
     #[error("export I/O failed: {0}")]
     Io(String),
+
+    /// A tag key cannot be a Prometheus label name. Tags follow the wider
+    /// Crucible JSON contract; the Prometheus text exporter accepts only
+    /// `[a-zA-Z_][a-zA-Z0-9_]*`, not starting with the reserved `__`, and not
+    /// `le` on a histogram.
+    #[error("invalid Prometheus label name {label:?} on metric {metric}: {reason}")]
+    InvalidPrometheusLabel {
+        /// Metric carrying the tag.
+        metric: String,
+        /// Offending tag key.
+        label: String,
+        /// Why the key is rejected.
+        reason: &'static str,
+    },
+
+    /// A metric name cannot be a Prometheus metric name
+    /// (`[a-zA-Z_:][a-zA-Z0-9_:]*`, not starting with the reserved `__`).
+    #[error("invalid Prometheus metric name {metric:?}: {reason}")]
+    InvalidPrometheusMetricName {
+        /// Offending metric name.
+        metric: String,
+        /// Why the name is rejected.
+        reason: &'static str,
+    },
 }
 
 /// Metric unit (aligned with the metrics taxonomy).
