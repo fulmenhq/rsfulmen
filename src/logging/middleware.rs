@@ -47,7 +47,7 @@ pub const DEFAULT_SECRET_PATTERNS: &[&str] = &[
 /// with its regex patterns.
 pub const MAX_PATTERN_SCAN_SIZE: usize = 10 * 1024;
 
-/// Replacement for a message or non-secret field value longer than
+/// Replacement for any scanned record string longer than
 /// [`MAX_PATTERN_SCAN_SIZE`]. Redaction fails closed: the whole value is
 /// replaced, because it is too large to scan.
 pub const OVERSIZED_REDACTION_MARKER: &str =
@@ -180,10 +180,13 @@ impl Middleware for SensitiveKeyMiddleware {
 
 /// Field + pattern redaction. Secrets must never reach the sink.
 ///
-/// Values under secret keys are replaced outright. The message and other
-/// field values are scanned with the patterns; a value longer than
-/// [`MAX_PATTERN_SCAN_SIZE`] bytes is not scanned and is replaced in full with
-/// [`OVERSIZED_REDACTION_MARKER`] (fail closed).
+/// Values under secret keys are replaced outright. Every other string the
+/// sink emits from the record (message, logger name, component, correlation
+/// id, field keys and field values) is scanned with the patterns; a string
+/// longer than [`MAX_PATTERN_SCAN_SIZE`] bytes is not scanned and is replaced
+/// in full with [`OVERSIZED_REDACTION_MARKER`] (fail closed), regardless of
+/// the configured replacement. Field keys are matched against the secret-key
+/// list before they are redacted, and redacted keys may collide.
 pub struct RedactSecretsMiddleware {
     keys_lower: Vec<String>,
     patterns: Vec<Regex>,
@@ -213,6 +216,16 @@ impl RedactSecretsMiddleware {
         })
     }
 
+    /// Redact `value` in place; returns `true` when it changed.
+    fn scrub(&self, value: &mut String) -> bool {
+        let redacted = self.redact_string(value);
+        if redacted == *value {
+            return false;
+        }
+        *value = redacted;
+        true
+    }
+
     fn redact_string(&self, value: &str) -> String {
         if value.len() > MAX_PATTERN_SCAN_SIZE {
             // Fail closed: too large to scan, so never emit any of it.
@@ -230,23 +243,22 @@ impl RedactSecretsMiddleware {
 
 impl Middleware for RedactSecretsMiddleware {
     fn process(&self, record: &mut LogRecord) -> MiddlewareAction {
-        let mut hit = false;
-        let original_message = record.message.clone();
-        record.message = self.redact_string(&record.message);
-        if record.message != original_message {
-            hit = true;
+        let mut hit = self.scrub(&mut record.message);
+        hit |= self.scrub(&mut record.logger);
+        if let Some(component) = record.component.as_mut() {
+            hit |= self.scrub(component);
+        }
+        if let Some(correlation_id) = record.correlation_id.as_mut() {
+            hit |= self.scrub(correlation_id);
         }
         for (key, value) in &mut record.fields {
             if SensitiveKeyMiddleware::is_secret(&self.keys_lower, key) {
                 *value = self.replacement.clone();
                 hit = true;
             } else {
-                let redacted = self.redact_string(value);
-                if redacted != *value {
-                    hit = true;
-                }
-                *value = redacted;
+                hit |= self.scrub(value);
             }
+            hit |= self.scrub(key);
         }
         if hit {
             push_flag(&mut record.redaction_flags, "redacted");
@@ -462,6 +474,60 @@ mod tests {
             .iter()
             .any(|(_, v)| v.contains("ghp_tail_secret")));
         assert!(record.redaction_flags.contains(&"redacted".to_string()));
+    }
+
+    #[test]
+    fn oversized_record_metadata_fails_closed() {
+        let mw = RedactSecretsMiddleware::defaults().unwrap();
+        let big = oversized_with_trailing_secret();
+        let mut record = rec("ok", &[(big.as_str(), "v")]);
+        record.logger = big.clone();
+        record.component = Some(big.clone());
+        record.correlation_id = Some(big.clone());
+        mw.process(&mut record);
+        assert_eq!(record.logger, OVERSIZED_REDACTION_MARKER);
+        assert_eq!(
+            record.component.as_deref(),
+            Some(OVERSIZED_REDACTION_MARKER)
+        );
+        assert_eq!(
+            record.correlation_id.as_deref(),
+            Some(OVERSIZED_REDACTION_MARKER)
+        );
+        assert_eq!(record.fields[0].0, OVERSIZED_REDACTION_MARKER);
+        assert_eq!(record.fields[0].1, "v");
+        assert!(record.redaction_flags.contains(&"redacted".to_string()));
+    }
+
+    #[test]
+    fn correlation_copied_before_redaction_is_scrubbed() {
+        let chain = MiddlewareChain::new()
+            .with(CorrelationMiddleware::new())
+            .with(RedactSecretsMiddleware::defaults().unwrap());
+        for key in ["correlationId", "CorrelationId", "correlation_id"] {
+            let mut record = rec("ok", &[(key, "SECRET_CORR_ABC123")]);
+            assert!(chain.apply(&mut record));
+            let id = record.correlation_id.as_deref().unwrap();
+            assert!(!id.contains("SECRET_CORR_ABC123"), "{key}: {id}");
+            let big = oversized_with_trailing_secret();
+            let mut record = rec("ok", &[(key, big.as_str())]);
+            assert!(chain.apply(&mut record));
+            assert_eq!(
+                record.correlation_id.as_deref(),
+                Some(OVERSIZED_REDACTION_MARKER),
+                "{key}"
+            );
+        }
+    }
+
+    #[test]
+    fn pattern_secret_in_field_key_is_redacted() {
+        let mw = RedactSecretsMiddleware::defaults().unwrap();
+        let mut record = rec("ok", &[("SECRET_KEY_ABC123", "v")]);
+        mw.process(&mut record);
+        assert!(!record.fields[0].0.contains("SECRET_KEY_ABC123"));
+        assert!(record.redaction_flags.contains(&"redacted".to_string()));
+        assert!(record.fields[0].0.contains(DEFAULT_REDACTION_REPLACEMENT));
     }
 
     #[test]

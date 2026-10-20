@@ -69,7 +69,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer than 10,240 bytes unscanned, so a secret past that point reached
   the sink. Such values are now replaced in full with
   `OVERSIZED_REDACTION_MARKER` and the record is flagged `redacted`.
-  `MAX_PATTERN_SCAN_SIZE` is now public.
+  The middleware now also scans the logger name, component, correlation id
+  and field keys, which were previously emitted unredacted (including a
+  correlation id copied from a field by an earlier `CorrelationMiddleware`).
+  `MAX_PATTERN_SCAN_SIZE` and `OVERSIZED_REDACTION_MARKER` are public.
 
 - **ZIP security advisories** — upgrade optional `zip` from 2.4.2 to 9.0.5
   (RUSTSEC-2026-0367, RUSTSEC-2026-0368, RUSTSEC-2026-0369), keeping only

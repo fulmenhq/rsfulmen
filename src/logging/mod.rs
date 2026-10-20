@@ -1098,6 +1098,31 @@ mod tests {
     }
 
     #[test]
+    fn test_redaction_fails_closed_for_oversized_strings_at_sink() {
+        let mut big = "x ".repeat(MAX_PATTERN_SCAN_SIZE / 2 + 512);
+        big.push_str("tail-secret-zz9");
+        for profile in [Profile::Simple, Profile::Structured] {
+            let buf = SharedBuffer::new();
+            let chain = MiddlewareChain::new()
+                .with(CorrelationMiddleware::new())
+                .with(RedactSecretsMiddleware::defaults().unwrap());
+            let log = logger_with_buffer(&big, Severity::Trace, profile, &buf)
+                .with_component(&big)
+                .with_middleware_chain(chain);
+            log.info(
+                &big,
+                &[
+                    (big.as_str(), big.as_str()),
+                    ("CorrelationId", big.as_str()),
+                ],
+            );
+            let output = buf.contents();
+            assert!(!output.contains("tail-secret-zz9"), "{profile:?} leaked");
+            assert!(output.contains(OVERSIZED_REDACTION_MARKER), "{profile:?}");
+        }
+    }
+
+    #[test]
     fn test_middleware_redacts_structured_profile() {
         let buf = SharedBuffer::new();
         let chain = MiddlewareChain::new().with(SensitiveKeyMiddleware::defaults());
