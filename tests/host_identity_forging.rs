@@ -49,8 +49,20 @@ fn temp(prefix: &str) -> TempDir {
         .expect("tempdir")
 }
 
+// Fixture git must not inherit hook-exported repo locators (GIT_DIR,
+// GIT_WORK_TREE, GIT_INDEX_FILE, ...), or it writes into the real checkout.
+fn fixture_git() -> Command {
+    let mut cmd = Command::new("git");
+    for (k, _) in env::vars() {
+        if rsfulmen::buildinfo::producer::is_stripped_git_env(&k) {
+            cmd.env_remove(k);
+        }
+    }
+    cmd
+}
+
 fn git(dir: &Path, args: &[&str]) {
-    let status = Command::new("git")
+    let status = fixture_git()
         .current_dir(dir)
         .args(args)
         .env("GIT_AUTHOR_NAME", "rsfulmen-hostid")
@@ -65,7 +77,7 @@ fn git(dir: &Path, args: &[&str]) {
 }
 
 fn git_stdout(dir: &Path, args: &[&str]) -> String {
-    let out = Command::new("git")
+    let out = fixture_git()
         .current_dir(dir)
         .args(args)
         .output()

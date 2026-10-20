@@ -256,6 +256,12 @@ pub fn discover_repository_root(
     } else {
         normalized_start
     };
+    check_parent_prefixes(&lexical_start).map_err(|message| {
+        RepositoryRootError::InvalidStartPath {
+            start_path: start_path.to_path_buf(),
+            message,
+        }
+    })?;
     let start_meta = fs::symlink_metadata(&lexical_start).map_err(|err| {
         let message = if err.kind() == std::io::ErrorKind::NotFound {
             "start path does not exist".to_string()
@@ -534,6 +540,34 @@ fn absolute_path(path: &Path) -> Result<PathBuf, String> {
         .map_err(|err| format!("failed to resolve absolute path: {err}"))
 }
 
+// Windows path APIs collapse `..` lexically before touching the filesystem, so
+// `missing/..` or `file/..` would resolve there while POSIX rejects them. Check
+// every prefix that precedes a `..` explicitly so the outcome is OS-independent.
+fn check_parent_prefixes(path: &Path) -> Result<(), String> {
+    let mut prefix = PathBuf::new();
+    for component in path.components() {
+        if component == std::path::Component::ParentDir && !prefix.as_os_str().is_empty() {
+            match fs::metadata(&prefix) {
+                Ok(meta) if meta.is_dir() => {}
+                Ok(_) => {
+                    return Err(format!(
+                        "path component before '..' is not a directory: {}",
+                        prefix.display()
+                    ))
+                }
+                Err(err) => {
+                    return Err(format!(
+                        "path component before '..' is not accessible: {}: {err}",
+                        prefix.display()
+                    ))
+                }
+            }
+        }
+        prefix.push(component.as_os_str());
+    }
+    Ok(())
+}
+
 fn has_parent_component(path: &Path) -> bool {
     path.components()
         .any(|c| c == std::path::Component::ParentDir)
@@ -574,6 +608,12 @@ fn resolve_boundary(
                 message: "parent components require follow_symlinks".to_string(),
             });
         }
+        check_parent_prefixes(boundary).map_err(|message| {
+            RepositoryRootError::InvalidBoundary {
+                boundary: boundary.to_path_buf(),
+                message,
+            }
+        })?;
         let meta = fs::metadata(boundary).map_err(|err| {
             let message = if err.kind() == std::io::ErrorKind::NotFound {
                 "boundary path does not exist".to_string()
@@ -1647,6 +1687,36 @@ mod tests {
                 Err(RepositoryRootError::InvalidBoundary { .. })
             ));
         }
+    }
+
+    // Revert proof for the Windows `..` fix: the explicit prefix check, not the
+    // platform's path resolution, must reject `missing/..` and `file/..`.
+    #[test]
+    fn regression_r5_parent_prefix_check_is_platform_neutral() {
+        let _lock = crate::test_env_lock();
+        let tmp = TestDir::new();
+        fs::create_dir_all(tmp.path().join(".git")).unwrap();
+        write_file(&tmp.path().join("file"), "x");
+        let mut options = opts(&[".git"], tmp.path(), 8);
+        options.follow_symlinks = true;
+        for bad in ["missing/..", "file/.."] {
+            match discover_repository_root(&tmp.path().join(bad), &options) {
+                Err(RepositoryRootError::InvalidStartPath { message, .. }) => {
+                    assert!(message.contains("before '..'"), "{bad}: {message}")
+                }
+                other => panic!("{bad}: unexpected {other:?}"),
+            }
+            let mut bounded = options.clone();
+            bounded.boundary = Some(tmp.path().join(bad));
+            match discover_repository_root(tmp.path(), &bounded) {
+                Err(RepositoryRootError::InvalidBoundary { message, .. }) => {
+                    assert!(message.contains("before '..'"), "{bad}: {message}")
+                }
+                other => panic!("{bad}: unexpected {other:?}"),
+            }
+        }
+        assert!(check_parent_prefixes(&tmp.path().join("missing/..")).is_err());
+        assert!(check_parent_prefixes(&tmp.path().join(".git/..")).is_ok());
     }
 
     #[test]
