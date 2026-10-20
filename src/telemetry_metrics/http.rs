@@ -8,6 +8,11 @@ use std::time::Duration;
 
 use super::{Metrics, TelemetryError};
 
+const OTHER_ROUTE: &str = "__other__";
+const STANDARD_METHODS: &[&str] = &[
+    "GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH",
+];
+
 /// Default duration buckets for `http_request_duration_seconds` (seconds).
 pub const HTTP_DURATION_BUCKETS_S: &[f64] = &[
     0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0,
@@ -56,6 +61,8 @@ pub fn normalize_route(path: &str) -> String {
             ":objectid"
         } else if is_numeric_id(segment) {
             ":id"
+        } else if is_token_segment(segment) {
+            ":token"
         } else {
             segment
         });
@@ -70,6 +77,30 @@ pub fn normalize_route(path: &str) -> String {
         "/".to_string()
     } else {
         out
+    }
+}
+
+fn is_token_segment(segment: &str) -> bool {
+    let bytes = segment.as_bytes();
+    if bytes.len() < 16 {
+        return false;
+    }
+    if bytes.iter().all(|b| b.is_ascii_hexdigit()) {
+        return true;
+    }
+    let base64ish = bytes
+        .iter()
+        .all(|b| b.is_ascii_alphanumeric() || matches!(*b, b'+' | b'/' | b'-' | b'_' | b'='));
+    let has_digit = bytes.iter().any(|b| b.is_ascii_digit());
+    base64ish && has_digit
+}
+
+fn canonical_method(method: &str) -> String {
+    let upper = method.to_ascii_uppercase();
+    if STANDARD_METHODS.iter().any(|item| *item == upper) {
+        upper
+    } else {
+        "OTHER".to_string()
     }
 }
 
@@ -205,16 +236,25 @@ impl HttpRecorder {
     }
 
     /// Record a completed request (counter + duration, optional sizes).
+    ///
+    /// Label sets share one cap on the [`Metrics`] registry. Past the cap,
+    /// the route collapses to `__other__` and the status collapses to its
+    /// outcome class so request-controlled labels cannot open more series.
     pub fn record(&self, record: HttpRecord) -> Result<(), TelemetryError> {
-        let method = record.method.to_ascii_uppercase();
-        let route = if record.normalize {
+        let method = canonical_method(&record.method);
+        let mut route = if record.normalize {
             normalize_route(&record.route)
         } else {
             record.route
         };
-        let status = record.status.to_string();
         let outcome = outcome_from_status(record.status);
+        let mut status = record.status.to_string();
         let service = self.service.as_str();
+        let signature = format!("{service}\n{method}\n{route}\n{status}\n{outcome}");
+        if !self.metrics.admit_http_series(&signature) {
+            route = OTHER_ROUTE.to_string();
+            status = outcome.to_string();
+        }
 
         self.metrics
             .counter("http_requests_total")?
@@ -300,6 +340,13 @@ mod tests {
             normalize_route("/docs/507f1f77bcf86cd799439011"),
             "/docs/:objectid"
         );
+        assert_eq!(
+            normalize_route("/password-reset/9f8e7d6c5b4a39281716151413121110"),
+            "/password-reset/:token"
+        );
+        assert!(
+            !normalize_route("/password-reset/9f8e7d6c5b4a39281716151413121110").contains("9f8e")
+        );
         assert_eq!(normalize_route("/"), "/");
     }
 
@@ -349,6 +396,78 @@ mod tests {
         };
         assert_eq!(h.count, 1);
         assert!((h.sum - 0.02).abs() < 1e-9);
+    }
+
+    #[test]
+    fn label_sets_collapse_past_cap_and_unknown_methods() {
+        let metrics = Metrics::new();
+        metrics.set_http_series_cap(3);
+        let rec = HttpRecorder::new(metrics.clone(), "api");
+        for i in 0..5 {
+            rec.record(HttpRecord::new("GET", format!("/only-{i}"), 404))
+                .unwrap();
+        }
+        rec.record(HttpRecord::new("NOPE", "/only-0", 404)).unwrap();
+        let text = metrics.export_prometheus_text().unwrap();
+        assert!(text.contains("route=\"/only-0\""), "{text}");
+        assert!(text.contains("route=\"__other__\""), "{text}");
+        assert!(!text.contains("/only-3"), "{text}");
+        assert!(!text.contains("/only-4"), "{text}");
+        assert!(text.contains("method=\"OTHER\""), "{text}");
+        assert!(!text.contains("9f8e"), "{text}");
+    }
+
+    #[test]
+    fn recorders_share_one_registry_cap() {
+        let metrics = Metrics::new();
+        metrics.set_http_series_cap(3);
+        let left = HttpRecorder::new(metrics.clone(), "api");
+        let right = HttpRecorder::new(metrics.clone(), "api");
+        left.record(HttpRecord::new("GET", "/ra-0", 200)).unwrap();
+        right.record(HttpRecord::new("GET", "/rb-0", 200)).unwrap();
+        left.record(HttpRecord::new("GET", "/ra-1", 200)).unwrap();
+        right.record(HttpRecord::new("GET", "/rb-1", 200)).unwrap();
+        let text = metrics.export_prometheus_text().unwrap();
+        let series = text
+            .lines()
+            .filter(|line| line.starts_with("http_requests_total{"))
+            .count();
+        assert!(series <= 3, "{series}\n{text}");
+        assert!(text.contains("route=\"__other__\""), "{text}");
+        let present = ["/ra-0", "/rb-0", "/ra-1", "/rb-1"]
+            .into_iter()
+            .filter(|route| text.contains(route))
+            .count();
+        assert_eq!(present, 2, "{text}");
+    }
+
+    #[test]
+    fn overflow_collapses_status_to_outcome() {
+        let metrics = Metrics::new();
+        metrics.set_http_series_cap(3);
+        let rec = HttpRecorder::new(metrics.clone(), "api");
+        rec.record(HttpRecord::new("GET", "/keep-a", 200)).unwrap();
+        rec.record(HttpRecord::new("GET", "/keep-b", 200)).unwrap();
+        for status in [201u16, 404, 401, 500, 503, 302, 418] {
+            rec.record(HttpRecord::new("GET", format!("/past-{status}"), status))
+                .unwrap();
+        }
+        let text = metrics.export_prometheus_text().unwrap();
+        assert!(text.contains("route=\"/keep-a\""), "{text}");
+        assert!(text.contains("route=\"/keep-b\""), "{text}");
+        assert!(text.contains("route=\"__other__\""), "{text}");
+        assert!(!text.contains("/past-"), "{text}");
+        for status in ["201", "404", "401", "500", "503", "302", "418"] {
+            assert!(!text.contains(&format!("status=\"{status}\"")), "{text}");
+        }
+        assert!(text.contains("status=\"4xx\""), "{text}");
+        assert!(text.contains("status=\"5xx\""), "{text}");
+        let series = text
+            .lines()
+            .filter(|line| line.starts_with("http_requests_total{"))
+            .count();
+        // Two admitted routes plus one overflow series per outcome class.
+        assert!(series <= 6, "{series}\n{text}");
     }
 
     #[test]

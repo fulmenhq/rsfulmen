@@ -7,7 +7,7 @@
 //! Prometheus text and HTTP `http_*` helpers are opt-in adapters — no scrape
 //! server and no framework middleware.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -377,6 +377,8 @@ struct Inner {
     gauges: HashMap<MetricKey, f64>,
     histograms: HashMap<MetricKey, HistogramState>,
     kinds: HashMap<String, InstrumentKind>,
+    http_series: HashSet<String>,
+    http_series_cap: usize,
 }
 
 /// In-memory telemetry registry.
@@ -465,6 +467,43 @@ impl Metrics {
                 Ok(())
             }
         }
+    }
+
+    /// Admit one HTTP label set for the whole registry.
+    ///
+    /// Every [`crate::telemetry_metrics::HttpRecorder`] cloned from this
+    /// registry shares the set. `0` uses the 10_000 default.
+    pub(crate) fn admit_http_series(&self, signature: &str) -> bool {
+        const DEFAULT_CAP: usize = 10_000;
+        let mut inner = self.inner.lock().expect("metrics lock poisoned");
+        if inner.http_series.contains(signature) {
+            return true;
+        }
+        let cap = if inner.http_series_cap == 0 {
+            DEFAULT_CAP
+        } else {
+            inner.http_series_cap
+        };
+        let overflow = "__overflow__";
+        let reserved = inner.http_series.contains(overflow);
+        let limit = if reserved { cap } else { cap.saturating_sub(1) };
+        if inner.http_series.len() < limit {
+            inner.http_series.insert(signature.to_string());
+            return true;
+        }
+        if !reserved {
+            inner.http_series.insert(overflow.to_string());
+        }
+        false
+    }
+
+    /// Lower the HTTP series cap. Test-only; production uses 10_000.
+    #[cfg(test)]
+    pub(crate) fn set_http_series_cap(&self, cap: usize) {
+        self.inner
+            .lock()
+            .expect("metrics lock poisoned")
+            .http_series_cap = cap;
     }
 
     /// Export current metric events (does not clear state).
