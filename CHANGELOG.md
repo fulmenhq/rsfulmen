@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Bounded repository discovery via `pathfinder::discover_repository_root`,
+  `RepositoryRootOptions`, structured errors and stop reasons, and public marker
+  and depth constants. Supports explicit ceilings and optional symlink following.
+
 ### Fixed
 
 - **ZIP security advisories** — upgrade optional `zip` from 2.4.2 to 9.0.5
