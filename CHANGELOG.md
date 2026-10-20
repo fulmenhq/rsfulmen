@@ -12,6 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bounded repository discovery via `pathfinder::discover_repository_root`,
   `RepositoryRootOptions`, structured errors and stop reasons, and public marker
   and depth constants. Supports explicit ceilings and optional symlink following.
+- **FulHash CRC-32 / CRC-32C and MultiHash** — `Algorithm::Crc32` (IEEE) and
+  `Algorithm::Crc32c` (Castagnoli) via the new optional `crc` dependency
+  (`fulhash` feature), plus single-pass `multi_hash`, `multi_hash_string` and
+  `multi_hash_reader`. `Digest::new`, `Digest::algorithm()` and
+  `Digest::bytes()` construct and read digests. CRC and xxHash detect
+  accidental corruption only; use SHA-256 with an authenticated digest,
+  signature or MAC for adversarial inputs. `Digest` serde round-trips in both
+  self-describing (JSON, YAML) and binary (bincode, postcard) formats.
 
 ### Changed
 
