@@ -108,9 +108,11 @@ pub fn render_json_lines(events: &[MetricsEvent]) -> Result<String, TelemetryErr
 ///
 /// [`TelemetryError::InvalidPrometheusMetricName`] when any event name is not
 /// a valid Prometheus metric name (see [`validate_prometheus_metric_name`]),
-/// and [`TelemetryError::InvalidPrometheusLabel`] when any tag key is not a
-/// valid Prometheus label name (see [`validate_prometheus_label`]). Nothing is
-/// rendered in either case; JSON export keeps accepting such events.
+/// [`TelemetryError::InvalidPrometheusLabel`] when any tag key is not a
+/// valid Prometheus label name (see [`validate_prometheus_label`]), and
+/// [`TelemetryError::InstrumentKindConflict`] when one name is both a
+/// histogram and a scalar, or both a counter and a gauge. Nothing is
+/// rendered in any of those cases; JSON export keeps accepting such events.
 pub fn render_prometheus_text(events: &[MetricsEvent]) -> Result<String, TelemetryError> {
     for event in events {
         validate_prometheus_metric_name(&event.name)?;
@@ -129,20 +131,22 @@ pub fn render_prometheus_text(events: &[MetricsEvent]) -> Result<String, Telemet
         let key = (event.name.clone(), labels);
         match &event.value {
             MetricValue::Histogram(summary) => {
-                types.insert(event.name.clone(), PromType::Histogram);
+                record_prom_type(&mut types, &event.name, PromType::Histogram)?;
                 hists.insert(key, summary.clone());
             }
-            MetricValue::Scalar(value) => match classify_scalar(&event.name, event.unit) {
-                PromType::Gauge => {
-                    types.insert(event.name.clone(), PromType::Gauge);
-                    gauges.insert(key, *value);
+            MetricValue::Scalar(value) => {
+                let kind = classify_scalar(&event.name, event.unit);
+                record_prom_type(&mut types, &event.name, kind)?;
+                match kind {
+                    PromType::Gauge => {
+                        gauges.insert(key, *value);
+                    }
+                    PromType::Counter => {
+                        *counters.entry(key).or_insert(0.0) += *value;
+                    }
+                    PromType::Histogram => {}
                 }
-                PromType::Counter => {
-                    types.insert(event.name.clone(), PromType::Counter);
-                    *counters.entry(key).or_insert(0.0) += *value;
-                }
-                PromType::Histogram => {}
-            },
+            }
         }
     }
 
@@ -278,6 +282,25 @@ impl PromType {
             Self::Counter => "counter",
             Self::Gauge => "gauge",
             Self::Histogram => "histogram",
+        }
+    }
+}
+
+fn record_prom_type(
+    types: &mut BTreeMap<String, PromType>,
+    name: &str,
+    kind: PromType,
+) -> Result<(), TelemetryError> {
+    match types.get(name).copied() {
+        Some(existing) if existing != kind => Err(TelemetryError::InstrumentKindConflict {
+            name: name.to_string(),
+            existing: existing.as_str(),
+            requested: kind.as_str(),
+        }),
+        Some(_) => Ok(()),
+        None => {
+            types.insert(name.to_string(), kind);
+            Ok(())
         }
     }
 }
@@ -467,6 +490,38 @@ mod tests {
         assert!(text.contains("le=\"+Inf\""));
         assert!(text.contains("http_request_duration_seconds_count"));
         assert!(text.contains("http_request_duration_seconds_sum"));
+    }
+
+    #[test]
+    fn prometheus_rejects_mixed_kinds_for_one_name() {
+        let histogram = MetricsEvent {
+            timestamp: "2026-10-20T00:00:00Z".to_string(),
+            name: "config_load_ms".to_string(),
+            value: MetricValue::Histogram(HistogramSummary {
+                count: 1,
+                sum: 1.0,
+                buckets: Vec::new(),
+            }),
+            tags: None,
+            unit: Some(MetricUnit::Ms),
+        };
+        let scalar = MetricsEvent {
+            timestamp: histogram.timestamp.clone(),
+            name: "config_load_ms".to_string(),
+            value: MetricValue::Scalar(3.0),
+            tags: None,
+            unit: Some(MetricUnit::Ms),
+        };
+        let forward = render_prometheus_text(&[histogram.clone(), scalar.clone()]).unwrap_err();
+        let reverse = render_prometheus_text(&[scalar, histogram]).unwrap_err();
+        assert!(matches!(
+            forward,
+            TelemetryError::InstrumentKindConflict { .. }
+        ));
+        assert!(matches!(
+            reverse,
+            TelemetryError::InstrumentKindConflict { .. }
+        ));
     }
 
     #[test]
