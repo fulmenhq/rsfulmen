@@ -18,7 +18,7 @@ This checklist follows the shared ecosystem pattern (gofulmen/pyfulmen/tsfulmen/
 - `RSFULMEN_MINISIGN_KEY`: optional minisign secret key path (creates a sidecar signature for the tag attestation)
 - `RSFULMEN_MINISIGN_PUB`: minisign public key path. Optional for `make release-tag` / `make release-verify-tag`. Required by `make release-publish` so the attestation is verified before upload.
 - `RSFULMEN_RELEASE_REMOTE`: remote whose tag `make release-publish` compares with the local tag (default `origin`)
-- `RSFULMEN_RELEASE_REPO`: optional `owner/name` of the GitHub repository to publish to; defaults to the one in the `RSFULMEN_RELEASE_REMOTE` URL and must match it. `GH_REPO`/`GH_HOST` must not select anything else.
+- `RSFULMEN_RELEASE_REPO`: `owner/name` published to. Required when the remote URL is an SSH host alias that does not contain `github.com` (this repository: `export RSFULMEN_RELEASE_REPO=fulmenhq/rsfulmen`). When unset, publish derives the repository from a `github.com` remote URL and otherwise stops before upload. The value must match that remote. `GH_REPO`/`GH_HOST` must not select anything else. Push the tag to the remote before `make release-publish`.
 - `RSFULMEN_ALLOW_NON_MAIN=1`: optional override to tag from a non-`main` branch (not recommended)
 - `RSFULMEN_ALLOW_UNTAGGED=1`: skip tag requirement in guard check (for local dry-runs only). `make release-publish` rejects this override.
 
@@ -131,6 +131,8 @@ Note: `RSFULMEN_RELEASE_TAG` is not a secret and typically isn't stored in encry
     - `dist/release/<tag>.tag.txt`
     - `dist/release/<tag>.tag.txt.minisig`
     ```bash
+    # Required when origin is an SSH host alias. Push the tag first.
+    export RSFULMEN_RELEASE_REPO=fulmenhq/rsfulmen
     make release-publish
     ```
     Equivalent upload, once those checks have passed:

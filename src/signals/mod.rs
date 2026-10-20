@@ -11,8 +11,9 @@
 //! Shutdown hooks run under the catalog `timeout_seconds` grace period
 //! (30s for SIGTERM, 5s for SIGINT; 30s when the field is absent; `0` takes
 //! the force-exit path immediately). Force-exit is `process::exit` unless a
-//! test/embedder installs [`SignalManager::set_force_exit`]. Direct
-//! `dispatch_signal` callers still run the chain to completion before
+//! test/embedder installs [`SignalManager::set_force_exit`]. Double-tap does
+//! not use that hook: it calls `process::exit` with the configured code.
+//! Direct `dispatch_signal` callers still run the chain to completion before
 //! returning.
 
 use std::collections::HashMap;

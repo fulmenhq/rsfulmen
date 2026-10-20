@@ -1509,8 +1509,7 @@ mod tests {
         assert_eq!(serde_yaml::to_string(&xxh).unwrap().trim(), "xxh3-128");
     }
 
-    // Revert proof for round-1 devrev M1 and round-2 secrev M1: binary
-    // formats (postcard rejects deserialize_any) round-trip every algorithm
+    // Binary formats (postcard rejects deserialize_any) round-trip every algorithm
     // in the compact (algorithm, bytes) layout, with no length-prefixed
     // strings, and still read v0.2.1 derived payloads.
     #[test]

@@ -6,7 +6,6 @@ date: "2026-10-12"
 last_updated: "2026-10-12"
 deciders:
   - "@3leapsdave"
-  - "Wright"
 scope: "rsfulmen supply-chain license posture"
 tags:
   - "licenses"
