@@ -48,6 +48,7 @@ pub const DEFAULT_SECRET_PATTERNS: &[&str] = &[
     r#"(?i)["']?(?:[A-Z0-9_]*_(?:TOKEN|SECRET|KEY|PASSWORD|PASSWD|PWD)|(?:TOKEN|SECRET|PASSWORD|PASSWD|PWD|APIKEY|API_KEY))[A-Z0-9_]*["']?\s*[=:]\s*(?:"[^"]*"|'[^']*'|[^\r\n,}]+)"#,
     r#"(?i)(?:^|[^A-Za-z0-9_])pass\s*[=:]\s*(?:"[^"]*"|'[^']*'|\S+)"#,
     r"(?i)\b(?:password|passwd|pwd|secret)\s+\S+",
+    r"(?i)(?:^|[^A-Za-z0-9])api[-_]?key\s*[:=]\s*\S+",
     r"(?i)\bBearer\s+\S+",
     r"\bgh[pousr]_[A-Za-z0-9_]+",
     r"\bgithub_pat_[A-Za-z0-9_]+",
@@ -105,11 +106,24 @@ fn redact_basic_authorization(value: &str, replacement: &str) -> String {
 }
 
 fn secret_segments(value: &str) -> Vec<String> {
-    value
-        .split(|c: char| !c.is_ascii_alphanumeric())
-        .filter(|part| !part.is_empty())
-        .map(|part| part.to_ascii_lowercase())
-        .collect()
+    let mut parts = Vec::new();
+    let mut current = String::new();
+    for ch in value.chars() {
+        if !ch.is_ascii_alphanumeric() {
+            if !current.is_empty() {
+                parts.push(std::mem::take(&mut current).to_ascii_lowercase());
+            }
+            continue;
+        }
+        if ch.is_ascii_uppercase() && current.chars().any(|c| c.is_ascii_lowercase()) {
+            parts.push(std::mem::take(&mut current).to_ascii_lowercase());
+        }
+        current.push(ch);
+    }
+    if !current.is_empty() {
+        parts.push(current.to_ascii_lowercase());
+    }
+    parts
 }
 
 /// Largest string, in UTF-8 bytes, that [`RedactSecretsMiddleware`] scans
@@ -604,6 +618,22 @@ mod tests {
         assert_eq!(plain.fields[0].1, "12");
         assert_eq!(plain.fields[1].1, "Widget");
         assert!(plain.message.contains("user42"), "{}", plain.message);
+
+        let mut camel = rec(
+            "curl -H X-Api-Key: abc123",
+            &[
+                ("clientSecret", "sekrit"),
+                ("secretKey", "sekrit"),
+                ("authToken", "sekrit"),
+                ("dbPassword", "sekrit"),
+            ],
+        );
+        mw.process(&mut camel);
+        assert!(!camel.message.contains("abc123"), "{}", camel.message);
+        for (_, value) in &camel.fields {
+            assert_eq!(value, DEFAULT_REDACTION_REPLACEMENT);
+        }
+        assert!(!format!("{camel:?}").contains("sekrit"));
         assert!(!format!("{record:?}").contains("hunter2"));
         assert!(!format!("{record:?}").contains("sekrit"));
     }
