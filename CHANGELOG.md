@@ -18,8 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `multi_hash_reader`. `Digest::new`, `Digest::algorithm()` and
   `Digest::bytes()` construct and read digests. CRC and xxHash detect
   accidental corruption only; use SHA-256 with an authenticated digest,
-  signature or MAC for adversarial inputs. `Digest` serde round-trips in both
-  self-describing (JSON, YAML) and binary (bincode, postcard) formats.
+  signature or MAC for adversarial inputs. Binary serde formats (bincode,
+  postcard) keep the compact v0.2.1 `Digest` layout (`algorithm`, `bytes`);
+  self-describing formats (JSON, YAML) use the field set described above.
 
 ### Changed
 

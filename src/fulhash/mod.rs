@@ -162,6 +162,20 @@ impl Digest {
 
 impl Serialize for Digest {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        if !serializer.is_human_readable() {
+            // Binary formats get the compact v0.2.1 layout (algorithm, bytes):
+            // no length-prefixed strings for a reader to pre-allocate.
+            #[derive(Serialize)]
+            struct BinaryWire<'a> {
+                algorithm: Algorithm,
+                bytes: &'a [u8],
+            }
+            return BinaryWire {
+                algorithm: self.algorithm,
+                bytes: &self.bytes,
+            }
+            .serialize(serializer);
+        }
         #[derive(Serialize)]
         struct Wire<'a> {
             algorithm: Algorithm,
@@ -189,24 +203,16 @@ impl<'de> Deserialize<'de> for Digest {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         if !deserializer.is_human_readable() {
             // Binary formats (bincode, postcard) are not self-describing: read
-            // exactly the serialized shape with typed, bounded visitors.
+            // the compact (algorithm, bytes) layout with a typed sequence
+            // visitor that rejects a declared length over the cap up front.
             #[derive(Deserialize)]
             struct BinaryWire {
                 algorithm: Algorithm,
-                #[serde(deserialize_with = "deserialize_bounded_hex_typed")]
-                hex: String,
-                #[serde(deserialize_with = "deserialize_bounded_formatted_typed")]
-                formatted: String,
                 #[serde(deserialize_with = "deserialize_bounded_bytes_typed")]
                 bytes: Vec<u8>,
             }
             let wire = BinaryWire::deserialize(deserializer)?;
-            return digest_from_wire(
-                wire.algorithm,
-                Some(wire.hex),
-                Some(wire.formatted),
-                Some(wire.bytes),
-            );
+            return Digest::new(wire.algorithm, wire.bytes).map_err(serde::de::Error::custom);
         }
         #[derive(Deserialize)]
         struct Wire {
@@ -292,28 +298,6 @@ fn deserialize_bounded_formatted<'de, D: Deserializer<'de>>(
     )
 }
 
-fn deserialize_bounded_hex_typed<'de, D: Deserializer<'de>>(
-    deserializer: D,
-) -> Result<String, D::Error> {
-    required(bounded_string(
-        deserializer,
-        MAX_DIGEST_HEX,
-        "digest hex exceeds max length",
-        true,
-    ))
-}
-
-fn deserialize_bounded_formatted_typed<'de, D: Deserializer<'de>>(
-    deserializer: D,
-) -> Result<String, D::Error> {
-    required(bounded_string(
-        deserializer,
-        MAX_DIGEST_HEX + 16,
-        "formatted digest is too long",
-        true,
-    ))
-}
-
 fn deserialize_bounded_bytes_typed<'de, D: Deserializer<'de>>(
     deserializer: D,
 ) -> Result<Vec<u8>, D::Error> {
@@ -328,15 +312,6 @@ fn bounded_optional_string<'de, D: Deserializer<'de>>(
     deserializer: D,
     max_len: usize,
     too_long: &'static str,
-) -> Result<Option<String>, D::Error> {
-    bounded_string(deserializer, max_len, too_long, false)
-}
-
-fn bounded_string<'de, D: Deserializer<'de>>(
-    deserializer: D,
-    max_len: usize,
-    too_long: &'static str,
-    typed: bool,
 ) -> Result<Option<String>, D::Error> {
     struct Bounded {
         max_len: usize,
@@ -370,12 +345,7 @@ fn bounded_string<'de, D: Deserializer<'de>>(
             Ok(Some(v))
         }
     }
-    let visitor = Bounded { max_len, too_long };
-    if typed {
-        deserializer.deserialize_str(visitor)
-    } else {
-        deserializer.deserialize_any(visitor)
-    }
+    deserializer.deserialize_any(Bounded { max_len, too_long })
 }
 
 fn deserialize_bounded_bytes<'de, D: Deserializer<'de>>(
@@ -1539,10 +1509,12 @@ mod tests {
         assert_eq!(serde_yaml::to_string(&xxh).unwrap().trim(), "xxh3-128");
     }
 
-    // Revert proof for round-1 devrev M1: a non-self-describing binary format
-    // (postcard rejects deserialize_any) must round-trip every algorithm.
+    // Revert proof for round-1 devrev M1 and round-2 secrev M1: binary
+    // formats (postcard rejects deserialize_any) round-trip every algorithm
+    // in the compact (algorithm, bytes) layout, with no length-prefixed
+    // strings, and still read v0.2.1 derived payloads.
     #[test]
-    fn test_digest_serde_round_trips_non_self_describing_binary() {
+    fn test_digest_serde_binary_is_compact_and_round_trips() {
         for algorithm in [
             Algorithm::Xxh3_128,
             Algorithm::Sha256,
@@ -1551,16 +1523,39 @@ mod tests {
         ] {
             let digest = hash(b"hello world", Some(algorithm)).unwrap();
             let encoded = postcard::to_allocvec(&digest).unwrap();
+            // variant index (1 byte) + byte length (1 byte) + raw bytes
+            assert_eq!(
+                encoded.len(),
+                2 + algorithm.digest_len(),
+                "{}",
+                algorithm.tag()
+            );
             let decoded: Digest = postcard::from_bytes(&encoded)
                 .unwrap_or_else(|e| panic!("{}: {e}", algorithm.tag()));
             assert_eq!(decoded, digest);
         }
-        // Tampered raw bytes no longer match hex/formatted: rejected.
-        let digest = hash(b"hello world", Some(Algorithm::Crc32)).unwrap();
-        let mut encoded = postcard::to_allocvec(&digest).unwrap();
-        let last = encoded.len() - 1;
-        encoded[last] ^= 0xff;
-        assert!(postcard::from_bytes::<Digest>(&encoded).is_err());
+        #[derive(Serialize)]
+        enum LegacyAlgorithm {
+            #[allow(dead_code)]
+            Xxh3_128,
+            Sha256,
+        }
+        #[derive(Serialize)]
+        struct LegacyDigest {
+            algorithm: LegacyAlgorithm,
+            bytes: Vec<u8>,
+        }
+        let sha = hash(b"hello world", Some(Algorithm::Sha256)).unwrap();
+        let legacy = postcard::to_allocvec(&LegacyDigest {
+            algorithm: LegacyAlgorithm::Sha256,
+            bytes: sha.bytes().to_vec(),
+        })
+        .unwrap();
+        assert_eq!(postcard::from_bytes::<Digest>(&legacy).unwrap(), sha);
+        // Wrong length and an oversized declared length are rejected.
+        let crc = postcard::to_allocvec(&hash(b"x", Some(Algorithm::Crc32)).unwrap()).unwrap();
+        assert!(postcard::from_bytes::<Digest>(&crc[..crc.len() - 1]).is_err());
+        assert!(postcard::from_bytes::<Digest>(&[0, 0xff, 0xff, 0xff, 0xff, 0x0f]).is_err());
     }
 
     #[test]
