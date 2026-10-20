@@ -1,0 +1,17 @@
+# actionlint configuration.
+#
+# self-hosted-runner.labels: GitHub-hosted larger-runner names used
+# by this repository. actionlint does not know custom larger-runner
+# names, so they must be listed here. The key is only an unknown-label
+# allowlist; it does not describe machine ownership or deploy runners.
+#
+#   ubuntu-latest-arm64-s    — GitHub-hosted Ubuntu arm64 larger runner
+#   windows-latest-arm64-s   — GitHub-hosted Windows arm64 larger runner
+#
+# Adding a label here ONLY silences actionlint. Removing a label that
+# a workflow still references surfaces as an actionlint error on the
+# next lint pass, which is intentional drift detection.
+self-hosted-runner:
+  labels:
+    - ubuntu-latest-arm64-s
+    - windows-latest-arm64-s
