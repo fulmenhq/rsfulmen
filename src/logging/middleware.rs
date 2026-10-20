@@ -92,7 +92,7 @@ fn redact_basic_authorization(value: &str, replacement: &str) -> String {
         let mixed = token.bytes().any(|b| b.is_ascii_lowercase())
             && token.bytes().any(|b| b.is_ascii_uppercase());
         let has_digit = token.bytes().any(|b| b.is_ascii_digit());
-        if token.len() >= 8 && (mixed || has_digit) {
+        if token.len() >= 4 && (mixed || has_digit) {
             out.push_str(&value[i..start]);
             out.push_str(replacement);
             i = j;
@@ -549,6 +549,7 @@ mod tests {
             "pass=hunter2",
             "password hunter2",
             "Authorization: Basic dXNlcjpwYXNz",
+            "Authorization: Basic YTpi",
         ];
         let secrets = [
             "ghp_realvalue123",
@@ -564,6 +565,7 @@ mod tests {
             "hunter2",
             "hunter2",
             "dXNlcjpwYXNz",
+            "YTpi",
         ];
         for (message, secret) in cases.into_iter().zip(secrets) {
             let mut record = rec(message, &[]);
