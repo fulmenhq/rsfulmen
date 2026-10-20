@@ -44,7 +44,7 @@ pub const DEFAULT_SECRET_KEYS: &[&str] = &[
 /// leave `value` in the sink. Unknown secret shapes can still pass; this is a
 /// best-effort scan, not a guarantee that every secret is recognized.
 pub const DEFAULT_SECRET_PATTERNS: &[&str] = &[
-    r"(?i)\b[A-Z0-9_]*(?:TOKEN|SECRET|KEY|PASSWORD|PASSWD|PWD)[A-Z0-9_]*\s*[=:]\s*\S+",
+    r#"(?i)\b[A-Z0-9_]*(?:TOKEN|SECRET|KEY|PASSWORD|PASSWD|PWD)[A-Z0-9_]*\s*[=:]\s*(?:"[^"]*"|'[^']*'|[^\r\n]+)"#,
     r"(?i)\bBearer\s+\S+",
     r"\bgh[pousr]_[A-Za-z0-9_]+",
     r"\bgithub_pat_[A-Za-z0-9_]+",
@@ -171,11 +171,6 @@ impl SensitiveKeyMiddleware {
     }
 
     fn is_secret(keys_lower: &[String], key: &str) -> bool {
-        // Oversized names take the fail-closed scan path instead of a
-        // wholesale value replacement.
-        if key.len() > MAX_PATTERN_SCAN_SIZE {
-            return false;
-        }
         let normalized = key.to_ascii_lowercase().replace('-', "_");
         keys_lower.iter().any(|k| normalized.contains(k))
     }
@@ -485,6 +480,8 @@ mod tests {
             "ghp_abcdefghijklmnopqrstuvwxyz0123456789",
             "Authorization: Bearer abcDEF123xyz",
             "AKIAIOSFODNN7EXAMPLE",
+            "PASSWORD=\"two words\"",
+            "API_KEY: abc def",
         ];
         let secrets = [
             "ghp_realvalue123",
@@ -493,6 +490,8 @@ mod tests {
             "ghp_abcdefghijklmnopqrstuvwxyz0123456789",
             "abcDEF123xyz",
             "AKIAIOSFODNN7EXAMPLE",
+            "two words",
+            "abc def",
         ];
         for (message, secret) in cases.into_iter().zip(secrets) {
             let mut record = rec(message, &[]);
@@ -579,8 +578,23 @@ mod tests {
             Some(OVERSIZED_REDACTION_MARKER)
         );
         assert_eq!(record.fields[0].0, OVERSIZED_REDACTION_MARKER);
-        assert_eq!(record.fields[0].1, "v");
+        // The fixture key contains `token`, so the value is a secret-key value.
+        assert_eq!(record.fields[0].1, DEFAULT_REDACTION_REPLACEMENT);
+        assert!(!format!("{record:?}").contains("ghp_tail_secret"));
         assert!(record.redaction_flags.contains(&"redacted".to_string()));
+    }
+
+    #[test]
+    fn oversized_secret_key_still_redacts_its_value() {
+        let mw = RedactSecretsMiddleware::defaults().unwrap();
+        let mut key = "x".repeat(11_000);
+        key.push_str("password");
+        assert!(key.len() > MAX_PATTERN_SCAN_SIZE);
+        let mut record = rec("ok", &[(key.as_str(), "hunter2")]);
+        mw.process(&mut record);
+        assert_eq!(record.fields[0].0, OVERSIZED_REDACTION_MARKER);
+        assert_eq!(record.fields[0].1, DEFAULT_REDACTION_REPLACEMENT);
+        assert!(!format!("{record:?}").contains("hunter2"));
     }
 
     #[test]

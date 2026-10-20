@@ -1104,11 +1104,19 @@ mod tests {
         let log = logger_with_buffer("app", Severity::Trace, Profile::Simple, &buf)
             .with_middleware_chain(chain);
         log.info("handler failed: GITHUB_TOKEN=abc123", &[]);
+        log.info("PASSWORD=\"two words\"", &[]);
+        log.info("API_KEY: abc def", &[]);
         let output = buf.contents();
         assert!(
             !output.contains("abc123"),
             "assignment value reached the sink: {output}"
         );
+        assert!(
+            !output.contains("two words"),
+            "quoted value leaked: {output}"
+        );
+        assert!(!output.contains("abc def"), "spaced value leaked: {output}");
+        assert!(!output.contains("def"), "trailing word leaked: {output}");
     }
 
     #[test]
