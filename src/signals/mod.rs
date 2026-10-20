@@ -1215,10 +1215,11 @@ fn redact_secret_assignments(raw: &str) -> String {
             if end < lower.len()
                 && lower[i..end] == key[..]
                 && (i == 0 || !lower[i - 1].is_ascii_alphanumeric())
-                && (lower[end] == '=' || lower[end] == ':')
             {
-                val_start = Some(end + 1);
-                break;
+                if let Some(start) = assignment_value_start(&chars, end) {
+                    val_start = Some(start);
+                    break;
+                }
             }
         }
         if let Some(start) = val_start {
@@ -1226,17 +1227,53 @@ fn redact_secret_assignments(raw: &str) -> String {
                 out.push(*c);
             }
             out.push_str(RUNTIME_REDACTION_REPLACEMENT);
-            let mut j = start;
-            while j < chars.len() && !chars[j].is_whitespace() {
-                j += 1;
-            }
-            i = j;
+            i = assignment_value_end(&chars, start);
         } else {
             out.push(chars[i]);
             i += 1;
         }
     }
     out
+}
+
+/// Index where the assigned value begins, after an optional closing quote on
+/// the key, optional whitespace, and `=` or `:`.
+fn assignment_value_start(chars: &[char], end: usize) -> Option<usize> {
+    let mut k = end;
+    if k < chars.len() && matches!(chars[k], '"' | '\'') {
+        k += 1;
+    }
+    while k < chars.len() && chars[k].is_whitespace() {
+        k += 1;
+    }
+    if k >= chars.len() || !matches!(chars[k], '=' | ':') {
+        return None;
+    }
+    k += 1;
+    while k < chars.len() && chars[k].is_whitespace() {
+        k += 1;
+    }
+    Some(k)
+}
+
+/// End index of one assigned value. Quoted values run through the closing quote.
+fn assignment_value_end(chars: &[char], start: usize) -> usize {
+    if start < chars.len() && matches!(chars[start], '"' | '\'') {
+        let quote = chars[start];
+        let mut j = start + 1;
+        while j < chars.len() && chars[j] != quote {
+            j += 1;
+        }
+        if j < chars.len() {
+            j += 1;
+        }
+        return j;
+    }
+    let mut j = start;
+    while j < chars.len() && !chars[j].is_whitespace() {
+        j += 1;
+    }
+    j
 }
 
 impl Default for SignalManager {
