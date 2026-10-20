@@ -246,7 +246,17 @@ pub fn discover_repository_root(
             message: "parent components require follow_symlinks".to_string(),
         });
     }
-    let start_meta = fs::symlink_metadata(start_path).map_err(|err| {
+    let normalized_start = normalize_path_spelling(start_path);
+    let lexical_start = if normalized_start.as_os_str().is_empty() {
+        // A start consisting only of '.' components still denotes the cwd.
+        absolute_path(start_path).map_err(|message| RepositoryRootError::InvalidStartPath {
+            start_path: start_path.to_path_buf(),
+            message,
+        })?
+    } else {
+        normalized_start
+    };
+    let start_meta = fs::symlink_metadata(&lexical_start).map_err(|err| {
         let message = if err.kind() == std::io::ErrorKind::NotFound {
             "start path does not exist".to_string()
         } else {
@@ -259,14 +269,14 @@ pub fn discover_repository_root(
     })?;
 
     let abs_start = if options.follow_symlinks {
-        canonicalize_for_compare(start_path).map_err(|err| {
+        canonicalize_for_compare(&lexical_start).map_err(|err| {
             RepositoryRootError::InvalidStartPath {
                 start_path: start_path.to_path_buf(),
                 message: format!("failed to canonicalize start path: {err}"),
             }
         })?
     } else {
-        absolute_path(start_path).map_err(|message| RepositoryRootError::InvalidStartPath {
+        absolute_path(&lexical_start).map_err(|message| RepositoryRootError::InvalidStartPath {
             start_path: start_path.to_path_buf(),
             message,
         })?
@@ -508,8 +518,20 @@ fn strip_verbatim(path: &Path) -> PathBuf {
     }
 }
 
+// Rebuild paths before metadata or containment checks: on Unix, a trailing
+// separator makes symlink_metadata follow the final directory symlink. Preserve
+// ParentDir components so the existing no-follow rejection / follow resolution
+// remains authoritative; this is spelling normalization, not parent resolution.
+fn normalize_path_spelling(path: &Path) -> PathBuf {
+    path.components()
+        .filter(|component| *component != std::path::Component::CurDir)
+        .collect()
+}
+
 fn absolute_path(path: &Path) -> Result<PathBuf, String> {
-    std::path::absolute(path).map_err(|err| format!("failed to resolve absolute path: {err}"))
+    std::path::absolute(path)
+        .map(|path| normalize_path_spelling(&path))
+        .map_err(|err| format!("failed to resolve absolute path: {err}"))
 }
 
 fn has_parent_component(path: &Path) -> bool {
@@ -538,6 +560,8 @@ fn resolve_boundary(
     follow_symlinks: bool,
 ) -> Result<PathBuf, RepositoryRootError> {
     if let Some(boundary) = explicit {
+        let normalized_boundary = normalize_path_spelling(boundary);
+        let boundary = normalized_boundary.as_path();
         if !boundary.is_absolute() {
             return Err(RepositoryRootError::InvalidBoundary {
                 boundary: boundary.to_path_buf(),
@@ -591,9 +615,9 @@ fn resolve_boundary(
 }
 
 fn default_boundary(start: &Path) -> PathBuf {
-    match user_home() {
+    match user_home().map(|home| normalize_path_spelling(&home)) {
         Some(home) if !is_unbounded_home(&home) => home,
-        _ => env::current_dir().unwrap_or_else(|_| start.to_path_buf()),
+        _ => normalize_path_spelling(&env::current_dir().unwrap_or_else(|_| start.to_path_buf())),
     }
 }
 
@@ -1418,6 +1442,106 @@ mod tests {
     fn regression_m1_back_to_home_ceiling_with_marker() {
         let _lock = crate::test_env_lock();
         check_alias_back_to_ceiling(true, true);
+    }
+
+    #[cfg(unix)]
+    fn check_trailing_separator_symlinks(home_ceiling: bool, target: &str) {
+        let tmp = TestDir::new();
+        let ceiling = tmp.path().join("ceiling");
+        fs::create_dir_all(ceiling.join("nested")).unwrap();
+        let marked_target = match target {
+            "external" => tmp.path().join("outside"),
+            "ceiling" => ceiling.clone(),
+            "internal" => ceiling.join("repo"),
+            _ => unreachable!(),
+        };
+        fs::create_dir_all(marked_target.join(".git")).unwrap();
+        for placement in ["link", "nested/link"] {
+            std::os::unix::fs::symlink(&marked_target, ceiling.join(placement)).unwrap();
+        }
+
+        let mut failures = Vec::new();
+        for placement in ["link", "nested/link"] {
+            for suffix in ["/", "//", "/./"] {
+                // Append raw spelling: PathBuf::join must not normalize the suffix.
+                let mut raw_start = ceiling.join(placement).into_os_string();
+                raw_start.push(suffix);
+                let start = PathBuf::from(raw_start);
+                for boundary_suffix in ["", "/", "//", "/./"] {
+                    let mut raw_boundary = ceiling.clone().into_os_string();
+                    raw_boundary.push(boundary_suffix);
+                    let boundary = PathBuf::from(raw_boundary);
+                    let result = if home_ceiling {
+                        with_home(&boundary, || {
+                            discover_repository_root(&start, &default_opts())
+                        })
+                    } else {
+                        discover_repository_root(&start, &opts(&[".git"], &boundary, 10))
+                    };
+                    let valid = if target == "ceiling" {
+                        // A marked ceiling remains discoverable at its actual spelling,
+                        // after both direct and nested back-links have been skipped.
+                        matches!(&result, Ok(root) if root.as_os_str() == ceiling.as_os_str())
+                    } else {
+                        matches!(
+                            &result,
+                            Err(RepositoryRootError::RepositoryNotFound {
+                                reason: RepositoryNotFoundReason::BoundaryReached,
+                                ..
+                            })
+                        )
+                    };
+                    if !valid {
+                        failures.push(format!(
+                            "start={start:?}, boundary={boundary:?}, result={result:?}"
+                        ));
+                    }
+                }
+            }
+        }
+        assert!(failures.is_empty(), "{}", failures.join("\n"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn regression_m1_trailing_separator_external_explicit_ceiling() {
+        let _lock = crate::test_env_lock();
+        check_trailing_separator_symlinks(false, "external");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn regression_m1_trailing_separator_external_home_ceiling() {
+        let _lock = crate::test_env_lock();
+        check_trailing_separator_symlinks(true, "external");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn regression_m1_trailing_separator_back_to_explicit_ceiling() {
+        let _lock = crate::test_env_lock();
+        check_trailing_separator_symlinks(false, "ceiling");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn regression_m1_trailing_separator_back_to_home_ceiling() {
+        let _lock = crate::test_env_lock();
+        check_trailing_separator_symlinks(true, "ceiling");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn regression_m1_trailing_separator_internal_explicit_ceiling() {
+        let _lock = crate::test_env_lock();
+        check_trailing_separator_symlinks(false, "internal");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn regression_m1_trailing_separator_internal_home_ceiling() {
+        let _lock = crate::test_env_lock();
+        check_trailing_separator_symlinks(true, "internal");
     }
 
     #[cfg(unix)]
