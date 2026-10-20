@@ -1123,11 +1123,15 @@ fn panic_payload_to_string(payload: Box<dyn std::any::Any + Send>) -> String {
 }
 
 fn redact_runtime_message(raw: &str) -> String {
+    // Assignment scrubbing first. The pattern middleware rewrites secret
+    // names, and a later assignment pass would no longer see `token=value`.
+    let assigned = redact_secret_assignments(raw);
     #[cfg(feature = "logging")]
-    let out = redact_with_logging_middleware(raw);
+    {
+        redact_with_logging_middleware(&assigned)
+    }
     #[cfg(not(feature = "logging"))]
-    let out = raw.to_string();
-    redact_secret_assignments(&out)
+    assigned
 }
 
 #[cfg(feature = "logging")]
@@ -1833,6 +1837,14 @@ mod tests {
             "expected redaction marker: {}",
             panic_logs[0].message
         );
+    }
+
+    #[test]
+    fn runtime_message_redacts_token_assignment_value() {
+        let out = redact_runtime_message("handler failed: GITHUB_TOKEN=abc123");
+        assert!(!out.contains("abc123"), "value leaked: {out}");
+        let json = redact_runtime_message(r#"panic: {"password":"hunter2"}"#);
+        assert!(!json.contains("hunter2"), "json value leaked: {json}");
     }
 
     #[test]

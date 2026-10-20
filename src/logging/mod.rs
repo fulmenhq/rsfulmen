@@ -25,7 +25,8 @@
 //! Redaction is fully supported and **off by default**. The default logger has
 //! an empty chain. Attach a [`MiddlewareChain`] with
 //! [`Logger::with_middleware_chain`]. Formatters read the *processed* record
-//! only so redacted secrets never reach the sink.
+//! only. Redaction is best-effort: configured keys and known shapes are
+//! removed, and an unrecognized secret can still reach the sink.
 //!
 //! ```rust
 //! use rsfulmen::logging::{new_cli, MiddlewareChain, RedactSecretsMiddleware, Severity};
@@ -1095,6 +1096,28 @@ mod tests {
             "call field leaked: {output}"
         );
         assert!(output.contains(DEFAULT_REDACTION_REPLACEMENT));
+    }
+
+    #[test]
+    fn test_middleware_redacts_assignment_value_at_sink() {
+        let buf = SharedBuffer::new();
+        let chain = MiddlewareChain::new().with(RedactSecretsMiddleware::defaults().unwrap());
+        let log = logger_with_buffer("app", Severity::Trace, Profile::Simple, &buf)
+            .with_middleware_chain(chain);
+        log.info("handler failed: GITHUB_TOKEN=abc123", &[]);
+        log.info("PASSWORD=\"two words\"", &[]);
+        log.info("API_KEY: abc def", &[]);
+        let output = buf.contents();
+        assert!(
+            !output.contains("abc123"),
+            "assignment value reached the sink: {output}"
+        );
+        assert!(
+            !output.contains("two words"),
+            "quoted value leaked: {output}"
+        );
+        assert!(!output.contains("abc def"), "spaced value leaked: {output}");
+        assert!(!output.contains("def"), "trailing word leaked: {output}");
     }
 
     #[test]
