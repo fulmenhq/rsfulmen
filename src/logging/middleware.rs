@@ -28,6 +28,7 @@ pub const DEFAULT_SECRET_KEYS: &[&str] = &[
     "private_key",
     "privatekey",
     "credential",
+    "pass",
     "cardnumber",
     "card_number",
     "cvv",
@@ -44,7 +45,9 @@ pub const DEFAULT_SECRET_KEYS: &[&str] = &[
 /// leave `value` in the sink. Unknown secret shapes can still pass; this is a
 /// best-effort scan, not a guarantee that every secret is recognized.
 pub const DEFAULT_SECRET_PATTERNS: &[&str] = &[
-    r#"(?i)\b[A-Z0-9_]*(?:TOKEN|SECRET|KEY|PASSWORD|PASSWD|PWD)[A-Z0-9_]*\s*[=:]\s*(?:"[^"]*"|'[^']*'|[^\r\n]+)"#,
+    r#"(?i)["']?(?:[A-Z0-9_]*_(?:TOKEN|SECRET|KEY|PASSWORD|PASSWD|PWD)|(?:TOKEN|SECRET|PASSWORD|PASSWD|PWD|APIKEY|API_KEY))[A-Z0-9_]*["']?\s*[=:]\s*(?:"[^"]*"|'[^']*'|[^\r\n,}]+)"#,
+    r#"(?i)(?:^|[^A-Za-z0-9_])pass\s*[=:]\s*(?:"[^"]*"|'[^']*'|\S+)"#,
+    r"(?i)\b(?:password|passwd|pwd|secret)\s+\S+",
     r"(?i)\bBearer\s+\S+",
     r"\bgh[pousr]_[A-Za-z0-9_]+",
     r"\bgithub_pat_[A-Za-z0-9_]+",
@@ -56,6 +59,58 @@ pub const DEFAULT_SECRET_PATTERNS: &[&str] = &[
     r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
     r"\b\d{13,19}\b",
 ];
+
+fn redact_basic_authorization(value: &str, replacement: &str) -> String {
+    let lower = value.to_ascii_lowercase();
+    let bytes = value.as_bytes();
+    let mut out = String::new();
+    let mut i = 0;
+    while i < bytes.len() {
+        let Some(pos) = lower[i..].find("basic") else {
+            out.push_str(&value[i..]);
+            break;
+        };
+        let start = i + pos;
+        let after = start + "basic".len();
+        let boundary = start == 0 || !bytes[start - 1].is_ascii_alphanumeric();
+        if !boundary || after >= bytes.len() || !bytes[after].is_ascii_whitespace() {
+            out.push_str(&value[i..start + 1]);
+            i = start + 1;
+            continue;
+        }
+        let mut j = after;
+        while j < bytes.len() && bytes[j].is_ascii_whitespace() {
+            j += 1;
+        }
+        let token_start = j;
+        while j < bytes.len()
+            && (bytes[j].is_ascii_alphanumeric() || matches!(bytes[j], b'+' | b'/' | b'='))
+        {
+            j += 1;
+        }
+        let token = &value[token_start..j];
+        let mixed = token.bytes().any(|b| b.is_ascii_lowercase())
+            && token.bytes().any(|b| b.is_ascii_uppercase());
+        let has_digit = token.bytes().any(|b| b.is_ascii_digit());
+        if token.len() >= 8 && (mixed || has_digit) {
+            out.push_str(&value[i..start]);
+            out.push_str(replacement);
+            i = j;
+        } else {
+            out.push_str(&value[i..start + 1]);
+            i = start + 1;
+        }
+    }
+    out
+}
+
+fn secret_segments(value: &str) -> Vec<String> {
+    value
+        .split(|c: char| !c.is_ascii_alphanumeric())
+        .filter(|part| !part.is_empty())
+        .map(|part| part.to_ascii_lowercase())
+        .collect()
+}
 
 /// Largest string, in UTF-8 bytes, that [`RedactSecretsMiddleware`] scans
 /// with its regex patterns.
@@ -171,8 +226,14 @@ impl SensitiveKeyMiddleware {
     }
 
     fn is_secret(keys_lower: &[String], key: &str) -> bool {
-        let normalized = key.to_ascii_lowercase().replace('-', "_");
-        keys_lower.iter().any(|k| normalized.contains(k))
+        let key_segs = secret_segments(key);
+        keys_lower.iter().any(|needle| {
+            let needle_segs = secret_segments(needle);
+            !needle_segs.is_empty()
+                && key_segs
+                    .windows(needle_segs.len())
+                    .any(|window| window == needle_segs.as_slice())
+        })
     }
 }
 
@@ -255,7 +316,7 @@ impl RedactSecretsMiddleware {
                 .replace_all(&out, self.replacement.as_str())
                 .into_owned();
         }
-        out
+        redact_basic_authorization(&out, &self.replacement)
     }
 }
 
@@ -270,7 +331,8 @@ impl Middleware for RedactSecretsMiddleware {
             hit |= self.scrub(correlation_id);
         }
         for (key, value) in &mut record.fields {
-            if SensitiveKeyMiddleware::is_secret(&self.keys_lower, key) {
+            let secret_key = SensitiveKeyMiddleware::is_secret(&self.keys_lower, key);
+            if key.len() > MAX_PATTERN_SCAN_SIZE || secret_key {
                 *value = self.replacement.clone();
                 hit = true;
             } else {
@@ -482,6 +544,11 @@ mod tests {
             "AKIAIOSFODNN7EXAMPLE",
             "PASSWORD=\"two words\"",
             "API_KEY: abc def",
+            r#"{"password":"hunter2"}"#,
+            r#"{"api_key": "abc123"}"#,
+            "pass=hunter2",
+            "password hunter2",
+            "Authorization: Basic dXNlcjpwYXNz",
         ];
         let secrets = [
             "ghp_realvalue123",
@@ -492,6 +559,11 @@ mod tests {
             "AKIAIOSFODNN7EXAMPLE",
             "two words",
             "abc def",
+            "hunter2",
+            "abc123",
+            "hunter2",
+            "hunter2",
+            "dXNlcjpwYXNz",
         ];
         for (message, secret) in cases.into_iter().zip(secrets) {
             let mut record = rec(message, &[]);
@@ -515,12 +587,21 @@ mod tests {
                 ("x-api-key", "abcd"),
                 ("passwd", "pw"),
                 ("private_key", "pem"),
+                ("pass", "hunter2"),
             ],
         );
         mw.process(&mut record);
         for (_, value) in &record.fields {
             assert_eq!(value, DEFAULT_REDACTION_REPLACEMENT);
         }
+        let mut plain = rec(
+            "cache key: user42",
+            &[("max_tokens", "12"), ("classname", "Widget")],
+        );
+        mw.process(&mut plain);
+        assert_eq!(plain.fields[0].1, "12");
+        assert_eq!(plain.fields[1].1, "Widget");
+        assert!(plain.message.contains("user42"), "{}", plain.message);
         assert!(!format!("{record:?}").contains("hunter2"));
         assert!(!format!("{record:?}").contains("sekrit"));
     }

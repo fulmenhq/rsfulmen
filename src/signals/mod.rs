@@ -1843,6 +1843,8 @@ mod tests {
     fn runtime_message_redacts_token_assignment_value() {
         let out = redact_runtime_message("handler failed: GITHUB_TOKEN=abc123");
         assert!(!out.contains("abc123"), "value leaked: {out}");
+        let json = redact_runtime_message(r#"panic: {"password":"hunter2"}"#);
+        assert!(!json.contains("hunter2"), "json value leaked: {json}");
     }
 
     #[test]

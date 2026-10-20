@@ -25,7 +25,8 @@
 //! Redaction is fully supported and **off by default**. The default logger has
 //! an empty chain. Attach a [`MiddlewareChain`] with
 //! [`Logger::with_middleware_chain`]. Formatters read the *processed* record
-//! only so redacted secrets never reach the sink.
+//! only. Redaction is best-effort: configured keys and known shapes are
+//! removed, and an unrecognized secret can still reach the sink.
 //!
 //! ```rust
 //! use rsfulmen::logging::{new_cli, MiddlewareChain, RedactSecretsMiddleware, Severity};
