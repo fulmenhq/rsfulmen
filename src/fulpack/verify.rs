@@ -165,7 +165,7 @@ fn collect_zip<R: Read + std::io::Seek>(
     for i in 0..zip.len() {
         let file = zip.by_index(i).map_err(|e| corrupt(archive, e))?;
         out.push(RawEntry {
-            path: file.name().to_string(),
+            path: file.name().map_err(|e| corrupt(archive, e))?.into_owned(),
             is_symlink: false,
             link_target: None,
             size: file.size(),

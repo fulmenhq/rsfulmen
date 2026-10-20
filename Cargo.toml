@@ -117,7 +117,7 @@ walkdir = { version = "2", optional = true }
 # Archive operations (for fulpack module)
 tar = { version = "0.4", optional = true }
 flate2 = { version = "1", optional = true }
-zip = { version = "2", default-features = false, features = ["deflate"], optional = true }
+zip = { version = "9", default-features = false, features = ["deflate"], optional = true }
 
 # Unicode text handling (for ascii module)
 unicode-width = { version = "0.1", optional = true }

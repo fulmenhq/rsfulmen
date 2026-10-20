@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **ZIP security advisories** — upgrade optional `zip` from 2.4.2 to 9.0.5
+  (RUSTSEC-2026-0367, RUSTSEC-2026-0368, RUSTSEC-2026-0369), keeping only
+  deflate support and Rust 1.88 compatibility.
+
 - Catalog indexing skips only parse failures; access, containment, and IO failures abort resolver construction.
 
 - **Windows `file://` schema containment** — catalog roots from
