@@ -257,7 +257,7 @@ fn extract_zip<R: Read + std::io::Seek>(
     for i in 0..zip.len() {
         ctx.count_entry(i as u64)?;
         let mut file = zip.by_index(i).map_err(|e| corrupt(archive, e))?;
-        let raw = file.name().map_err(|e| corrupt(archive, e))?.into_owned();
+        let raw = super::zip_name::zip_name(&file, archive)?;
         let target = safe_join(ctx.dest, &raw)?;
 
         if file.is_dir() {

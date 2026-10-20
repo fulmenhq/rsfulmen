@@ -164,7 +164,7 @@ fn read_zip<R: Read + std::io::Seek>(
             EntryType::File
         };
 
-        let name = file.name().map_err(|e| corrupt(archive, e))?;
+        let name = super::zip_name::zip_name(&file, archive)?;
         let path = normalize_scan_path(&name);
         let size = file.size();
         let compressed_size = Some(file.compressed_size());

@@ -16,6 +16,18 @@ use std::path::{Component, Path};
 /// Decompression ratio above which an archive is flagged as a possible bomb.
 const BOMB_RATIO_WARN: f64 = 100.0;
 
+// Name decoding is an API error; other structural failures remain reports.
+enum CollectError {
+    Structure,
+    Name(FulpackError),
+}
+
+impl From<FulpackError> for CollectError {
+    fn from(_: FulpackError) -> Self {
+        Self::Structure
+    }
+}
+
 struct RawEntry {
     path: String,
     is_symlink: bool,
@@ -27,7 +39,8 @@ struct RawEntry {
 ///
 /// # Errors
 /// Returns [`FulpackError`] if the format is unrecognized or the archive cannot
-/// be opened. A corrupt-but-openable archive is reported as `valid = false`.
+/// be opened, or a ZIP entry name is invalid UTF-8 with its UTF-8 flag set.
+/// Other corrupt-but-openable archives are reported as `valid = false`.
 pub fn verify(archive: &Path) -> Result<ValidationResult, FulpackError> {
     let format = detect_format(archive)?;
     let compressed_size =
@@ -40,7 +53,8 @@ pub fn verify(archive: &Path) -> Result<ValidationResult, FulpackError> {
 
     let entries = match collect_raw(archive, format) {
         Ok(entries) => entries,
-        Err(_) => {
+        Err(CollectError::Name(error)) => return Err(error),
+        Err(CollectError::Structure) => {
             return Ok(ValidationResult {
                 valid: false,
                 errors: vec!["archive structure is invalid or corrupt".to_string()],
@@ -120,15 +134,17 @@ fn classify(raw: &str) -> PathClass {
     PathClass::Safe
 }
 
-fn collect_raw(archive: &Path, format: ArchiveFormat) -> Result<Vec<RawEntry>, FulpackError> {
+fn collect_raw(archive: &Path, format: ArchiveFormat) -> Result<Vec<RawEntry>, CollectError> {
     match format {
-        ArchiveFormat::Tar => collect_tar(BufReader::new(open(archive)?), archive),
+        ArchiveFormat::Tar => {
+            collect_tar(BufReader::new(open(archive)?), archive).map_err(Into::into)
+        }
         ArchiveFormat::TarGz => {
             let dec = flate2::read::GzDecoder::new(BufReader::new(open(archive)?));
-            collect_tar(dec, archive)
+            collect_tar(dec, archive).map_err(Into::into)
         }
         ArchiveFormat::Zip => collect_zip(open(archive)?, archive),
-        ArchiveFormat::Gzip => collect_gzip(archive),
+        ArchiveFormat::Gzip => collect_gzip(archive).map_err(Into::into),
     }
 }
 
@@ -159,13 +175,13 @@ fn collect_tar<R: Read>(reader: R, archive: &Path) -> Result<Vec<RawEntry>, Fulp
 fn collect_zip<R: Read + std::io::Seek>(
     reader: R,
     archive: &Path,
-) -> Result<Vec<RawEntry>, FulpackError> {
+) -> Result<Vec<RawEntry>, CollectError> {
     let mut zip = zip::ZipArchive::new(reader).map_err(|e| corrupt(archive, e))?;
     let mut out = Vec::with_capacity(zip.len());
     for i in 0..zip.len() {
         let file = zip.by_index(i).map_err(|e| corrupt(archive, e))?;
         out.push(RawEntry {
-            path: file.name().map_err(|e| corrupt(archive, e))?.into_owned(),
+            path: super::zip_name::zip_name(&file, archive).map_err(CollectError::Name)?,
             is_symlink: false,
             link_target: None,
             size: file.size(),
