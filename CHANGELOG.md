@@ -74,8 +74,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tag, and the same tag object and commit on `RSFULMEN_RELEASE_REMOTE`
   (default `origin`) and on the GitHub repository it publishes to. That
   repository comes from the remote URL (or `RSFULMEN_RELEASE_REPO`), and a
-  conflicting `GH_REPO`/`GH_HOST` is refused. `gh` runs with `--repo` and
-  `--verify-tag`. The tagger env is now required for `release-publish`.
+  conflicting `GH_REPO`/`GH_HOST` is refused. `gh` runs pinned to
+  `github.com` (`GH_HOST`, `--hostname`, `--repo github.com/<owner>/<name>`)
+  with `--verify-tag`. The tagger env is now required for `release-publish`.
 
 - **Prometheus exporter rejects invalid label names** — tag keys outside
   `[a-zA-Z_][a-zA-Z0-9_]*`, keys starting with the reserved `__`, and `le`

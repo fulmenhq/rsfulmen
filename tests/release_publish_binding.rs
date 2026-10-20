@@ -122,13 +122,14 @@ impl Fixture {
             "gh",
             &format!(
                 r#"#!/bin/sh
-printf '%s\n' "$*" >> '{log}'
+printf '%s\n' "GH_HOST=${{GH_HOST:-}} GH_REPO=${{GH_REPO:-}} $*" >> '{log}'
 case "$1" in
 release) [ "$2" = view ] && exit 1; exit 0 ;;
 api)
   if [ -f '{dest}' ]; then
     c=$(cat '{dest}'); [ "$c" = missing ] && exit 1; echo "$c"; exit 0
   fi
+  [ "$2" = --hostname ] && shift 2
   ref=${{2#repos/*/git/ref/}}
   o=$(git --git-dir='{origin}' rev-parse -q --verify "refs/$ref") || exit 1
   echo "$(git --git-dir='{origin}' cat-file -t "$o") $o"; exit 0 ;;
@@ -278,7 +279,7 @@ exit 0
     fn gh_create_line(&self) -> Option<String> {
         fs::read_to_string(&self.gh_log).ok().and_then(|log| {
             log.lines()
-                .find(|l| l.starts_with("release create"))
+                .find(|l| l.contains(" release create "))
                 .map(str::to_owned)
         })
     }
@@ -323,12 +324,18 @@ fn publishes_when_tag_attestation_and_remote_agree() {
         );
         let create = fx.gh_create_line().expect("gh release create should run");
         assert!(
-            create.starts_with(&format!("release create {TAG} --repo {REPO} --verify-tag ")),
+            create.starts_with(&format!(
+                "GH_HOST=github.com GH_REPO= release create {TAG} --repo github.com/{REPO} --verify-tag "
+            )),
             "create must be pinned to the checked repo and tag: {create}"
         );
         let log = fs::read_to_string(&fx.gh_log).unwrap();
         assert!(
-            log.contains(&format!("release view {TAG} --repo {REPO}")),
+            log.contains(&format!(
+                "GH_HOST=github.com GH_REPO= release view {TAG} --repo github.com/{REPO}"
+            )) && log.contains(&format!(
+                "GH_HOST=github.com GH_REPO= api --hostname github.com repos/{REPO}/git/ref/tags/{TAG} "
+            )),
             "{log}"
         );
     }

@@ -125,7 +125,7 @@ Note: `RSFULMEN_RELEASE_TAG` is not a secret and typically isn't stored in encry
     - `git verify-tag` passes (`RSFULMEN_GPG_HOMEDIR` selects the keyring) and the tagger matches `RSFULMEN_TAGGER_NAME` / `RSFULMEN_TAGGER_EMAIL`
     - the minisign attestation verifies with `RSFULMEN_MINISIGN_PUB`, and its `tag`, `tag_object` and `tag_target` equal the tag name, tag object and target commit
     - the tag on `RSFULMEN_RELEASE_REMOTE` (default `origin`) has the same tag object and commit, so push the tag first
-    - the tag on the GitHub repository being published to (read with `gh api`) is that same tag object; `gh` then runs with `--repo <that repo> --verify-tag`
+    - the tag on the GitHub repository being published to (read with `gh api`) is that same tag object; `gh` then runs pinned to github.com with `--repo github.com/<owner>/<name> --verify-tag`
   - It also fails before `gh` if any required asset is missing or empty:
     - `CHANGELOG.md` (release notes)
     - `dist/release/<tag>.tag.txt`
@@ -135,6 +135,6 @@ Note: `RSFULMEN_RELEASE_TAG` is not a secret and typically isn't stored in encry
     ```
     Equivalent upload, once those checks have passed:
     ```bash
-    gh release create v$(cat VERSION) --repo fulmenhq/rsfulmen --verify-tag --notes-file CHANGELOG.md dist/release/v$(cat VERSION).tag.txt dist/release/v$(cat VERSION).tag.txt.minisig
+    gh release create v$(cat VERSION) --repo github.com/fulmenhq/rsfulmen --verify-tag --notes-file CHANGELOG.md dist/release/v$(cat VERSION).tag.txt dist/release/v$(cat VERSION).tag.txt.minisig
     ```
 - [ ] Announce / coordinate downstream upgrades as needed.

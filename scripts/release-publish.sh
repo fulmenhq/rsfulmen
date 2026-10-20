@@ -199,7 +199,11 @@ main() {
 	local remote="${RSFULMEN_RELEASE_REMOTE:-origin}"
 	local repo
 	repo="$(resolve_release_repo "${remote}")" || exit 1
-	echo "→ Release repository: ${repo} (remote ${remote})"
+	# gh would otherwise take its host from GH_HOST or the sole host in its
+	# config; the remote check above is for github.com, so pin it.
+	export GH_HOST=github.com
+	unset GH_REPO
+	echo "→ Release repository: github.com/${repo} (remote ${remote})"
 
 	local remote_refs remote_object remote_target
 	if ! remote_refs="$(git ls-remote --tags "${remote}" "refs/tags/${tag}" "refs/tags/${tag}^{}")"; then
@@ -220,20 +224,20 @@ main() {
 	# Bind the destination too: the tag gh will release must be the same
 	# annotated tag object (and so the same commit) that was verified.
 	local dest_ref
-	if ! dest_ref="$(gh api "repos/${repo}/git/ref/tags/${tag}" --jq '.object.type + " " + .object.sha')"; then
+	if ! dest_ref="$(gh api --hostname github.com "repos/${repo}/git/ref/tags/${tag}" --jq '.object.type + " " + .object.sha')"; then
 		echo "error: tag ${tag} not found in GitHub repository ${repo}" >&2
 		exit 1
 	fi
 	require_equal "GitHub ${repo} tag ${tag}" "tag ${tag_object}" "${dest_ref}"
 	echo "✅ GitHub ${repo} tag ${tag} matches"
 
-	if gh release view "${tag}" --repo "${repo}" >/dev/null 2>&1; then
+	if gh release view "${tag}" --repo "github.com/${repo}" >/dev/null 2>&1; then
 		echo "error: GitHub release ${tag} already exists" >&2
 		exit 1
 	fi
 
 	echo "→ Creating GitHub release: ${tag}"
-	gh release create "${tag}" --repo "${repo}" --verify-tag --notes-file "${notes}" "${payload}" "${sig}"
+	gh release create "${tag}" --repo "github.com/${repo}" --verify-tag --notes-file "${notes}" "${payload}" "${sig}"
 	echo "✅ Published GitHub release: ${tag}"
 }
 
