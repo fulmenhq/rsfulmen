@@ -64,6 +64,7 @@ pub use middleware::{
     CorrelationMiddleware, LogRecord, Middleware, MiddlewareAction, MiddlewareChain,
     RedactSecretsMiddleware, SensitiveKeyMiddleware, ThrottleMiddleware,
     DEFAULT_REDACTION_REPLACEMENT, DEFAULT_SECRET_KEYS, DEFAULT_SECRET_PATTERNS,
+    MAX_PATTERN_SCAN_SIZE, OVERSIZED_REDACTION_MARKER,
 };
 pub use policy::{LoggingPolicy, PolicyError, PolicyProfile, PolicyValidationOptions};
 
@@ -1094,6 +1095,31 @@ mod tests {
             "call field leaked: {output}"
         );
         assert!(output.contains(DEFAULT_REDACTION_REPLACEMENT));
+    }
+
+    #[test]
+    fn test_redaction_fails_closed_for_oversized_strings_at_sink() {
+        let mut big = "x ".repeat(MAX_PATTERN_SCAN_SIZE / 2 + 512);
+        big.push_str("tail-secret-zz9");
+        for profile in [Profile::Simple, Profile::Structured] {
+            let buf = SharedBuffer::new();
+            let chain = MiddlewareChain::new()
+                .with(CorrelationMiddleware::new())
+                .with(RedactSecretsMiddleware::defaults().unwrap());
+            let log = logger_with_buffer(&big, Severity::Trace, profile, &buf)
+                .with_component(&big)
+                .with_middleware_chain(chain);
+            log.info(
+                &big,
+                &[
+                    (big.as_str(), big.as_str()),
+                    ("CorrelationId", big.as_str()),
+                ],
+            );
+            let output = buf.contents();
+            assert!(!output.contains("tail-secret-zz9"), "{profile:?} leaked");
+            assert!(output.contains(OVERSIZED_REDACTION_MARKER), "{profile:?}");
+        }
     }
 
     #[test]
