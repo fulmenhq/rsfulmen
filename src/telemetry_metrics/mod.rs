@@ -63,6 +63,16 @@ pub enum TelemetryError {
         /// Why the key is rejected.
         reason: &'static str,
     },
+
+    /// A metric name cannot be a Prometheus metric name
+    /// (`[a-zA-Z_:][a-zA-Z0-9_:]*`, not starting with the reserved `__`).
+    #[error("invalid Prometheus metric name {metric:?}: {reason}")]
+    InvalidPrometheusMetricName {
+        /// Offending metric name.
+        metric: String,
+        /// Why the name is rejected.
+        reason: &'static str,
+    },
 }
 
 /// Metric unit (aligned with the metrics taxonomy).

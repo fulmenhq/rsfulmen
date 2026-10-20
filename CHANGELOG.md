@@ -68,11 +68,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `[a-zA-Z_][a-zA-Z0-9_]*`, keys starting with the reserved `__`, and `le`
   on a histogram were written raw into the exposition (e.g.
   `{request-id="x"}`), which can make a scraper reject the whole page.
-  `render_prometheus_text` now returns `Result` and fails with
+  Event names passed to `render_prometheus_text` were also written raw,
+  including newlines. `render_prometheus_text` now returns `Result` and
+  fails with `TelemetryError::InvalidPrometheusMetricName` (names outside
+  `[a-zA-Z_:][a-zA-Z0-9_:]*` or starting with `__`) or
   `TelemetryError::InvalidPrometheusLabel`; `export_prometheus_text` and
   `PrometheusTextExporter` propagate it. Keys are not rewritten. JSON
   export keeps the wider Crucible tag contract. `validate_prometheus_label`
-  is public for checking keys up front.
+  and `validate_prometheus_metric_name` are public for checking up front.
 
 - **Logging redaction fails closed for oversized values** —
   `RedactSecretsMiddleware` returned a message or non-secret field value

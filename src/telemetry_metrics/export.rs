@@ -106,11 +106,14 @@ pub fn render_json_lines(events: &[MetricsEvent]) -> Result<String, TelemetryErr
 ///
 /// # Errors
 ///
-/// [`TelemetryError::InvalidPrometheusLabel`] when any tag key is not a valid
-/// Prometheus label name (see [`validate_prometheus_label`]). Nothing is
-/// rendered in that case; JSON export keeps accepting such tags.
+/// [`TelemetryError::InvalidPrometheusMetricName`] when any event name is not
+/// a valid Prometheus metric name (see [`validate_prometheus_metric_name`]),
+/// and [`TelemetryError::InvalidPrometheusLabel`] when any tag key is not a
+/// valid Prometheus label name (see [`validate_prometheus_label`]). Nothing is
+/// rendered in either case; JSON export keeps accepting such events.
 pub fn render_prometheus_text(events: &[MetricsEvent]) -> Result<String, TelemetryError> {
     for event in events {
+        validate_prometheus_metric_name(&event.name)?;
         let histogram = matches!(event.value, MetricValue::Histogram(_));
         for key in event.tags.iter().flat_map(|tags| tags.keys()) {
             validate_prometheus_label(&event.name, key, histogram)?;
@@ -203,6 +206,30 @@ pub fn render_prometheus_text(events: &[MetricsEvent]) -> Result<String, Telemet
         }
     }
     Ok(out)
+}
+
+/// Check that `metric` is a Prometheus metric name.
+///
+/// Accepts `[a-zA-Z_:][a-zA-Z0-9_:]*` and rejects names starting with the
+/// reserved `__`.
+pub fn validate_prometheus_metric_name(metric: &str) -> Result<(), TelemetryError> {
+    let err = |reason| TelemetryError::InvalidPrometheusMetricName {
+        metric: metric.to_string(),
+        reason,
+    };
+    let mut chars = metric.chars();
+    match chars.next() {
+        None => return Err(err("empty metric name")),
+        Some(c) if c.is_ascii_alphabetic() || c == '_' || c == ':' => {}
+        Some(_) => return Err(err("must start with an ASCII letter, '_' or ':'")),
+    }
+    if !chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == ':') {
+        return Err(err("only ASCII letters, digits, '_' and ':' are allowed"));
+    }
+    if metric.starts_with("__") {
+        return Err(err("names starting with '__' are reserved"));
+    }
+    Ok(())
 }
 
 /// Check that `label` is a Prometheus label name usable on `metric`.
@@ -490,7 +517,11 @@ mod tests {
             .with_tag("__name__", "spoof")
             .inc(None)
             .unwrap();
-        assert!(render_prometheus_text(&metrics.export().unwrap()).is_err());
+        assert!(matches!(
+            render_prometheus_text(&metrics.export().unwrap()),
+            Err(TelemetryError::InvalidPrometheusLabel { label, reason, .. })
+                if label == "__name__" && reason == "names starting with '__' are reserved"
+        ));
 
         let metrics = Metrics::new();
         metrics
@@ -499,7 +530,74 @@ mod tests {
             .with_tag("le", "1")
             .observe(0.01)
             .unwrap();
-        assert!(render_prometheus_text(&metrics.export().unwrap()).is_err());
+        assert!(matches!(
+            render_prometheus_text(&metrics.export().unwrap()),
+            Err(TelemetryError::InvalidPrometheusLabel { label, reason, .. })
+                if label == "le" && reason == "'le' is reserved for histogram buckets"
+        ));
+    }
+
+    fn scalar_event(name: &str) -> MetricsEvent {
+        MetricsEvent {
+            timestamp: "2026-10-20T00:00:00Z".to_string(),
+            name: name.to_string(),
+            value: MetricValue::Scalar(1.0),
+            tags: None,
+            unit: None,
+        }
+    }
+
+    #[test]
+    fn prometheus_rejects_invalid_metric_names() {
+        for bad in ["", "request-id", "safe\nforged 123\n#", "9x", "__x", "a b"] {
+            let events = vec![scalar_event("ok_total"), scalar_event(bad)];
+            assert!(
+                matches!(
+                    render_prometheus_text(&events),
+                    Err(TelemetryError::InvalidPrometheusMetricName { ref metric, .. }) if metric == bad
+                ),
+                "{bad:?}"
+            );
+            assert!(render_json_lines(&events).is_ok());
+        }
+        for ok in ["ok_total", "ns:sub_total", "_x", ":x"] {
+            assert!(validate_prometheus_metric_name(ok).is_ok(), "{ok}");
+        }
+    }
+
+    #[test]
+    fn prometheus_exporter_writes_nothing_on_invalid_label() {
+        use std::sync::{Arc, Mutex as StdMutex};
+        #[derive(Clone, Default)]
+        struct Buf(Arc<StdMutex<Vec<u8>>>);
+        impl Write for Buf {
+            fn write(&mut self, data: &[u8]) -> std::io::Result<usize> {
+                self.0.lock().unwrap().extend_from_slice(data);
+                Ok(data.len())
+            }
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
+        }
+        let metrics = Metrics::new();
+        metrics
+            .counter("http_requests_total")
+            .unwrap()
+            .with_tag("request-id", "x")
+            .inc(None)
+            .unwrap();
+        let buf = Buf::default();
+        let exporter = PrometheusTextExporter::new(buf.clone());
+        assert!(matches!(
+            exporter.export(&metrics),
+            Err(TelemetryError::InvalidPrometheusLabel { .. })
+        ));
+        assert!(
+            buf.0.lock().unwrap().is_empty(),
+            "partial exposition written"
+        );
+        let json = render_json_lines(&metrics.export().unwrap()).unwrap();
+        assert!(json.contains("prometheus_exporter_refresh_errors_total"));
     }
 
     #[test]
