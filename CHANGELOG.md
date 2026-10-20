@@ -12,6 +12,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bounded repository discovery via `pathfinder::discover_repository_root`,
   `RepositoryRootOptions`, structured errors and stop reasons, and public marker
   and depth constants. Supports explicit ceilings and optional symlink following.
+- **FulHash CRC-32 / CRC-32C and MultiHash** — `Algorithm::Crc32` (IEEE) and
+  `Algorithm::Crc32c` (Castagnoli) via the new optional `crc` dependency
+  (`fulhash` feature), plus single-pass `multi_hash`, `multi_hash_string` and
+  `multi_hash_reader`. `Digest::new`, `Digest::algorithm()` and
+  `Digest::bytes()` construct and read digests. CRC and xxHash detect
+  accidental corruption only; use SHA-256 with an authenticated digest,
+  signature or MAC for adversarial inputs. Binary serde formats (bincode,
+  postcard) keep the compact v0.2.1 `Digest` layout (`algorithm`, `bytes`);
+  self-describing formats (JSON, YAML) use the field set described above.
+
+### Changed
+
+- **FulHash serde tags** — `Algorithm` serializes as catalog ids
+  (`xxh3-128`, `sha256`, `crc32`, `crc32c`). v0.2.1 payloads that used
+  derived tags (`Xxh3_128`, `Sha256`) still deserialize via aliases;
+  new writes emit only the catalog ids. `Algorithm` is `#[non_exhaustive]`;
+  downstream `match` arms need a wildcard. `Digest` fields are private:
+  construct with `Digest::new` or the hash APIs, and read via
+  `algorithm()` / `bytes()`. Wrong-length serde input is rejected.
+  Serialized `Digest` now emits the `digest.schema.json` fields
+  `{algorithm, hex, formatted, bytes}`; deserialization still accepts
+  the older `{algorithm, bytes}` form.
 
 ### Fixed
 
