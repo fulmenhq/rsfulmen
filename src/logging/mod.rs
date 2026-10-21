@@ -447,10 +447,16 @@ fn format_simple_line(
     fields: &[(&str, &str)],
 ) -> String {
     let level_str = format!("{:<5}", severity);
-    let mut buf = format!("{} {} [{}] {}", timestamp, level_str, logger_name, msg);
+    let mut buf = format!(
+        "{} {} [{}] {}",
+        timestamp,
+        level_str,
+        escape_simple_value(logger_name),
+        escape_simple_message(msg)
+    );
     for (k, v) in fields {
         buf.push(' ');
-        append_kv_simple(&mut buf, k, v);
+        append_kv_simple(&mut buf, &escape_simple_value(k), v);
     }
     buf
 }
@@ -574,6 +580,8 @@ fn should_quote_simple_value(value: &str) -> bool {
             || c == '\n'
             || c == '\r'
             || c == '\t'
+            || c == '\u{2028}'
+            || c == '\u{2029}'
             || c.is_control()
     })
 }
@@ -588,6 +596,28 @@ fn escape_simple_value(value: &str) -> String {
             '\n' => escaped.push_str("\\n"),
             '\r' => escaped.push_str("\\r"),
             '\t' => escaped.push_str("\\t"),
+            '\u{2028}' => escaped.push_str("\\u2028"),
+            '\u{2029}' => escaped.push_str("\\u2029"),
+            c if c.is_control() => escaped.push_str(&format!("\\u{:04x}", c as u32)),
+            c => escaped.push(c),
+        }
+    }
+    escaped
+}
+
+/// Escape line breaks in a Simple-profile message.
+///
+/// Spaces and quotes stay literal. Control characters and Unicode line
+/// separators become the same escapes used for quoted values.
+fn escape_simple_message(msg: &str) -> String {
+    let mut escaped = String::new();
+    for ch in msg.chars() {
+        match ch {
+            '\n' => escaped.push_str("\\n"),
+            '\r' => escaped.push_str("\\r"),
+            '\t' => escaped.push_str("\\t"),
+            '\u{2028}' => escaped.push_str("\\u2028"),
+            '\u{2029}' => escaped.push_str("\\u2029"),
             c if c.is_control() => escaped.push_str(&format!("\\u{:04x}", c as u32)),
             c => escaped.push(c),
         }
@@ -875,6 +905,45 @@ mod tests {
             "output should contain message"
         );
         assert!(output.contains("port=8080"), "output should contain fields");
+    }
+
+    #[test]
+    fn test_simple_profile_escapes_line_breaks() {
+        let forged = "user login failed\n2026-10-20T00:00:00Z ERROR [svc] admin granted root";
+        let line = format_simple_line(
+            "2026-10-21T00:00:00Z",
+            Severity::Info,
+            "svc\nadmin",
+            &format!("say \"hi\" there {forged}\u{2028}more\u{2029}end"),
+            &[("a\nb", "ok"), ("note", "line\u{2028}two")],
+        );
+
+        assert_eq!(line.lines().count(), 1, "{line:?}");
+        assert!(!line
+            .chars()
+            .any(|c| { c.is_control() || c == '\u{2028}' || c == '\u{2029}' }));
+        assert!(line.contains("[svc\\nadmin]"));
+        assert!(line.contains("say \"hi\" there "));
+        assert!(line
+            .contains("user login failed\\n2026-10-20T00:00:00Z ERROR [svc] admin granted root"));
+        assert!(line.contains("\\u2028more\\u2029end"));
+        assert!(line.contains("a\\nb=ok"));
+        assert!(line.contains("note=\"line\\u2028two\""));
+
+        let buf = SharedBuffer::new();
+        let log = logger_with_buffer("svc\nadmin", Severity::Info, Profile::Simple, &buf);
+        log.info(
+            &format!("say \"hi\" there {forged}\u{2028}more\u{2029}end"),
+            &[("a\nb", "ok"), ("note", "line\u{2028}two")],
+        );
+        let output = buf.contents();
+        let body = output.trim_end_matches('\n');
+        assert_eq!(body.lines().count(), 1, "{output:?}");
+        assert!(!body
+            .chars()
+            .any(|c| { c.is_control() || c == '\u{2028}' || c == '\u{2029}' }));
+        assert!(body.contains("say \"hi\" there "));
+        assert!(body.contains("a\\nb=ok"));
     }
 
     #[test]
