@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Boolean environment overrides no longer include the raw input in parse
   errors. The message names the accepted forms (`true`/`false`/`1`/`0`/`yes`/`no`).
+- Simple-profile lines escape control characters and Unicode line
+  separators in the message, logger name, and field keys. Spaces and
+  quotes in the message stay as written. Field values use the same
+  line-separator escapes.
 
 ## [0.3.0] - 2026-10-20
 
