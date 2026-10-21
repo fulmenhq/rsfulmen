@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   separators in the message, logger name, and field keys. Spaces and
   quotes in the message stay as written. Field values use the same
   line-separator escapes.
+- Runtime log text redacts `Bearer`, `Basic`, `ghp_`/`gho_`/`ghu_`/`ghs_`/
+  `ghr_`, `github_pat_`, and `AKIA` token shapes without the logging
+  feature. The shared secret-key list also covers `passwd`, `pwd`,
+  `private_key`, `cvv`, `ssn`, and `x-api-key`.
 
 ## [0.3.0] - 2026-10-20
 
