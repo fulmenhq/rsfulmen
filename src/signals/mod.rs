@@ -66,19 +66,8 @@ pub type ForceExitFn = dyn Fn(i32) + Send + Sync + 'static;
 pub const DEFAULT_SHUTDOWN_GRACE: Duration = Duration::from_secs(30);
 
 /// Replacement written over secret-shaped panic / timeout log text.
-const RUNTIME_REDACTION_REPLACEMENT: &str = "[REDACTED]";
-
-/// Field names redacted in `key=value` / `key:value` runtime log lines.
-const RUNTIME_SECRET_KEYS: &[&str] = &[
-    "password",
-    "token",
-    "secret",
-    "authorization",
-    "apikey",
-    "api_key",
-    "access_token",
-    "refresh_token",
-];
+#[cfg(test)]
+const RUNTIME_REDACTION_REPLACEMENT: &str = crate::secret_text::REDACTION_REPLACEMENT;
 
 /// Errors returned by [`SignalManager`] operations.
 #[derive(Debug, thiserror::Error)]
@@ -1167,15 +1156,15 @@ fn panic_payload_to_string(payload: Box<dyn std::any::Any + Send>) -> String {
 }
 
 fn redact_runtime_message(raw: &str) -> String {
-    // Assignment scrubbing first. The pattern middleware rewrites secret
-    // names, and a later assignment pass would no longer see `token=value`.
-    let assigned = redact_secret_assignments(raw);
+    // Assignments and bare tokens first. Those do not need the logging
+    // feature. The pattern middleware still runs when it is enabled.
+    let scanned = crate::secret_text::redact_secret_text(raw);
     #[cfg(feature = "logging")]
     {
-        redact_with_logging_middleware(&assigned)
+        redact_with_logging_middleware(&scanned)
     }
     #[cfg(not(feature = "logging"))]
-    assigned
+    scanned
 }
 
 #[cfg(feature = "logging")]
@@ -1198,123 +1187,6 @@ fn redact_with_logging_middleware(raw: &str) -> String {
     };
     let _ = mw.process(&mut record);
     record.message
-}
-
-fn redact_secret_assignments(raw: &str) -> String {
-    let chars: Vec<char> = raw.chars().collect();
-    let lower: Vec<char> = raw.to_ascii_lowercase().chars().collect();
-    let mut keys: Vec<Vec<char>> = RUNTIME_SECRET_KEYS
-        .iter()
-        .map(|k| k.chars().collect())
-        .collect();
-    keys.sort_by_key(|k| std::cmp::Reverse(k.len()));
-
-    let mut out = String::new();
-    let mut i = 0;
-    while i < chars.len() {
-        let mut val_start = None;
-        for key in &keys {
-            let end = i + key.len();
-            if end < lower.len()
-                && lower[i..end] == key[..]
-                && (i == 0 || !lower[i - 1].is_ascii_alphanumeric())
-            {
-                if let Some(start) = assignment_value_start(&chars, end) {
-                    val_start = Some(start);
-                    break;
-                }
-            }
-        }
-        if let Some(start) = val_start {
-            for c in &chars[i..start] {
-                out.push(*c);
-            }
-            out.push_str(RUNTIME_REDACTION_REPLACEMENT);
-            i = assignment_value_end(&chars, start);
-        } else {
-            out.push(chars[i]);
-            i += 1;
-        }
-    }
-    out
-}
-
-/// Index where the assigned value begins, after an optional closing quote on
-/// the key, optional whitespace, and `=` or `:`.
-fn assignment_value_start(chars: &[char], end: usize) -> Option<usize> {
-    let mut k = end;
-    if k < chars.len() && matches!(chars[k], '"' | '\'') {
-        k += 1;
-    }
-    while k < chars.len() && chars[k].is_whitespace() {
-        k += 1;
-    }
-    if k >= chars.len() || !matches!(chars[k], '=' | ':') {
-        return None;
-    }
-    k += 1;
-    while k < chars.len() && chars[k].is_whitespace() {
-        k += 1;
-    }
-    Some(k)
-}
-
-/// End index of one assigned value.
-///
-/// Quoted values run through the closing quote. A backslash escapes the next
-/// character, so an escaped quote does not end the value. An unquoted
-/// `Bearer`, `Basic`, `Digest`, or `Token` scheme also consumes the following
-/// word, which is the credential that scheme introduces.
-fn assignment_value_end(chars: &[char], start: usize) -> usize {
-    if start < chars.len() && matches!(chars[start], '"' | '\'') {
-        return quoted_value_end(chars, start);
-    }
-    let word_end = unquoted_word_end(chars, start);
-    if is_auth_scheme(&chars[start..word_end]) {
-        let mut next = word_end;
-        while next < chars.len() && chars[next].is_whitespace() {
-            next += 1;
-        }
-        if next > word_end && next < chars.len() {
-            return unquoted_word_end(chars, next);
-        }
-    }
-    word_end
-}
-
-fn quoted_value_end(chars: &[char], start: usize) -> usize {
-    let quote = chars[start];
-    let mut j = start + 1;
-    while j < chars.len() {
-        if chars[j] == '\\' && j + 1 < chars.len() {
-            j += 2;
-            continue;
-        }
-        if chars[j] == quote {
-            return j + 1;
-        }
-        j += 1;
-    }
-    j
-}
-
-fn unquoted_word_end(chars: &[char], start: usize) -> usize {
-    let mut j = start;
-    while j < chars.len() && !chars[j].is_whitespace() {
-        j += 1;
-    }
-    j
-}
-
-fn is_auth_scheme(word: &[char]) -> bool {
-    const SCHEMES: [&str; 4] = ["bearer", "basic", "digest", "token"];
-    SCHEMES.iter().any(|scheme| {
-        word.len() == scheme.len()
-            && word
-                .iter()
-                .zip(scheme.chars())
-                .all(|(got, expected)| got.eq_ignore_ascii_case(&expected))
-    })
 }
 
 impl Default for SignalManager {

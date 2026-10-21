@@ -16,28 +16,10 @@ use super::Severity;
 pub const DEFAULT_REDACTION_REPLACEMENT: &str = "[REDACTED]";
 
 /// Default field names (case-insensitive) aligned with gofulmen / tsfulmen.
-pub const DEFAULT_SECRET_KEYS: &[&str] = &[
-    "password",
-    "passwd",
-    "pwd",
-    "token",
-    "apikey",
-    "api_key",
-    "authorization",
-    "secret",
-    "private_key",
-    "privatekey",
-    "credential",
-    "pass",
-    "cardnumber",
-    "card_number",
-    "cvv",
-    "ssn",
-    "accesstoken",
-    "access_token",
-    "refreshtoken",
-    "refresh_token",
-];
+///
+/// The list is the shared secret-key table. Runtime text uses the same names
+/// when the logging feature is off.
+pub use crate::secret_text::SECRET_KEYS as DEFAULT_SECRET_KEYS;
 
 /// Default regex patterns.
 ///
@@ -587,6 +569,43 @@ mod tests {
             assert!(
                 !record.message.contains(secret),
                 "value leaked from {message:?}: {}",
+                record.message
+            );
+        }
+    }
+
+    #[test]
+    fn bare_token_shapes_match_the_runtime_scan() {
+        let mw = RedactSecretsMiddleware::defaults().unwrap();
+        let cases = [
+            (
+                "saw ghp_abcdefghijklmnopqrstuvwxyz0123456789 in the panic",
+                "ghp_abcdefghijklmnopqrstuvwxyz0123456789",
+            ),
+            (
+                "saw github_pat_11AAAAAAA_secret in the panic",
+                "github_pat_11AAAAAAA_secret",
+            ),
+            (
+                "saw AKIAIOSFODNN7EXAMPLE in the panic",
+                "AKIAIOSFODNN7EXAMPLE",
+            ),
+            ("saw Bearer abcDEF123xyz in the panic", "abcDEF123xyz"),
+            ("saw Basic dXNlcjpwYXNz in the panic", "dXNlcjpwYXNz"),
+            ("panic passwd=hunter2", "hunter2"),
+            ("panic x-api-key=hunter2", "hunter2"),
+        ];
+        for (raw, secret) in cases {
+            let runtime = crate::secret_text::redact_secret_text(raw);
+            assert!(
+                !runtime.contains(secret),
+                "runtime left {secret} in {runtime}"
+            );
+            let mut record = rec(raw, &[]);
+            mw.process(&mut record);
+            assert!(
+                !record.message.contains(secret),
+                "middleware left {secret} in {}",
                 record.message
             );
         }

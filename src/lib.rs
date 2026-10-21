@@ -48,6 +48,8 @@
 #![warn(missing_docs)]
 #![warn(rust_2018_idioms)]
 
+mod secret_text;
+
 /// Configuration path utilities following the Fulmen Config Path Standard.
 ///
 /// Provides XDG-compliant configuration, data, and cache directory resolution
