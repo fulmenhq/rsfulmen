@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Boolean environment overrides no longer include the raw input in parse
+  errors. The message names the accepted forms (`true`/`false`/`1`/`0`/`yes`/`no`).
+
 ## [0.3.0] - 2026-10-20
 
 Minor release. MSRV remains 1.88. The embedded Crucible catalog remains
