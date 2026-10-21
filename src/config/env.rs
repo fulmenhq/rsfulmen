@@ -253,9 +253,7 @@ fn parse_flexible_bool(raw: &str) -> Result<bool, ParseBoolError> {
     match normalized.as_str() {
         "1" | "t" | "true" | "yes" | "y" => Ok(true),
         "0" | "f" | "false" | "no" | "n" => Ok(false),
-        _ => Err(ParseBoolError {
-            value: raw.trim().to_string(),
-        }),
+        _ => Err(ParseBoolError),
     }
 }
 
@@ -307,13 +305,11 @@ fn mask_env_value(name: &str, raw: &str) -> (String, bool) {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct ParseBoolError {
-    value: String,
-}
+struct ParseBoolError;
 
 impl std::fmt::Display for ParseBoolError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "invalid boolean value: {}", self.value)
+        f.write_str("invalid boolean value: expected true/false/1/0/yes/no")
     }
 }
 
@@ -634,6 +630,33 @@ mod tests {
         let err = load_env_overrides(&specs).unwrap_err();
         match err {
             EnvOverrideError::ParseError { value, .. } => assert_eq!(value, "[set]"),
+        }
+    }
+
+    #[test]
+    fn test_bool_parse_error_omits_raw_value() {
+        let _lock = crate::acquire_process_env_lock();
+        let secret = "hunter2-not-a-bool";
+        let _guard = EnvGuard::set(&[("APP_USE_TOKEN", secret)]);
+        let specs = vec![EnvVarSpec {
+            name: "APP_USE_TOKEN".to_string(),
+            path: vec!["app".to_string(), "use_token".to_string()],
+            var_type: EnvVarType::Bool,
+            aliases: vec![],
+        }];
+
+        let err = load_env_overrides(&specs).unwrap_err();
+        let rendered = format!("{err} {err:?}");
+        assert!(
+            !rendered.contains(secret),
+            "bool parse error included the raw value: {rendered}"
+        );
+        match err {
+            EnvOverrideError::ParseError { value, message, .. } => {
+                assert_eq!(value, "[set]");
+                assert!(!message.contains(secret));
+                assert!(message.contains("expected true/false/1/0/yes/no"));
+            }
         }
     }
 
