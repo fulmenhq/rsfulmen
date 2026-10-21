@@ -7,7 +7,7 @@
 //! Prometheus text and HTTP `http_*` helpers are opt-in adapters — no scrape
 //! server and no framework middleware.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -73,6 +73,34 @@ pub enum TelemetryError {
         /// Why the name is rejected.
         reason: &'static str,
     },
+
+    /// The name was already acquired as a different instrument kind.
+    #[error("metric {name} is already a {existing}, not a {requested}")]
+    InstrumentKindConflict {
+        /// Metric name.
+        name: String,
+        /// Kind already registered for `name`.
+        existing: &'static str,
+        /// Kind the caller tried to acquire.
+        requested: &'static str,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum InstrumentKind {
+    Counter,
+    Gauge,
+    Histogram,
+}
+
+impl InstrumentKind {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Counter => "counter",
+            Self::Gauge => "gauge",
+            Self::Histogram => "histogram",
+        }
+    }
 }
 
 /// Metric unit (aligned with the metrics taxonomy).
@@ -325,12 +353,7 @@ impl HistogramState {
                 return;
             }
         }
-
-        // Value above max boundary: treat the final bucket as +Inf so the last
-        // bucket count always equals the total observation count.
-        if let Some(last) = self.cumulative_counts.last_mut() {
-            *last += 1;
-        }
+        // Above every finite boundary. `count` is the +Inf cumulative.
     }
 
     fn snapshot(&self) -> HistogramSummary {
@@ -353,6 +376,9 @@ struct Inner {
     events: Vec<MetricsEvent>,
     gauges: HashMap<MetricKey, f64>,
     histograms: HashMap<MetricKey, HistogramState>,
+    kinds: HashMap<String, InstrumentKind>,
+    http_series: HashSet<String>,
+    http_series_cap: usize,
 }
 
 /// In-memory telemetry registry.
@@ -376,6 +402,7 @@ impl Metrics {
             .unit_for(name)
             .ok_or_else(|| TelemetryError::UnknownMetricName(name.to_string()))?;
 
+        self.claim_kind(name, InstrumentKind::Counter)?;
         Ok(Counter {
             metrics: self.clone(),
             name: name.to_string(),
@@ -390,6 +417,7 @@ impl Metrics {
             .unit_for(name)
             .ok_or_else(|| TelemetryError::UnknownMetricName(name.to_string()))?;
 
+        self.claim_kind(name, InstrumentKind::Gauge)?;
         Ok(Gauge {
             metrics: self.clone(),
             name: name.to_string(),
@@ -405,7 +433,9 @@ impl Metrics {
             .ok_or_else(|| TelemetryError::UnknownMetricName(name.to_string()))?;
 
         let buckets = TAXONOMY.default_buckets_for(name, unit);
-        Histogram::new(self.clone(), name.to_string(), unit, buckets)
+        let hist = Histogram::new(self.clone(), name.to_string(), unit, buckets)?;
+        self.claim_kind(name, InstrumentKind::Histogram)?;
+        Ok(hist)
     }
 
     /// Acquire a histogram instrument with explicit bucket boundaries.
@@ -418,7 +448,62 @@ impl Metrics {
             .unit_for(name)
             .ok_or_else(|| TelemetryError::UnknownMetricName(name.to_string()))?;
 
-        Histogram::new(self.clone(), name.to_string(), unit, buckets)
+        let hist = Histogram::new(self.clone(), name.to_string(), unit, buckets)?;
+        self.claim_kind(name, InstrumentKind::Histogram)?;
+        Ok(hist)
+    }
+
+    fn claim_kind(&self, name: &str, kind: InstrumentKind) -> Result<(), TelemetryError> {
+        let mut inner = self.inner.lock().expect("metrics lock poisoned");
+        match inner.kinds.get(name).copied() {
+            Some(existing) if existing != kind => Err(TelemetryError::InstrumentKindConflict {
+                name: name.to_string(),
+                existing: existing.as_str(),
+                requested: kind.as_str(),
+            }),
+            Some(_) => Ok(()),
+            None => {
+                inner.kinds.insert(name.to_string(), kind);
+                Ok(())
+            }
+        }
+    }
+
+    /// Admit one HTTP label set for the whole registry.
+    ///
+    /// Every [`crate::telemetry_metrics::HttpRecorder`] cloned from this
+    /// registry shares the set. `0` uses the 10_000 default.
+    pub(crate) fn admit_http_series(&self, signature: &str) -> bool {
+        const DEFAULT_CAP: usize = 10_000;
+        let mut inner = self.inner.lock().expect("metrics lock poisoned");
+        if inner.http_series.contains(signature) {
+            return true;
+        }
+        let cap = if inner.http_series_cap == 0 {
+            DEFAULT_CAP
+        } else {
+            inner.http_series_cap
+        };
+        let overflow = "__overflow__";
+        let reserved = inner.http_series.contains(overflow);
+        let limit = if reserved { cap } else { cap.saturating_sub(1) };
+        if inner.http_series.len() < limit {
+            inner.http_series.insert(signature.to_string());
+            return true;
+        }
+        if !reserved {
+            inner.http_series.insert(overflow.to_string());
+        }
+        false
+    }
+
+    /// Lower the HTTP series cap. Test-only; production uses 10_000.
+    #[cfg(test)]
+    pub(crate) fn set_http_series_cap(&self, cap: usize) {
+        self.inner
+            .lock()
+            .expect("metrics lock poisoned")
+            .http_series_cap = cap;
     }
 
     /// Export current metric events (does not clear state).
@@ -815,6 +900,44 @@ mod tests {
     }
 
     #[test]
+    fn test_mixed_instrument_kind_is_rejected() {
+        let metrics = Metrics::new();
+        metrics
+            .counter("schema_validations")
+            .unwrap()
+            .inc(Some(1))
+            .unwrap();
+        let err = metrics.gauge("schema_validations").unwrap_err();
+        assert_eq!(
+            err,
+            TelemetryError::InstrumentKindConflict {
+                name: "schema_validations".to_string(),
+                existing: "counter",
+                requested: "gauge",
+            }
+        );
+        let hist_metrics = Metrics::new();
+        hist_metrics
+            .counter("config_load_ms")
+            .unwrap()
+            .inc(None)
+            .unwrap();
+        let hist_err = hist_metrics.histogram("config_load_ms").unwrap_err();
+        assert!(matches!(
+            hist_err,
+            TelemetryError::InstrumentKindConflict {
+                requested: "histogram",
+                ..
+            }
+        ));
+
+        let text = metrics.export_prometheus_text().unwrap();
+        assert!(text.contains("# TYPE schema_validations counter"), "{text}");
+        assert!(text.contains("schema_validations 1.0"), "{text}");
+        assert!(!text.contains("gauge"), "{text}");
+    }
+
+    #[test]
     fn test_histogram_observe_aggregates_buckets() {
         let metrics = Metrics::new();
         let hist = metrics.histogram("config_load_ms").unwrap();
@@ -843,9 +966,48 @@ mod tests {
         let le10 = h.buckets.iter().find(|b| b.le == 10.0).unwrap();
         assert_eq!(le10.count, 2);
 
-        // Overflow values are counted in the final bucket (+Inf semantics).
+        // 50_000 is above the last finite boundary (10_000) and stays out of it.
         let last = h.buckets.last().unwrap();
-        assert_eq!(last.count, 4);
+        assert_eq!(last.le, 10_000.0);
+        assert_eq!(last.count, 3);
+        assert_eq!(h.count, 4);
+
+        let text = crate::telemetry_metrics::render_prometheus_text(&exported).unwrap();
+        assert!(
+            text.contains("config_load_ms_bucket{le=\"10000.0\"} 3.0"),
+            "{text}"
+        );
+        assert!(
+            text.contains("config_load_ms_bucket{le=\"+Inf\"} 4.0"),
+            "{text}"
+        );
+        assert!(!text.contains("le=\"10000.0\"} 4.0"), "{text}");
+    }
+
+    #[test]
+    fn test_histogram_overflow_is_only_the_inf_bucket() {
+        let metrics = Metrics::new();
+        let hist = metrics
+            .histogram_with_buckets("config_load_ms", vec![1.0, 10.0])
+            .unwrap();
+        hist.observe(100.0).unwrap();
+
+        let exported = metrics.export().unwrap();
+        let event = exported
+            .iter()
+            .find(|e| e.name == "config_load_ms")
+            .unwrap();
+        let MetricValue::Histogram(h) = &event.value else {
+            panic!("expected histogram");
+        };
+        assert_eq!(h.count, 1);
+        assert_eq!(h.buckets[0].count, 0);
+        assert_eq!(h.buckets[1].count, 0);
+
+        let text = crate::telemetry_metrics::render_prometheus_text(&exported).unwrap();
+        assert!(text.contains("le=\"10.0\"} 0.0"), "{text}");
+        assert!(text.contains("le=\"+Inf\"} 1.0"), "{text}");
+        assert!(!text.contains("le=\"10.0\"} 1.0"), "{text}");
     }
 
     #[test]

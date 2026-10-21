@@ -12,7 +12,7 @@ Every team writes their own HTTP status helpers, exit code enums, and country co
 - **Cross-language parity**: Same exit codes, signals, and schemas as gofulmen, pyfulmen, tsfulmen
 - **Minimal footprint**: Feature flags let you include only what you need
 
-**Lifecycle Phase**: `alpha` | **Version**: 0.2.1
+**Lifecycle Phase**: `alpha` | **Version**: 0.3.0
 
 ## Host binary identity
 
@@ -321,7 +321,13 @@ _Use case: Emit metrics that conform to your organization's taxonomy without bui
 
 Taxonomy-backed counters, gauges, and histograms. Export JSON events or
 Prometheus text (no in-process scrape server). HTTP helpers record `http_*`
-metrics and normalize routes so cardinality stays bounded.
+metrics. Pass a route template when you have one. Raw paths are normalized
+for ids, UUIDs, and long tokens that contain a digit. Letter-only and
+email-shaped segments are left as-is; a cap shared by every recorder on
+the same registry is the backstop. Past that cap, further series collapse
+to `route="__other__"` and a status equal to the outcome class.
+`http_active_requests` is labeled only by the service name passed to
+`HttpRecorder::new`. Keep that name operator-controlled.
 
 ```rust
 use rsfulmen::telemetry_metrics::{HttpRecord, HttpRecorder, Metrics};

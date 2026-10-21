@@ -6,7 +6,6 @@ date: "2026-10-12"
 last_updated: "2026-10-12"
 deciders:
   - "@3leapsdave"
-  - "Wright"
 scope: "rsfulmen config paths / supply-chain licenses"
 tags:
   - "config"

@@ -6,10 +6,15 @@
 //!
 //! Handler panics are isolated (`catch_unwind`): the payload is logged after
 //! redaction, later handlers still run, and TERM/INT always enter the shutdown
-//! chain. Shutdown hooks run under the catalog `timeout_seconds` grace period
+//! chain. On the listen path that chain runs off the listener thread, so a
+//! second SIGINT during shutdown still reaches the double-tap exit.
+//! Shutdown hooks run under the catalog `timeout_seconds` grace period
 //! (30s for SIGTERM, 5s for SIGINT; 30s when the field is absent; `0` takes
 //! the force-exit path immediately). Force-exit is `process::exit` unless a
-//! test/embedder installs [`SignalManager::set_force_exit`].
+//! test/embedder installs [`SignalManager::set_force_exit`]. Double-tap does
+//! not use that hook: it calls `process::exit` with the configured code.
+//! Direct `dispatch_signal` callers still run the chain to completion before
+//! returning.
 
 use std::collections::HashMap;
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -253,8 +258,11 @@ pub enum SignalRuntimeLogKind {
 
 /// Structured runtime log event (panic isolation, grace expiry).
 ///
-/// `message` is already redacted (`key=value` secret assignments; plus
-/// logging-crate pattern redaction when the `logging` feature is enabled).
+/// `message` is already redacted. Secret assignments include a quoted value
+/// with backslash escapes, and an authorization scheme word plus the token
+/// after it. Logging-crate patterns also run when the `logging` feature is
+/// enabled. A `Bearer` or `Basic` token that is not an assignment is removed
+/// only when that feature is enabled.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignalRuntimeLogEvent {
     /// Event kind.
@@ -287,6 +295,7 @@ struct Inner {
     runtime_logger: Mutex<Option<Arc<RuntimeLogFn>>>,
     force_exit: Mutex<Option<Arc<ForceExitFn>>>,
     shutdown_grace_override: Mutex<Option<Duration>>,
+    shutdown_started: AtomicBool,
 }
 
 impl Inner {
@@ -372,6 +381,7 @@ impl SignalManager {
                 runtime_logger: Mutex::new(None),
                 force_exit: Mutex::new(None),
                 shutdown_grace_override: Mutex::new(None),
+                shutdown_started: AtomicBool::new(false),
             }),
         }
     }
@@ -762,6 +772,7 @@ impl SignalManager {
         }
 
         self.inner.stop_flag.store(false, Ordering::SeqCst);
+        self.inner.shutdown_started.store(false, Ordering::SeqCst);
         self.inner.set_listening_state(true);
         let _guard = ListeningGuard {
             inner: Arc::clone(&self.inner),
@@ -828,7 +839,7 @@ impl SignalManager {
         let mut first_sigint_at = None;
         while !self.inner.stop_flag.load(Ordering::SeqCst) {
             for signal in signals.pending() {
-                self.dispatch_signal(signal, &mut first_sigint_at);
+                self.dispatch_from_listener(signal, &mut first_sigint_at);
             }
 
             self.drain_injected(&mut first_sigint_at)?;
@@ -861,12 +872,15 @@ impl SignalManager {
         }
 
         for signal in pending {
-            self.dispatch_signal(signal, first_sigint_at);
+            self.dispatch_from_listener(signal, first_sigint_at);
         }
 
         Ok(())
     }
 
+    /// Synchronous dispatch used by unit tests. The listen loop uses
+    /// [`Self::dispatch_from_listener`] so shutdown does not block the loop.
+    #[cfg(test)]
     fn dispatch_signal(&self, signal: i32, first_sigint_at: &mut Option<Instant>) {
         self.run_signal_handlers(signal);
 
@@ -883,6 +897,36 @@ impl SignalManager {
             self.run_shutdown_chain(signal);
             self.stop();
         }
+    }
+
+    /// Listen-loop dispatch. Shutdown runs on another thread so this loop can
+    /// observe a second SIGINT and take the double-tap exit.
+    fn dispatch_from_listener(&self, signal: i32, first_sigint_at: &mut Option<Instant>) {
+        self.run_signal_handlers(signal);
+
+        if signal == sigint_number() {
+            self.maybe_handle_double_tap(first_sigint_at);
+        }
+
+        if signal == sighup_number() {
+            self.run_reload_chain();
+            return;
+        }
+
+        if signal == sigint_number() || signal == sigterm_number() {
+            self.start_listener_shutdown(signal);
+        }
+    }
+
+    fn start_listener_shutdown(&self, signal: i32) {
+        if self.inner.shutdown_started.swap(true, Ordering::SeqCst) {
+            return;
+        }
+        let manager = self.clone();
+        thread::spawn(move || {
+            manager.run_shutdown_chain(signal);
+            manager.stop();
+        });
     }
 
     fn maybe_handle_double_tap(&self, first_sigint_at: &mut Option<Instant>) {
@@ -1123,11 +1167,15 @@ fn panic_payload_to_string(payload: Box<dyn std::any::Any + Send>) -> String {
 }
 
 fn redact_runtime_message(raw: &str) -> String {
+    // Assignment scrubbing first. The pattern middleware rewrites secret
+    // names, and a later assignment pass would no longer see `token=value`.
+    let assigned = redact_secret_assignments(raw);
     #[cfg(feature = "logging")]
-    let out = redact_with_logging_middleware(raw);
+    {
+        redact_with_logging_middleware(&assigned)
+    }
     #[cfg(not(feature = "logging"))]
-    let out = raw.to_string();
-    redact_secret_assignments(&out)
+    assigned
 }
 
 #[cfg(feature = "logging")]
@@ -1170,10 +1218,11 @@ fn redact_secret_assignments(raw: &str) -> String {
             if end < lower.len()
                 && lower[i..end] == key[..]
                 && (i == 0 || !lower[i - 1].is_ascii_alphanumeric())
-                && (lower[end] == '=' || lower[end] == ':')
             {
-                val_start = Some(end + 1);
-                break;
+                if let Some(start) = assignment_value_start(&chars, end) {
+                    val_start = Some(start);
+                    break;
+                }
             }
         }
         if let Some(start) = val_start {
@@ -1181,17 +1230,91 @@ fn redact_secret_assignments(raw: &str) -> String {
                 out.push(*c);
             }
             out.push_str(RUNTIME_REDACTION_REPLACEMENT);
-            let mut j = start;
-            while j < chars.len() && !chars[j].is_whitespace() {
-                j += 1;
-            }
-            i = j;
+            i = assignment_value_end(&chars, start);
         } else {
             out.push(chars[i]);
             i += 1;
         }
     }
     out
+}
+
+/// Index where the assigned value begins, after an optional closing quote on
+/// the key, optional whitespace, and `=` or `:`.
+fn assignment_value_start(chars: &[char], end: usize) -> Option<usize> {
+    let mut k = end;
+    if k < chars.len() && matches!(chars[k], '"' | '\'') {
+        k += 1;
+    }
+    while k < chars.len() && chars[k].is_whitespace() {
+        k += 1;
+    }
+    if k >= chars.len() || !matches!(chars[k], '=' | ':') {
+        return None;
+    }
+    k += 1;
+    while k < chars.len() && chars[k].is_whitespace() {
+        k += 1;
+    }
+    Some(k)
+}
+
+/// End index of one assigned value.
+///
+/// Quoted values run through the closing quote. A backslash escapes the next
+/// character, so an escaped quote does not end the value. An unquoted
+/// `Bearer`, `Basic`, `Digest`, or `Token` scheme also consumes the following
+/// word, which is the credential that scheme introduces.
+fn assignment_value_end(chars: &[char], start: usize) -> usize {
+    if start < chars.len() && matches!(chars[start], '"' | '\'') {
+        return quoted_value_end(chars, start);
+    }
+    let word_end = unquoted_word_end(chars, start);
+    if is_auth_scheme(&chars[start..word_end]) {
+        let mut next = word_end;
+        while next < chars.len() && chars[next].is_whitespace() {
+            next += 1;
+        }
+        if next > word_end && next < chars.len() {
+            return unquoted_word_end(chars, next);
+        }
+    }
+    word_end
+}
+
+fn quoted_value_end(chars: &[char], start: usize) -> usize {
+    let quote = chars[start];
+    let mut j = start + 1;
+    while j < chars.len() {
+        if chars[j] == '\\' && j + 1 < chars.len() {
+            j += 2;
+            continue;
+        }
+        if chars[j] == quote {
+            return j + 1;
+        }
+        j += 1;
+    }
+    j
+}
+
+fn unquoted_word_end(chars: &[char], start: usize) -> usize {
+    let mut j = start;
+    while j < chars.len() && !chars[j].is_whitespace() {
+        j += 1;
+    }
+    j
+}
+
+fn is_auth_scheme(word: &[char]) -> bool {
+    const SCHEMES: [&str; 4] = ["bearer", "basic", "digest", "token"];
+    SCHEMES.iter().any(|scheme| {
+        word.len() == scheme.len()
+            && word
+                .iter()
+                .zip(scheme.chars())
+                .all(|(got, expected)| got.eq_ignore_ascii_case(&expected))
+    })
 }
 
 impl Default for SignalManager {
@@ -1836,6 +1959,73 @@ mod tests {
     }
 
     #[test]
+    fn runtime_message_redacts_token_assignment_value() {
+        let out = redact_runtime_message("handler failed: GITHUB_TOKEN=abc123");
+        assert!(!out.contains("abc123"), "value leaked: {out}");
+        let json = redact_runtime_message(r#"panic: {"password":"hunter2"}"#);
+        assert!(!json.contains("hunter2"), "json value leaked: {json}");
+        let escaped = redact_runtime_message(r#"panic: {"password":"abc\"VISIBLE_SUFFIX"}"#);
+        assert!(
+            !escaped.contains("VISIBLE_SUFFIX"),
+            "escaped suffix leaked: {escaped}"
+        );
+        for (label, raw, secret) in [
+            (
+                "bearer",
+                "Authorization: Bearer abcDEF123xyz",
+                "abcDEF123xyz",
+            ),
+            ("basic", "Authorization: Basic dXNlcjpwYXNz", "dXNlcjpwYXNz"),
+            ("basic-short", "Authorization: Basic YTpi", "YTpi"),
+            (
+                "proxy",
+                "Proxy-Authorization: Basic dXNlcjpwYXNz",
+                "dXNlcjpwYXNz",
+            ),
+            (
+                "inline",
+                "handler got Authorization: Bearer sk-live-12345 from client",
+                "sk-live-12345",
+            ),
+        ] {
+            let redacted = redact_runtime_message(raw);
+            assert!(!redacted.contains(secret), "{label} leaked: {redacted}");
+        }
+    }
+
+    #[test]
+    fn handler_panic_redacts_escaped_quote_suffix() {
+        let manager = SignalManager::new();
+        manager.set_force_exit(|_| {});
+        let events = Arc::new(Mutex::new(Vec::<SignalRuntimeLogEvent>::new()));
+        let captured = Arc::clone(&events);
+        manager.set_runtime_logger(move |event| {
+            captured.lock().expect("events").push(event.clone());
+        });
+
+        let _g = manager
+            .handle(sigterm_number(), || {
+                let payload = r#"{"password":"abc\"VISIBLE_SUFFIX"}"#;
+                panic!("{payload}");
+            })
+            .expect("register panicking handler");
+
+        manager.dispatch_signal(sigterm_number(), &mut None);
+
+        let events = events.lock().expect("events");
+        let panic_logs: Vec<_> = events
+            .iter()
+            .filter(|e| e.kind == SignalRuntimeLogKind::HandlerPanic)
+            .collect();
+        assert_eq!(panic_logs.len(), 1);
+        assert!(
+            !panic_logs[0].message.contains("VISIBLE_SUFFIX"),
+            "escaped suffix leaked: {}",
+            panic_logs[0].message
+        );
+    }
+
+    #[test]
     fn rapid_sighup_is_not_coalesced() {
         let manager = SignalManager::new();
         let hits = Arc::new(AtomicUsize::new(0));
@@ -2055,6 +2245,59 @@ mod tests {
         thread::sleep(Duration::from_millis(50));
         // Window expired: second SIGINT must not call process::exit.
         manager.dispatch_signal(sigint_number(), &mut first_sigint_at);
+    }
+
+    #[test]
+    fn second_sigint_during_shutdown_force_exits() {
+        if std::env::var_os("RSFULMEN_DOUBLE_TAP_CHILD").is_some() {
+            second_sigint_during_shutdown_child();
+            return;
+        }
+
+        let exe = std::env::current_exe().expect("test executable");
+        let output = std::process::Command::new(exe)
+            .env("RSFULMEN_DOUBLE_TAP_CHILD", "1")
+            .args([
+                "signals::tests::second_sigint_during_shutdown_force_exits",
+                "--exact",
+                "--test-threads=1",
+            ])
+            .output()
+            .expect("spawn double-tap child");
+        assert_eq!(
+            output.status.code(),
+            Some(99),
+            "stdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    fn second_sigint_during_shutdown_child() {
+        let manager = SignalManager::new();
+        manager.enable_double_tap(DoubleTapConfig {
+            window: Duration::from_secs(2),
+            message: String::new(),
+            exit_code: 99,
+        });
+        manager.on_shutdown(|| {
+            thread::sleep(Duration::from_millis(300));
+            Ok(())
+        });
+
+        let injector = testing::SignalInjector::new(&manager);
+        let manager_listen = manager.clone();
+        let listener = thread::spawn(move || manager_listen.listen());
+        injector
+            .wait_for_listen(Duration::from_secs(1))
+            .expect("listener should start");
+        injector.inject(sigint_number()).expect("first SIGINT");
+        thread::sleep(Duration::from_millis(50));
+        injector.inject(sigint_number()).expect("second SIGINT");
+
+        let _ = listener.join();
+        // Double-tap should have exited 99 before the hook finished.
+        std::process::exit(1);
     }
 
     #[test]

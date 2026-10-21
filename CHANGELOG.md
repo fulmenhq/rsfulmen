@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-20
+
+Minor release. MSRV remains 1.88. The embedded Crucible catalog remains
+v0.4.19. Behavior changes since 0.2.1 include signal resolution,
+non-exhaustive catalog types, Prometheus export errors, std-only config
+paths, secret redaction, and bounded HTTP metric labels.
+
 ### Added
 
 - Bounded repository discovery via `pathfinder::discover_repository_root`,
@@ -32,6 +39,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Config paths are std-only.** `get_xdg_base_dirs` and the app and Fulmen
+  directory helpers no longer use the `dirs` crate. Absolute
+  `XDG_CONFIG_HOME`, `XDG_DATA_HOME`, and `XDG_CACHE_HOME` apply on every
+  platform. Relative or empty values are ignored. Fallbacks stay Unix XDG
+  defaults, macOS Application Support / Caches, and Windows `APPDATA` /
+  `LOCALAPPDATA`.
+- **HTTP metric labels are capped on the registry.** Recorders that share
+  one `Metrics` value share one series cap (10_000). Past the cap, the route
+  becomes `__other__` and the status becomes the outcome class. Letter-only
+  and email-shaped path segments are not rewritten; the cap is the backstop.
+  `http_active_requests` is labeled only by the service name passed to
+  `HttpRecorder::new`.
 - **FulHash serde tags** — `Algorithm` serializes as catalog ids
   (`xxh3-128`, `sha256`, `crc32`, `crc32c`). v0.2.1 payloads that used
   derived tags (`Xxh3_128`, `Sha256`) still deserialize via aliases;
@@ -64,6 +83,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Histogram `+Inf` is not copied into the last finite bucket.** An
+  observation above every boundary increments `count` and the `le="+Inf"`
+  sample only.
+- **One metric name is one instrument kind.** A second kind for the same
+  name returns `TelemetryError::InstrumentKindConflict` from `counter`,
+  `gauge`, `histogram`, and from `render_prometheus_text` (which writes
+  nothing on that error).
+- **Secret assignment values are redacted.** Logging and signal runtime
+  messages replace values of token, secret, password, and API-key
+  assignments, including quoted, JSON, Basic, and camelCase forms.
+  A quoted value keeps characters escaped with a backslash. An
+  authorization scheme word and the token after it are removed together.
+  A `Bearer` or `Basic` token that is not an assignment is removed only
+  when the `logging` feature is enabled. Redaction is best-effort.
+- **A second SIGINT during listener shutdown reaches double-tap.** The
+  listen path runs the shutdown chain off the listener thread. Double-tap
+  calls `process::exit` and does not use `set_force_exit`.
 - **`release-publish` binds the attestation to the published tag** — it
   previously checked only the tag name, that a same-name local tag existed,
   and the minisign signature, so a stale or substituted attestation or a
