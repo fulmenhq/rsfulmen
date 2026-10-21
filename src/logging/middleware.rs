@@ -306,7 +306,7 @@ impl RedactSecretsMiddleware {
             // Fail closed: too large to scan, so never emit any of it.
             return OVERSIZED_REDACTION_MARKER.to_string();
         }
-        let mut out = value.to_string();
+        let mut out = crate::secret_text::redact_secret_text(value);
         for pattern in &self.patterns {
             out = pattern
                 .replace_all(&out, self.replacement.as_str())
@@ -594,6 +594,14 @@ mod tests {
             ("saw Basic dXNlcjpwYXNz in the panic", "dXNlcjpwYXNz"),
             ("panic passwd=hunter2", "hunter2"),
             ("panic x-api-key=hunter2", "hunter2"),
+            (
+                "Authorization: Digest username=\"u\", response=\"deadbeef\"",
+                "deadbeef",
+            ),
+            (
+                "Authorization: AWS4-HMAC-SHA256 Signature=sigdeadbeef",
+                "sigdeadbeef",
+            ),
         ];
         for (raw, secret) in cases {
             let runtime = crate::secret_text::redact_secret_text(raw);

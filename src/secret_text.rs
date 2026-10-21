@@ -61,17 +61,24 @@ fn redact_assignments(raw: &str) -> String {
                 && (i == 0 || !lower[i - 1].is_ascii_alphanumeric())
             {
                 if let Some(start) = assignment_value_start(&chars, end) {
-                    val_start = Some(start);
+                    let through_eol = key_is_authorization(key);
+                    val_start = Some((start, through_eol));
                     break;
                 }
             }
         }
-        if let Some(start) = val_start {
+        if let Some((start, through_eol)) = val_start {
             for c in &chars[i..start] {
                 out.push(*c);
             }
             out.push_str(REDACTION_REPLACEMENT);
-            i = assignment_value_end(&chars, start);
+            i = if through_eol {
+                // An unquoted authorization value runs to the end of the
+                // line. Trailing prose on that line is removed with it.
+                authorization_value_end(&chars, start)
+            } else {
+                assignment_value_end(&chars, start)
+            };
         } else {
             out.push(chars[i]);
             i += 1;
@@ -96,6 +103,26 @@ fn assignment_value_start(chars: &[char], end: usize) -> Option<usize> {
         k += 1;
     }
     Some(k)
+}
+
+fn key_is_authorization(key: &[char]) -> bool {
+    key.iter().copied().eq("authorization".chars())
+}
+
+/// End of an authorization header value.
+///
+/// A quoted value stops at its closer, and a backslash escapes the next
+/// character. An unquoted value runs through the end of the line, so
+/// parameters and any trailing prose on that line are removed together.
+fn authorization_value_end(chars: &[char], start: usize) -> usize {
+    if start < chars.len() && matches!(chars[start], '"' | '\'') {
+        return quoted_value_end(chars, start);
+    }
+    let mut j = start;
+    while j < chars.len() && chars[j] != '\n' && chars[j] != '\r' {
+        j += 1;
+    }
+    j
 }
 
 fn assignment_value_end(chars: &[char], start: usize) -> usize {
@@ -327,6 +354,46 @@ mod tests {
         );
         assert_redacted("saw Bearer abcDEF123xyz in the panic", "abcDEF123xyz");
         assert_redacted("saw Basic dXNlcjpwYXNz in the panic", "dXNlcjpwYXNz");
+    }
+
+    #[test]
+    fn authorization_headers_redact_through_end_of_line() {
+        let cases = [
+            (
+                "Authorization: Digest username=\"u\", response=\"deadbeef\"",
+                "deadbeef",
+            ),
+            (
+                "Proxy-Authorization: Negotiate YII6secretblob",
+                "YII6secretblob",
+            ),
+            (
+                "Authorization: AWS4-HMAC-SHA256 Credential=AKIAIOSFODNN7EXAMPLE, Signature=sigdeadbeef",
+                "sigdeadbeef",
+            ),
+            ("Authorization: Bearer abcDEF123xyz", "abcDEF123xyz"),
+            (
+                "handler got Authorization: Bearer sk-live-12345 from client",
+                "sk-live-12345",
+            ),
+        ];
+        for (raw, secret) in cases {
+            let out = redact_secret_text(raw);
+            assert!(!out.contains(secret), "{raw:?} -> {out}");
+            assert!(!out.contains("from client"), "trailing prose stayed: {out}");
+        }
+        let quoted =
+            redact_secret_text(r#"{"authorization":"Digest response=\"deadbeef\""} tail stays"#);
+        assert!(!quoted.contains("deadbeef"), "{quoted}");
+        assert!(quoted.contains("tail stays"), "{quoted}");
+        let escaped = redact_secret_text(r#"panic: {"password":"abc\"VISIBLE_SUFFIX"}"#);
+        assert!(
+            !escaped.contains("VISIBLE_SUFFIX"),
+            "escaped suffix leaked: {escaped}"
+        );
+        let next = redact_secret_text("Authorization: Bearer secret\nnext line stays");
+        assert!(next.contains("next line stays"), "{next}");
+        assert!(!next.contains("secret"), "{next}");
     }
 
     #[test]

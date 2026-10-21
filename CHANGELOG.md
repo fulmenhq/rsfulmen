@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ghr_`, `github_pat_`, and `AKIA` token shapes without the logging
   feature. The shared secret-key list also covers `passwd`, `pwd`,
   `private_key`, `cvv`, `ssn`, and `x-api-key`.
+- An `Authorization` or `Proxy-Authorization` value is redacted through
+  the end of the line, including scheme parameters and any trailing prose
+  on that line. A quoted value still stops at its closing quote, and a
+  backslash keeps the next character inside the quotes.
 
 ## [0.3.0] - 2026-10-20
 
