@@ -93,7 +93,10 @@ paths, secret redaction, and bounded HTTP metric labels.
 - **Secret assignment values are redacted.** Logging and signal runtime
   messages replace values of token, secret, password, and API-key
   assignments, including quoted, JSON, Basic, and camelCase forms.
-  Redaction is best-effort.
+  A quoted value keeps characters escaped with a backslash. An
+  authorization scheme word and the token after it are removed together.
+  A `Bearer` or `Basic` token that is not an assignment is removed only
+  when the `logging` feature is enabled. Redaction is best-effort.
 - **A second SIGINT during listener shutdown reaches double-tap.** The
   listen path runs the shutdown chain off the listener thread. Double-tap
   calls `process::exit` and does not use `set_force_exit`.

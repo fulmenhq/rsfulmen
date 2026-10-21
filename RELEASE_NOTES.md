@@ -24,7 +24,10 @@ bounded HTTP metric labels.
 - **Telemetry.** Histogram `+Inf` is only the overflow bucket. One name is
   one instrument kind. HTTP label sets share a 10_000 registry cap.
 - **Redaction.** Assignment values for token, secret, password, and API-key
-  fields are redacted in log and signal runtime messages. Best-effort.
+  fields are redacted in log and signal runtime messages, including a
+  quoted value with backslash escapes and an authorization scheme plus
+  its token. A bare `Bearer` or `Basic` token is removed only when the
+  `logging` feature is enabled. Best-effort.
 - **Signals.** Listener shutdown does not block a second SIGINT. Double-tap
   calls `process::exit` and does not use `set_force_exit`.
 - **Publish.** `make release-publish` binds the upload to the signed tag.

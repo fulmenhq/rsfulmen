@@ -258,8 +258,11 @@ pub enum SignalRuntimeLogKind {
 
 /// Structured runtime log event (panic isolation, grace expiry).
 ///
-/// `message` is already redacted (`key=value` secret assignments; plus
-/// logging-crate pattern redaction when the `logging` feature is enabled).
+/// `message` is already redacted. Secret assignments include a quoted value
+/// with backslash escapes, and an authorization scheme word plus the token
+/// after it. Logging-crate patterns also run when the `logging` feature is
+/// enabled. A `Bearer` or `Basic` token that is not an assignment is removed
+/// only when that feature is enabled.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignalRuntimeLogEvent {
     /// Event kind.
@@ -1256,24 +1259,62 @@ fn assignment_value_start(chars: &[char], end: usize) -> Option<usize> {
     Some(k)
 }
 
-/// End index of one assigned value. Quoted values run through the closing quote.
+/// End index of one assigned value.
+///
+/// Quoted values run through the closing quote. A backslash escapes the next
+/// character, so an escaped quote does not end the value. An unquoted
+/// `Bearer`, `Basic`, `Digest`, or `Token` scheme also consumes the following
+/// word, which is the credential that scheme introduces.
 fn assignment_value_end(chars: &[char], start: usize) -> usize {
     if start < chars.len() && matches!(chars[start], '"' | '\'') {
-        let quote = chars[start];
-        let mut j = start + 1;
-        while j < chars.len() && chars[j] != quote {
-            j += 1;
-        }
-        if j < chars.len() {
-            j += 1;
-        }
-        return j;
+        return quoted_value_end(chars, start);
     }
+    let word_end = unquoted_word_end(chars, start);
+    if is_auth_scheme(&chars[start..word_end]) {
+        let mut next = word_end;
+        while next < chars.len() && chars[next].is_whitespace() {
+            next += 1;
+        }
+        if next > word_end && next < chars.len() {
+            return unquoted_word_end(chars, next);
+        }
+    }
+    word_end
+}
+
+fn quoted_value_end(chars: &[char], start: usize) -> usize {
+    let quote = chars[start];
+    let mut j = start + 1;
+    while j < chars.len() {
+        if chars[j] == '\\' && j + 1 < chars.len() {
+            j += 2;
+            continue;
+        }
+        if chars[j] == quote {
+            return j + 1;
+        }
+        j += 1;
+    }
+    j
+}
+
+fn unquoted_word_end(chars: &[char], start: usize) -> usize {
     let mut j = start;
     while j < chars.len() && !chars[j].is_whitespace() {
         j += 1;
     }
     j
+}
+
+fn is_auth_scheme(word: &[char]) -> bool {
+    const SCHEMES: [&str; 4] = ["bearer", "basic", "digest", "token"];
+    SCHEMES.iter().any(|scheme| {
+        word.len() == scheme.len()
+            && word
+                .iter()
+                .zip(scheme.chars())
+                .all(|(got, expected)| got.eq_ignore_ascii_case(&expected))
+    })
 }
 
 impl Default for SignalManager {
@@ -1923,6 +1964,65 @@ mod tests {
         assert!(!out.contains("abc123"), "value leaked: {out}");
         let json = redact_runtime_message(r#"panic: {"password":"hunter2"}"#);
         assert!(!json.contains("hunter2"), "json value leaked: {json}");
+        let escaped = redact_runtime_message(r#"panic: {"password":"abc\"VISIBLE_SUFFIX"}"#);
+        assert!(
+            !escaped.contains("VISIBLE_SUFFIX"),
+            "escaped suffix leaked: {escaped}"
+        );
+        for (label, raw, secret) in [
+            (
+                "bearer",
+                "Authorization: Bearer abcDEF123xyz",
+                "abcDEF123xyz",
+            ),
+            ("basic", "Authorization: Basic dXNlcjpwYXNz", "dXNlcjpwYXNz"),
+            ("basic-short", "Authorization: Basic YTpi", "YTpi"),
+            (
+                "proxy",
+                "Proxy-Authorization: Basic dXNlcjpwYXNz",
+                "dXNlcjpwYXNz",
+            ),
+            (
+                "inline",
+                "handler got Authorization: Bearer sk-live-12345 from client",
+                "sk-live-12345",
+            ),
+        ] {
+            let redacted = redact_runtime_message(raw);
+            assert!(!redacted.contains(secret), "{label} leaked: {redacted}");
+        }
+    }
+
+    #[test]
+    fn handler_panic_redacts_escaped_quote_suffix() {
+        let manager = SignalManager::new();
+        manager.set_force_exit(|_| {});
+        let events = Arc::new(Mutex::new(Vec::<SignalRuntimeLogEvent>::new()));
+        let captured = Arc::clone(&events);
+        manager.set_runtime_logger(move |event| {
+            captured.lock().expect("events").push(event.clone());
+        });
+
+        let _g = manager
+            .handle(sigterm_number(), || {
+                let payload = r#"{"password":"abc\"VISIBLE_SUFFIX"}"#;
+                panic!("{payload}");
+            })
+            .expect("register panicking handler");
+
+        manager.dispatch_signal(sigterm_number(), &mut None);
+
+        let events = events.lock().expect("events");
+        let panic_logs: Vec<_> = events
+            .iter()
+            .filter(|e| e.kind == SignalRuntimeLogKind::HandlerPanic)
+            .collect();
+        assert_eq!(panic_logs.len(), 1);
+        assert!(
+            !panic_logs[0].message.contains("VISIBLE_SUFFIX"),
+            "escaped suffix leaked: {}",
+            panic_logs[0].message
+        );
     }
 
     #[test]
