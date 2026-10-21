@@ -22,7 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An `Authorization` or `Proxy-Authorization` value is redacted through
   the end of the line, including scheme parameters and any trailing prose
   on that line. A quoted value still stops at its closing quote, and a
-  backslash keeps the next character inside the quotes.
+  backslash keeps the next character inside the quotes. The default
+  logging middleware uses that scan. A custom middleware keeps the keys,
+  patterns, and replacement it was given.
 
 ## [0.3.0] - 2026-10-20
 

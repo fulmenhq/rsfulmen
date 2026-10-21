@@ -266,19 +266,29 @@ pub struct RedactSecretsMiddleware {
     keys_lower: Vec<String>,
     patterns: Vec<Regex>,
     replacement: String,
+    /// `defaults` also runs the shared runtime scanner. `new` does not.
+    shared_scan: bool,
 }
 
 impl RedactSecretsMiddleware {
     /// Default keys and patterns from gofulmen / tsfulmen.
+    ///
+    /// Also runs the shared runtime scanner. A custom [`Self::new`] policy
+    /// does not.
     pub fn defaults() -> Result<Self, regex::Error> {
-        Self::new(
+        let mut middleware = Self::new(
             DEFAULT_SECRET_KEYS,
             DEFAULT_SECRET_PATTERNS,
             DEFAULT_REDACTION_REPLACEMENT,
-        )
+        )?;
+        middleware.shared_scan = true;
+        Ok(middleware)
     }
 
     /// Custom keys and regex pattern strings.
+    ///
+    /// Only those keys, patterns, and `replacement` are applied. The shared
+    /// runtime scanner stays on [`Self::defaults`].
     pub fn new(keys: &[&str], patterns: &[&str], replacement: &str) -> Result<Self, regex::Error> {
         let compiled = patterns
             .iter()
@@ -288,6 +298,7 @@ impl RedactSecretsMiddleware {
             keys_lower: keys.iter().map(|k| k.to_ascii_lowercase()).collect(),
             patterns: compiled,
             replacement: replacement.to_string(),
+            shared_scan: false,
         })
     }
 
@@ -306,7 +317,13 @@ impl RedactSecretsMiddleware {
             // Fail closed: too large to scan, so never emit any of it.
             return OVERSIZED_REDACTION_MARKER.to_string();
         }
-        let mut out = crate::secret_text::redact_secret_text(value);
+        // Custom policies keep their own replacement. The shared scanner
+        // always writes `[REDACTED]`, so only the default policy runs it.
+        let mut out = if self.shared_scan {
+            crate::secret_text::redact_secret_text(value)
+        } else {
+            value.to_string()
+        };
         for pattern in &self.patterns {
             out = pattern
                 .replace_all(&out, self.replacement.as_str())
@@ -617,6 +634,19 @@ mod tests {
                 record.message
             );
         }
+    }
+
+    #[test]
+    fn custom_policy_keeps_its_patterns_and_replacement() {
+        let empty = RedactSecretsMiddleware::new(&[], &[], "MASK").unwrap();
+        let mut untouched = rec("password=hunter2", &[]);
+        empty.process(&mut untouched);
+        assert_eq!(untouched.message, "password=hunter2");
+
+        let custom = RedactSecretsMiddleware::new(&[], &["hunter2"], "MASK").unwrap();
+        let mut masked = rec("password=hunter2", &[]);
+        custom.process(&mut masked);
+        assert_eq!(masked.message, "password=MASK");
     }
 
     #[test]
