@@ -26,6 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   logging middleware uses that scan. A custom middleware keeps the keys,
   patterns, and replacement it was given. A folded header keeps text on
   later lines, because the scan stops at the first line break.
+- A long secret key (`password`, `secret`, `token`, and the other names
+  of at least five letters) also matches as the suffix of a field name,
+  so `clientsecret` and `apitoken` are covered. A name that only starts
+  with that key stays as written (`secretary`, `passwordless`,
+  `tokenizer`, `tokens_used`). Shorter keys stay exact.
 
 ## [0.3.0] - 2026-10-20
 

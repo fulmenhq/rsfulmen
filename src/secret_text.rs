@@ -35,6 +35,66 @@ pub const SECRET_KEYS: &[&str] = &[
     "refresh_token",
 ];
 
+/// A key at least this long may match as the suffix of a name.
+/// Shorter keys stay exact, so `pass` does not match a longer word.
+const LONG_KEY_SUFFIX_LEN: usize = 5;
+
+/// Split a field name on separators and camelCase boundaries.
+#[cfg(feature = "logging")]
+fn secret_segments(value: &str) -> Vec<String> {
+    let mut parts = Vec::new();
+    let mut current = String::new();
+    for ch in value.chars() {
+        if !ch.is_ascii_alphanumeric() {
+            if !current.is_empty() {
+                parts.push(std::mem::take(&mut current).to_ascii_lowercase());
+            }
+            continue;
+        }
+        if ch.is_ascii_uppercase() && current.chars().any(|c| c.is_ascii_lowercase()) {
+            parts.push(std::mem::take(&mut current).to_ascii_lowercase());
+        }
+        current.push(ch);
+    }
+    if !current.is_empty() {
+        parts.push(current.to_ascii_lowercase());
+    }
+    parts
+}
+
+/// Whether `name` matches one of `needles`.
+///
+/// An exact segment sequence matches anywhere in the name. A single long
+/// needle also matches as the suffix of one segment, so `clientsecret`
+/// matches `secret` and `secretary` does not.
+#[cfg(feature = "logging")]
+pub(crate) fn name_matches_secret_key(name: &str, needles: &[String]) -> bool {
+    let segments = secret_segments(name);
+    needles.iter().any(|needle| {
+        let needle_segments = secret_segments(needle);
+        if needle_segments.is_empty() {
+            return false;
+        }
+        if segments
+            .windows(needle_segments.len())
+            .any(|window| window == needle_segments.as_slice())
+        {
+            return true;
+        }
+        if needle_segments.len() == 1 && needle_segments[0].len() >= LONG_KEY_SUFFIX_LEN {
+            let suffix = &needle_segments[0];
+            return segments
+                .iter()
+                .any(|segment| segment.len() > suffix.len() && segment.ends_with(suffix.as_str()));
+        }
+        false
+    })
+}
+
+fn long_alphanumeric_key(key: &[char]) -> bool {
+    key.len() >= LONG_KEY_SUFFIX_LEN && key.iter().all(|ch| ch.is_ascii_alphanumeric())
+}
+
 /// Redact secret assignments and bare token shapes.
 ///
 /// Assignments run first. Bare tokens are `Bearer`, `Basic`, `ghp_`/`gho_`/
@@ -56,9 +116,12 @@ fn redact_assignments(raw: &str) -> String {
         let mut val_start = None;
         for key in &keys {
             let end = i + key.len();
+            let left_bounded = i == 0 || !lower[i - 1].is_ascii_alphanumeric();
+            // A long key may sit at the end of a longer name (`clientsecret`).
+            // The separator check still rejects a key that only starts a word.
             if end < lower.len()
                 && lower[i..end] == key[..]
-                && (i == 0 || !lower[i - 1].is_ascii_alphanumeric())
+                && (left_bounded || long_alphanumeric_key(key))
             {
                 if let Some(start) = assignment_value_start(&chars, end) {
                     let through_eol = key_is_authorization(key);
@@ -394,6 +457,22 @@ mod tests {
         let next = redact_secret_text("Authorization: Bearer secret\nnext line stays");
         assert!(next.contains("next line stays"), "{next}");
         assert!(!next.contains("secret"), "{next}");
+    }
+
+    #[test]
+    fn long_keys_match_as_a_name_suffix() {
+        assert_redacted("clientsecret=hunter2", "hunter2");
+        assert_redacted("apitoken=tok-1", "tok-1");
+        assert_redacted("dbpassword=hunter2", "hunter2");
+        assert_redacted("user_password=hunter2", "hunter2");
+        for raw in [
+            "secretary=ada",
+            "passwordless=true",
+            "tokenizer=ws",
+            "tokens_used=12",
+        ] {
+            assert_eq!(redact_secret_text(raw), raw, "{raw}");
+        }
     }
 
     #[test]

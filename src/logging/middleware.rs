@@ -87,27 +87,6 @@ fn redact_basic_authorization(value: &str, replacement: &str) -> String {
     out
 }
 
-fn secret_segments(value: &str) -> Vec<String> {
-    let mut parts = Vec::new();
-    let mut current = String::new();
-    for ch in value.chars() {
-        if !ch.is_ascii_alphanumeric() {
-            if !current.is_empty() {
-                parts.push(std::mem::take(&mut current).to_ascii_lowercase());
-            }
-            continue;
-        }
-        if ch.is_ascii_uppercase() && current.chars().any(|c| c.is_ascii_lowercase()) {
-            parts.push(std::mem::take(&mut current).to_ascii_lowercase());
-        }
-        current.push(ch);
-    }
-    if !current.is_empty() {
-        parts.push(current.to_ascii_lowercase());
-    }
-    parts
-}
-
 /// Largest string, in UTF-8 bytes, that [`RedactSecretsMiddleware`] scans
 /// with its regex patterns.
 pub const MAX_PATTERN_SCAN_SIZE: usize = 10 * 1024;
@@ -222,14 +201,7 @@ impl SensitiveKeyMiddleware {
     }
 
     fn is_secret(keys_lower: &[String], key: &str) -> bool {
-        let key_segs = secret_segments(key);
-        keys_lower.iter().any(|needle| {
-            let needle_segs = secret_segments(needle);
-            !needle_segs.is_empty()
-                && key_segs
-                    .windows(needle_segs.len())
-                    .any(|window| window == needle_segs.as_slice())
-        })
+        crate::secret_text::name_matches_secret_key(key, keys_lower)
     }
 }
 
@@ -634,6 +606,33 @@ mod tests {
                 record.message
             );
         }
+    }
+
+    #[test]
+    fn long_secret_keys_match_as_a_field_suffix() {
+        let mw = SensitiveKeyMiddleware::defaults();
+        let mut record = rec(
+            "ok",
+            &[
+                ("clientsecret", "hunter2"),
+                ("apitoken", "tok-1"),
+                ("dbpassword", "hunter2"),
+                ("secretary", "ada"),
+                ("passwordless", "true"),
+                ("tokenizer", "ws"),
+                ("tokens_used", "12"),
+                ("max_tokens", "12"),
+            ],
+        );
+        mw.process(&mut record);
+        assert_eq!(record.fields[0].1, DEFAULT_REDACTION_REPLACEMENT);
+        assert_eq!(record.fields[1].1, DEFAULT_REDACTION_REPLACEMENT);
+        assert_eq!(record.fields[2].1, DEFAULT_REDACTION_REPLACEMENT);
+        assert_eq!(record.fields[3].1, "ada");
+        assert_eq!(record.fields[4].1, "true");
+        assert_eq!(record.fields[5].1, "ws");
+        assert_eq!(record.fields[6].1, "12");
+        assert_eq!(record.fields[7].1, "12");
     }
 
     #[test]
