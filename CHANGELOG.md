@@ -31,6 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   so `clientsecret` and `apitoken` are covered. A name that only starts
   with that key stays as written (`secretary`, `passwordless`,
   `tokenizer`, `tokens_used`). Shorter keys stay exact.
+- A `Cookie`, `Set-Cookie`, or `Set_Cookie` value is redacted through
+  the end of the line, including every pair and an `Expires` date. A
+  quoted value still stops at its closing quote. The next line stays.
+  A field with one of those names is redacted the same way.
+  `cookiejar`, `session-cookie`, and `session_cookie` stay as written.
 
 ## [0.3.0] - 2026-10-20
 

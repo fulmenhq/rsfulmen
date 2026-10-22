@@ -201,7 +201,8 @@ impl SensitiveKeyMiddleware {
     }
 
     fn is_secret(keys_lower: &[String], key: &str) -> bool {
-        crate::secret_text::name_matches_secret_key(key, keys_lower)
+        crate::secret_text::is_cookie_header_name(key)
+            || crate::secret_text::name_matches_secret_key(key, keys_lower)
     }
 }
 
@@ -606,6 +607,26 @@ mod tests {
                 record.message
             );
         }
+    }
+
+    #[test]
+    fn cookie_header_fields_are_redacted() {
+        let mw = SensitiveKeyMiddleware::defaults();
+        let mut record = rec(
+            "ok",
+            &[
+                ("Cookie", "session=abc; theme=dark"),
+                ("Set-Cookie", "session=abc; Expires=Wed, 21 Oct 2024"),
+                ("set_cookie", "session=abc"),
+                ("cookiejar", "public"),
+            ],
+        );
+        mw.process(&mut record);
+        assert_eq!(record.fields[0].1, DEFAULT_REDACTION_REPLACEMENT);
+        assert_eq!(record.fields[1].1, DEFAULT_REDACTION_REPLACEMENT);
+        assert!(!record.fields[1].1.contains("21 Oct"));
+        assert_eq!(record.fields[2].1, DEFAULT_REDACTION_REPLACEMENT);
+        assert_eq!(record.fields[3].1, "public");
     }
 
     #[test]
