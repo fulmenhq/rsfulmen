@@ -34,8 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A `Cookie`, `Set-Cookie`, or `Set_Cookie` value is redacted through
   the end of the line, including every pair and an `Expires` date. A
   quoted value still stops at its closing quote. The next line stays.
-  A field with one of those names is redacted the same way.
-  `cookiejar`, `session-cookie`, and `session_cookie` stay as written.
+  The default field policy redacts a field named `Cookie`,
+  `Set-Cookie`, or `Set_Cookie`. A custom policy redacts a field only
+  when that name is among the keys it was given. `cookiejar`,
+  `session-cookie`, and `session_cookie` stay as written.
 
 ## [0.3.0] - 2026-10-20
 

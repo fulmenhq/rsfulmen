@@ -184,24 +184,36 @@ impl MiddlewareChain {
 pub struct SensitiveKeyMiddleware {
     keys_lower: Vec<String>,
     replacement: String,
+    /// `defaults` also redacts cookie header names. `new` does not.
+    cookie_headers: bool,
 }
 
 impl SensitiveKeyMiddleware {
     /// Redact the default secret key set.
+    ///
+    /// Also redacts `Cookie`, `Set-Cookie`, and `Set_Cookie`. A custom
+    /// [`Self::new`] policy does not, unless one of those names is in
+    /// the keys it was given.
     pub fn defaults() -> Self {
-        Self::new(DEFAULT_SECRET_KEYS, DEFAULT_REDACTION_REPLACEMENT)
+        let mut middleware = Self::new(DEFAULT_SECRET_KEYS, DEFAULT_REDACTION_REPLACEMENT);
+        middleware.cookie_headers = true;
+        middleware
     }
 
     /// Redact the given keys (case-insensitive).
+    ///
+    /// Only those keys are applied. Cookie header names stay on
+    /// [`Self::defaults`].
     pub fn new(keys: &[&str], replacement: &str) -> Self {
         Self {
             keys_lower: keys.iter().map(|k| k.to_ascii_lowercase()).collect(),
             replacement: replacement.to_string(),
+            cookie_headers: false,
         }
     }
 
-    fn is_secret(keys_lower: &[String], key: &str) -> bool {
-        crate::secret_text::is_cookie_header_name(key)
+    fn is_secret(keys_lower: &[String], key: &str, cookie_headers: bool) -> bool {
+        (cookie_headers && crate::secret_text::is_cookie_header_name(key))
             || crate::secret_text::name_matches_secret_key(key, keys_lower)
     }
 }
@@ -210,7 +222,7 @@ impl Middleware for SensitiveKeyMiddleware {
     fn process(&self, record: &mut LogRecord) -> MiddlewareAction {
         let mut hit = false;
         for (key, value) in &mut record.fields {
-            if Self::is_secret(&self.keys_lower, key) {
+            if Self::is_secret(&self.keys_lower, key, self.cookie_headers) {
                 *value = self.replacement.clone();
                 hit = true;
             }
@@ -241,6 +253,8 @@ pub struct RedactSecretsMiddleware {
     replacement: String,
     /// `defaults` also runs the shared runtime scanner. `new` does not.
     shared_scan: bool,
+    /// `defaults` also redacts cookie header field names. `new` does not.
+    cookie_headers: bool,
 }
 
 impl RedactSecretsMiddleware {
@@ -255,13 +269,14 @@ impl RedactSecretsMiddleware {
             DEFAULT_REDACTION_REPLACEMENT,
         )?;
         middleware.shared_scan = true;
+        middleware.cookie_headers = true;
         Ok(middleware)
     }
 
     /// Custom keys and regex pattern strings.
     ///
     /// Only those keys, patterns, and `replacement` are applied. The shared
-    /// runtime scanner stays on [`Self::defaults`].
+    /// runtime scanner and cookie header field names stay on [`Self::defaults`].
     pub fn new(keys: &[&str], patterns: &[&str], replacement: &str) -> Result<Self, regex::Error> {
         let compiled = patterns
             .iter()
@@ -272,6 +287,7 @@ impl RedactSecretsMiddleware {
             patterns: compiled,
             replacement: replacement.to_string(),
             shared_scan: false,
+            cookie_headers: false,
         })
     }
 
@@ -317,7 +333,8 @@ impl Middleware for RedactSecretsMiddleware {
             hit |= self.scrub(correlation_id);
         }
         for (key, value) in &mut record.fields {
-            let secret_key = SensitiveKeyMiddleware::is_secret(&self.keys_lower, key);
+            let secret_key =
+                SensitiveKeyMiddleware::is_secret(&self.keys_lower, key, self.cookie_headers);
             if key.len() > MAX_PATTERN_SCAN_SIZE || secret_key {
                 *value = self.replacement.clone();
                 hit = true;
@@ -627,6 +644,33 @@ mod tests {
         assert!(!record.fields[1].1.contains("21 Oct"));
         assert_eq!(record.fields[2].1, DEFAULT_REDACTION_REPLACEMENT);
         assert_eq!(record.fields[3].1, "public");
+
+        let defaults = RedactSecretsMiddleware::defaults().unwrap();
+        let mut via_defaults = rec("ok", &[("Cookie", "session=abc")]);
+        defaults.process(&mut via_defaults);
+        assert_eq!(via_defaults.fields[0].1, DEFAULT_REDACTION_REPLACEMENT);
+    }
+
+    #[test]
+    fn custom_field_policy_does_not_add_cookie_headers() {
+        let fields = &[
+            ("Cookie", "session=abc"),
+            ("Set-Cookie", "session=abc"),
+            ("set_cookie", "session=abc"),
+            ("token", "sekrit"),
+        ];
+        let sensitive = SensitiveKeyMiddleware::new(&["token"], "MASK");
+        let mut record = rec("ok", fields);
+        sensitive.process(&mut record);
+        assert_eq!(record.fields[0].1, "session=abc");
+        assert_eq!(record.fields[1].1, "session=abc");
+        assert_eq!(record.fields[2].1, "session=abc");
+        assert_eq!(record.fields[3].1, "MASK");
+
+        let empty = RedactSecretsMiddleware::new(&[], &[], "MASK").unwrap();
+        let mut custom = rec("ok", &[("Cookie", "session=abc")]);
+        empty.process(&mut custom);
+        assert_eq!(custom.fields[0].1, "session=abc");
     }
 
     #[test]
