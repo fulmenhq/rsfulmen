@@ -29,7 +29,7 @@ pub use crate::secret_text::SECRET_KEYS as DEFAULT_SECRET_KEYS;
 pub const DEFAULT_SECRET_PATTERNS: &[&str] = &[
     r#"(?i)["']?(?:[A-Z0-9_]*_(?:TOKEN|SECRET|KEY|PASSWORD|PASSWD|PWD)|(?:TOKEN|SECRET|PASSWORD|PASSWD|PWD|APIKEY|API_KEY))[A-Z0-9_]*["']?\s*[=:]\s*(?:"[^"]*"|'[^']*'|[^\r\n,}]+)"#,
     r#"(?i)(?:^|[^A-Za-z0-9_])pass\s*[=:]\s*(?:"[^"]*"|'[^']*'|\S+)"#,
-    r"(?i)\b(?:password|passwd|pwd|secret)\s+\S+",
+    r"(?i)\b(?:password|passwd|pwd)\s+\S+",
     r"(?i)(?:^|[^A-Za-z0-9])api[-_]?key\s*[:=]\s*\S+",
     r"(?i)\bBearer\s+\S+",
     r"\bgh[pousr]_[A-Za-z0-9_]+",
@@ -579,6 +579,30 @@ mod tests {
                 record.message
             );
         }
+    }
+
+    #[test]
+    fn spaced_password_words_redact_and_spaced_secret_stays() {
+        let mw = RedactSecretsMiddleware::defaults().unwrap();
+        for raw in ["password hunter2", "passwd hunter2", "pwd hunter2"] {
+            let mut record = rec(raw, &[]);
+            mw.process(&mut record);
+            assert!(
+                !record.message.contains("hunter2"),
+                "{raw:?} -> {}",
+                record.message
+            );
+        }
+        let mut prose = rec("the secret meeting stays", &[]);
+        mw.process(&mut prose);
+        assert_eq!(prose.message, "the secret meeting stays");
+        let mut assigned = rec("secret=hunter2", &[]);
+        mw.process(&mut assigned);
+        assert!(
+            !assigned.message.contains("hunter2"),
+            "{}",
+            assigned.message
+        );
     }
 
     #[test]

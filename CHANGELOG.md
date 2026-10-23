@@ -38,6 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Set-Cookie`, or `Set_Cookie`. A custom policy redacts a field only
   when that name is among the keys it was given. `cookiejar`,
   `session-cookie`, and `session_cookie` stay as written.
+- A spaced `password`, `passwd`, or `pwd` still redacts the next word
+  (`password hunter2`). A spaced `secret` leaves the next word. An
+  assignment such as `secret=hunter2` still redacts.
 
 ## [0.3.0] - 2026-10-20
 
