@@ -114,19 +114,28 @@ fn redact_assignments(raw: &str) -> String {
     let mut i = 0;
     while i < chars.len() {
         let mut val_start = None;
-        for key in &keys {
-            let end = i + key.len();
-            let left_bounded = i == 0 || !lower[i - 1].is_ascii_alphanumeric();
-            // A long key may sit at the end of a longer name (`clientsecret`).
-            // The separator check still rejects a key that only starts a word.
-            if end < lower.len()
-                && lower[i..end] == key[..]
-                && (left_bounded || long_alphanumeric_key(key))
-            {
-                if let Some(start) = assignment_value_start(&chars, end) {
-                    let through_eol = key_is_authorization(key);
-                    val_start = Some((start, through_eol));
-                    break;
+        if let Some(end) = cookie_header_end(&lower, i) {
+            if let Some(start) = assignment_value_start(&chars, end) {
+                // The whole cookie header value goes through the end of
+                // the line. Pair splitting breaks on `Expires=Wed, 21 Oct`.
+                val_start = Some((start, true));
+            }
+        }
+        if val_start.is_none() {
+            for key in &keys {
+                let end = i + key.len();
+                let left_bounded = i == 0 || !lower[i - 1].is_ascii_alphanumeric();
+                // A long key may sit at the end of a longer name (`clientsecret`).
+                // The separator check still rejects a key that only starts a word.
+                if end < lower.len()
+                    && lower[i..end] == key[..]
+                    && (left_bounded || long_alphanumeric_key(key))
+                {
+                    if let Some(start) = assignment_value_start(&chars, end) {
+                        let through_eol = key_is_authorization(key);
+                        val_start = Some((start, through_eol));
+                        break;
+                    }
                 }
             }
         }
@@ -136,8 +145,9 @@ fn redact_assignments(raw: &str) -> String {
             }
             out.push_str(REDACTION_REPLACEMENT);
             i = if through_eol {
-                // An unquoted authorization value runs to the end of the
-                // line. Trailing prose on that line is removed with it.
+                // An unquoted authorization or cookie value runs to the
+                // end of the line. Trailing prose on that line is removed
+                // with it.
                 authorization_value_end(&chars, start)
             } else {
                 assignment_value_end(&chars, start)
@@ -166,6 +176,38 @@ fn assignment_value_start(chars: &[char], end: usize) -> Option<usize> {
         k += 1;
     }
     Some(k)
+}
+
+fn cookie_name_continues(c: char) -> bool {
+    c.is_ascii_alphanumeric() || c == '_' || c == '-'
+}
+
+fn cookie_header_end(lower: &[char], i: usize) -> Option<usize> {
+    if i > 0 && cookie_name_continues(lower[i - 1]) {
+        return None;
+    }
+    // Longest name first, so `set-cookie` is not read as `cookie`.
+    for name in ["set-cookie", "set_cookie", "cookie"] {
+        let name: Vec<char> = name.chars().collect();
+        let end = i + name.len();
+        if end > lower.len() || lower[i..end] != name[..] {
+            continue;
+        }
+        if end < lower.len() && cookie_name_continues(lower[end]) {
+            continue;
+        }
+        return Some(end);
+    }
+    None
+}
+
+/// `Cookie`, `Set-Cookie`, and `Set_Cookie`, and no other name.
+#[cfg(feature = "logging")]
+pub(crate) fn is_cookie_header_name(name: &str) -> bool {
+    matches!(
+        name.trim().to_ascii_lowercase().as_str(),
+        "cookie" | "set-cookie" | "set_cookie"
+    )
 }
 
 fn key_is_authorization(key: &[char]) -> bool {
@@ -473,6 +515,39 @@ mod tests {
         ] {
             assert_eq!(redact_secret_text(raw), raw, "{raw}");
         }
+    }
+
+    #[test]
+    fn cookie_headers_redact_through_end_of_line() {
+        let cookie = redact_secret_text("Cookie: session=abc; theme=dark\nnext stays");
+        assert!(!cookie.contains("session"), "{cookie}");
+        assert!(!cookie.contains("theme"), "{cookie}");
+        assert!(cookie.contains("next stays"), "{cookie}");
+
+        let set = redact_secret_text(
+            "Set-Cookie: session=abc; Expires=Wed, 21 Oct 2024 07:28:00 GMT; Path=/\nnext stays",
+        );
+        assert!(!set.contains("21 Oct"), "{set}");
+        assert!(!set.contains("session"), "{set}");
+        assert!(set.contains("next stays"), "{set}");
+
+        let quoted =
+            redact_secret_text(r#"{"Cookie":"session=abc; Expires=Wed, 21 Oct"} tail stays"#);
+        assert!(!quoted.contains("21 Oct"), "{quoted}");
+        assert!(quoted.contains("tail stays"), "{quoted}");
+
+        assert_eq!(redact_secret_text("cookiejar=public"), "cookiejar=public");
+        assert_eq!(
+            redact_secret_text("session-cookie=abc"),
+            "session-cookie=abc"
+        );
+        assert_eq!(
+            redact_secret_text("session_cookie=abc"),
+            "session_cookie=abc"
+        );
+        let set_underscore = redact_secret_text("set_cookie: session=abc\nnext stays");
+        assert!(!set_underscore.contains("session"), "{set_underscore}");
+        assert!(set_underscore.contains("next stays"), "{set_underscore}");
     }
 
     #[test]
