@@ -40,10 +40,15 @@ pub fn outcome_from_status(status: u16) -> &'static str {
     }
 }
 
-/// Replace high-cardinality path segments (UUIDs, numeric IDs, ObjectIds).
+/// Replace high-cardinality path segments.
 ///
-/// Query strings are stripped. Use a framework route template when you have
-/// one; this is the fallback the standard requires.
+/// Numeric ids, UUIDs, ObjectIds, and long tokens that contain a digit are
+/// rewritten. An email-shaped segment (`user@host.example` or
+/// `user%40host.example`) becomes `:email`. A letter-only segment of 16 or
+/// more characters becomes `:token` when it is all uppercase or changes case
+/// at least eight times. An all-lowercase word stays. Query strings are
+/// stripped. Use a framework route template when you have one; this is the
+/// fallback the standard requires.
 pub fn normalize_route(path: &str) -> String {
     let path = path.split('?').next().unwrap_or(path);
     if path.is_empty() {
@@ -61,8 +66,10 @@ pub fn normalize_route(path: &str) -> String {
             ":objectid"
         } else if is_numeric_id(segment) {
             ":id"
-        } else if is_token_segment(segment) {
+        } else if is_token_segment(segment) || is_letter_token(segment) {
             ":token"
+        } else if is_email_segment(segment) {
+            ":email"
         } else {
             segment
         });
@@ -78,6 +85,71 @@ pub fn normalize_route(path: &str) -> String {
     } else {
         out
     }
+}
+
+const LETTER_TOKEN_MIN_LEN: usize = 16;
+const LETTER_TOKEN_MIN_FLIPS: usize = 8;
+
+fn is_letter_token(segment: &str) -> bool {
+    let bytes = segment.as_bytes();
+    if bytes.len() < LETTER_TOKEN_MIN_LEN || !bytes.iter().all(|b| b.is_ascii_alphabetic()) {
+        return false;
+    }
+    if bytes.iter().all(|b| b.is_ascii_uppercase()) {
+        return true;
+    }
+    let mut flips = 0;
+    let mut prev_upper = bytes[0].is_ascii_uppercase();
+    for byte in &bytes[1..] {
+        let upper = byte.is_ascii_uppercase();
+        if upper != prev_upper {
+            flips += 1;
+            if flips >= LETTER_TOKEN_MIN_FLIPS {
+                return true;
+            }
+        }
+        prev_upper = upper;
+    }
+    false
+}
+
+fn is_encoded_at(bytes: &[u8]) -> bool {
+    bytes.len() == 3
+        && bytes[0] == b'%'
+        && bytes[1].eq_ignore_ascii_case(&b'4')
+        && bytes[2].eq_ignore_ascii_case(&b'0')
+}
+
+fn is_email_segment(segment: &str) -> bool {
+    let mut decoded = String::new();
+    let bytes = segment.as_bytes();
+    let mut index = 0;
+    while index < bytes.len() {
+        if index + 3 <= bytes.len() && is_encoded_at(&bytes[index..index + 3]) {
+            decoded.push('@');
+            index += 3;
+            continue;
+        }
+        let ch = segment[index..].chars().next().unwrap();
+        decoded.push(ch);
+        index += ch.len_utf8();
+    }
+    let mut parts = decoded.split('@');
+    let (Some(local), Some(domain)) = (parts.next(), parts.next()) else {
+        return false;
+    };
+    if parts.next().is_some() || local.is_empty() || domain.is_empty() {
+        return false;
+    }
+    if domain.starts_with('.') || domain.ends_with('.') || !domain.contains('.') {
+        return false;
+    }
+    local
+        .bytes()
+        .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'+' | b'-'))
+        && domain
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'-'))
 }
 
 fn is_token_segment(segment: &str) -> bool {
@@ -348,6 +420,51 @@ mod tests {
             !normalize_route("/password-reset/9f8e7d6c5b4a39281716151413121110").contains("9f8e")
         );
         assert_eq!(normalize_route("/"), "/");
+    }
+
+    #[test]
+    fn letter_and_email_segments_normalize() {
+        assert_eq!(normalize_route("/x/ABCDEFGHIJKLMNOPQRSTUV"), "/x/:token");
+        assert_eq!(normalize_route("/x/aBcDeFgHiJkLmNoP"), "/x/:token");
+        assert_eq!(normalize_route("/x/aBaBaBaBcdefghij"), "/x/:token");
+        assert_eq!(
+            normalize_route("/x/aBaBaBABcdefghij"),
+            "/x/aBaBaBABcdefghij"
+        );
+        assert_eq!(
+            normalize_route("/x/internationalization"),
+            "/x/internationalization"
+        );
+        assert_eq!(
+            normalize_route("/x/UserProfileSettings"),
+            "/x/UserProfileSettings"
+        );
+        assert_eq!(
+            normalize_route("/x/well-known-endpoint-name"),
+            "/x/well-known-endpoint-name"
+        );
+        assert_eq!(normalize_route("/u/john.smith@example.com"), "/u/:email");
+        assert_eq!(
+            normalize_route("/u/john.smith%40example.com?x=1"),
+            "/u/:email"
+        );
+        assert_eq!(normalize_route("/u/John.Smith%40Example.COM"), "/u/:email");
+
+        let metrics = Metrics::new();
+        let rec = HttpRecorder::new(metrics.clone(), "api");
+        rec.record(HttpRecord::new("GET", "/u/john.smith@example.com", 200))
+            .unwrap();
+        rec.record(HttpRecord::new("GET", "/u/john.smith%40example.com", 200))
+            .unwrap();
+        rec.record(HttpRecord::new("GET", "/x/ABCDEFGHIJKLMNOPQRSTUV", 200))
+            .unwrap();
+        let text = metrics.export_prometheus_text().unwrap();
+        assert!(text.contains("route=\"/u/:email\""), "{text}");
+        assert!(text.contains("route=\"/x/:token\""), "{text}");
+        assert!(!text.contains("john.smith"), "{text}");
+        assert!(!text.contains("example.com"), "{text}");
+        assert!(!text.contains("ABCDEFGHIJKLMNOPQRSTUV"), "{text}");
+        assert!(!text.contains("%40"), "{text}");
     }
 
     #[test]

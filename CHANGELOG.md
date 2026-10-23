@@ -41,6 +41,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A spaced `password`, `passwd`, or `pwd` still redacts the next word
   (`password hunter2`). A spaced `secret` leaves the next word. An
   assignment such as `secret=hunter2` still redacts.
+- Route normalization rewrites an email-shaped segment (`user@host.example`
+  or `user%40host.example`) to `:email`. A letter-only segment of 16 or
+  more characters becomes `:token` when it is all uppercase or changes
+  case at least eight times. An all-lowercase word and a hyphenated name
+  stay as written.
 
 ## [0.3.0] - 2026-10-20
 
