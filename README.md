@@ -322,9 +322,11 @@ _Use case: Emit metrics that conform to your organization's taxonomy without bui
 Taxonomy-backed counters, gauges, and histograms. Export JSON events or
 Prometheus text (no in-process scrape server). HTTP helpers record `http_*`
 metrics. Pass a route template when you have one. Raw paths are normalized
-for ids, UUIDs, and long tokens that contain a digit. Letter-only and
-email-shaped segments are left as-is; a cap shared by every recorder on
-the same registry is the backstop. Past that cap, further series collapse
+for ids, UUIDs, long tokens, email-shaped segments (`@` or `%40`), and
+letter-only segments of 16 or more characters that are all uppercase or
+that change case at least eight times. All-lowercase words and hyphenated
+names stay. A cap shared by every recorder on the same registry is the
+backstop. Past that cap, further series collapse
 to `route="__other__"` and a status equal to the outcome class.
 `http_active_requests` is labeled only by the service name passed to
 `HttpRecorder::new`. Keep that name operator-controlled.
