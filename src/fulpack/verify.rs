@@ -8,7 +8,7 @@
 
 use super::error::FulpackError;
 use super::format::detect_format;
-use super::read::{corrupt, open};
+use super::read::{corrupt, gzip_entry_name, open};
 use super::types::{ArchiveFormat, ValidationResult};
 use std::io::{BufReader, Read};
 use std::path::{Component, Path};
@@ -126,6 +126,9 @@ enum PathClass {
 fn classify(raw: &str) -> PathClass {
     for component in Path::new(raw).components() {
         match component {
+            Component::Normal(seg) if super::extract::is_drive_segment(seg) => {
+                return PathClass::Absolute
+            }
             Component::RootDir | Component::Prefix(_) => return PathClass::Absolute,
             Component::ParentDir => return PathClass::Traversal,
             _ => {}
@@ -192,11 +195,7 @@ fn collect_zip<R: Read + std::io::Seek>(
 
 fn collect_gzip(archive: &Path) -> Result<Vec<RawEntry>, FulpackError> {
     let mut decoder = flate2::read::GzDecoder::new(BufReader::new(open(archive)?));
-    let path = decoder
-        .header()
-        .and_then(|h| h.filename())
-        .map(|b| String::from_utf8_lossy(b).into_owned())
-        .unwrap_or_else(|| "output".to_string());
+    let path = gzip_entry_name(decoder.header().and_then(|h| h.filename()), archive);
     let mut size: u64 = 0;
     let mut buf = [0u8; 8192];
     loop {

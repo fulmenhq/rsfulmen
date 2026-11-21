@@ -328,6 +328,23 @@ fn normalize_scan_path(raw: &str) -> String {
     }
 }
 
+/// Effective entry name of a single-file gzip, shared by extract and verify:
+/// the header's original filename (FNAME) if present, else the archive name
+/// without its `.gz`/`.gzip` suffix, else `output`.
+pub(super) fn gzip_entry_name(fname: Option<&[u8]>, archive: &Path) -> String {
+    match fname {
+        Some(b) => lossy(b),
+        None => {
+            let stem = strip_gzip_suffix(archive);
+            if stem.is_empty() {
+                "output".to_string()
+            } else {
+                stem
+            }
+        }
+    }
+}
+
 fn strip_gzip_suffix(archive: &Path) -> String {
     let name = archive
         .file_name()
