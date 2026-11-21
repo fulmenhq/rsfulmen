@@ -949,11 +949,11 @@ fulsecrets decrypt secrets.yaml --gpg-key other-dev@example.com
 ```yaml
 # ❌ Invalid
 projects:
-  - project_slug: MyApp-Prod  # Uppercase
+  - project_slug: MyApp-Prod # Uppercase
 
 # ✅ Valid
 projects:
-  - project_slug: myapp-prod  # Lowercase, hyphens only
+  - project_slug: myapp-prod # Lowercase, hyphens only
 ```
 
 ### Issue: "Encrypted file but no encryption method in CI"

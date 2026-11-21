@@ -1,0 +1,11 @@
+{
+  "format": 0,
+  "columns": [
+    {
+      "id": "a",
+      "label": "A",
+      "type": "string",
+      "nullable": true
+    }
+  ]
+}

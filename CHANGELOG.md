@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Crucible SSOT assets synced to v0.5.1. `CRUCIBLE_VERSION` and the
+  embedded metadata now report v0.5.1. The foundry catalogs (signals,
+  exit codes, country codes, HTTP statuses) are unchanged.
+
 ### Fixed
 
 - Boolean environment overrides no longer include the raw input in parse

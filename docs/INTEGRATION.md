@@ -2,7 +2,7 @@
 
 **For library consumers.** This guide shows how to add rsfulmen to a Rust application
 and pick the features you actually need. Behaviour contracts come from
-[Crucible](https://github.com/fulmenhq/crucible) (embedded snapshot **v0.4.19**).
+[Crucible](https://github.com/fulmenhq/crucible) (embedded snapshot **v0.5.1**).
 gofulmen and tsfulmen are worked examples of the same contracts; Rust APIs are
 idiomatic (`Result`, feature flags, rustdoc) and are not a Go-shaped port.
 
@@ -103,7 +103,7 @@ let _independent = deep_copy(&merged);
 
 ### Foundry catalogs (`foundry` / `foundry-core`)
 
-Same catalog data as gofulmen / tsfulmen / pyfulmen, from Crucible v0.4.19.
+Same catalog data as gofulmen / tsfulmen / pyfulmen, from Crucible v0.5.1.
 
 ```rust
 use rsfulmen::foundry::country_codes::lookup_by_alpha2;
@@ -124,7 +124,7 @@ Optional foundry extras (each adds deps):
 | `foundry-patterns`    | `regex`, `glob`               |
 | `foundry-correlation` | `uuid` (UUIDv7 correlation IDs) |
 
-Catalog-driven extras on `foundry-core` (Crucible v0.4.19):
+Catalog-driven extras on `foundry-core` (Crucible v0.5.1):
 `simplified_modes::map_to_simplified`, `exit_codes::map_bsd_to_fulmen`,
 and signal-resolution fixtures for `resolve_signal` / `match_signal_names`.
 
@@ -280,7 +280,7 @@ let meta = crucible::metadata();
 println!("crucible {}", meta.version);
 ```
 
-Embedded snapshot is **v0.4.19**. Query `crucible::version()` at runtime rather
+Embedded snapshot is **v0.5.1**. Query `crucible::version()` at runtime rather
 than hard-coding the pin in application logic.
 
 ### Other modules
@@ -396,7 +396,7 @@ and enable it explicitly when using `default-features = false`.
 Confirm the embedded Crucible version:
 
 ```rust
-assert!(rsfulmen::crucible::version().contains("0.4.19"));
+assert!(rsfulmen::crucible::version().contains("0.5.1"));
 ```
 
 All language foundations should embed the same Crucible tag for catalog parity.

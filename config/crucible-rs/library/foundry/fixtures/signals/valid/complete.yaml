@@ -51,13 +51,16 @@ signals:
       - log_reload
     usage_notes: Historically "hangup" (terminal disconnect). In Fulmen, triggers config reload via restart. MANDATORY schema validation before restart. On Windows, use HTTP /admin/signal endpoint as fallback.
     windows_fallback:
+      fallback_behavior: http_admin_endpoint
       log_level: WARN
       log_message: "SIGHUP not supported on Windows; use HTTP POST /admin/signal with signal=HUP"
+      log_template: "signal=${signal} platform=${platform} fallback=${fallback_behavior} message='${operation_hint}'"
+      operation_hint: "POST /admin/signal with signal=HUP"
       telemetry_event: fulmen.signal.unsupported
       telemetry_tags:
         signal: SIGHUP
         platform: windows
-        fallback: http_admin_endpoint
+        fallback_behavior: http_admin_endpoint
   - id: quit
     name: SIGQUIT
     unix_number: 3
@@ -76,12 +79,16 @@ signals:
     exit_code: 141  # 128 + 13
     usage_notes: Default POSIX behavior terminates process immediately. Fulmen default is observe_only (log at INFO level + exit gracefully with code 141). Applications may override to ignore SIGPIPE for network services that expect broken pipes. Long-running servers typically ignore; CLI tools typically exit.
     windows_fallback:
+      fallback_behavior: exception_handling
       log_level: WARN
       log_message: "SIGPIPE not available on Windows; broken pipe errors handled via exception mechanisms"
+      log_template: "signal=${signal} platform=${platform} fallback=${fallback_behavior} message='${operation_hint}'"
+      operation_hint: "Handle BrokenPipeError (Python), EPIPE (Go), EPIPE (C)"
       telemetry_event: fulmen.signal.unsupported
       telemetry_tags:
         signal: SIGPIPE
         platform: windows
+        fallback_behavior: exception_handling
   - id: alrm
     name: SIGALRM
     unix_number: 14
@@ -92,12 +99,16 @@ signals:
     timeout_seconds: 0
     usage_notes: Used by watchdog timers. Treat as timeout-induced exit unless application overrides. Watchdog pattern - call signal.alarm(N) to set timer, reset periodically with progress; if no reset within N seconds, SIGALRM fires and process exits. Out of scope for v1.0.0 module implementations.
     windows_fallback:
+      fallback_behavior: timer_api
       log_level: WARN
       log_message: "SIGALRM not available on Windows; implement watchdog timers via threading.Timer or asyncio"
+      log_template: "signal=${signal} platform=${platform} fallback=${fallback_behavior} message='${operation_hint}'"
+      operation_hint: "Use threading.Timer (Python), time.AfterFunc (Go), setTimeout (TypeScript)"
       telemetry_event: fulmen.signal.unsupported
       telemetry_tags:
         signal: SIGALRM
         platform: windows
+        fallback_behavior: timer_api
   - id: usr1
     name: SIGUSR1
     unix_number: 10
@@ -110,13 +121,16 @@ signals:
     exit_code: 138  # 128 + 10
     usage_notes: Application-specific signal (e.g., reopen log files, dump statistics, toggle verbose logging). Helper libraries provide registration API; application provides custom handler.
     windows_fallback:
+      fallback_behavior: http_admin_endpoint
       log_level: WARN
       log_message: "SIGUSR1 not available on Windows; use HTTP POST /admin/signal with signal=USR1 for custom operations"
+      log_template: "signal=${signal} platform=${platform} fallback=${fallback_behavior} message='${operation_hint}'"
+      operation_hint: "POST /admin/signal with signal=USR1"
       telemetry_event: fulmen.signal.unsupported
       telemetry_tags:
         signal: SIGUSR1
         platform: windows
-        fallback: http_admin_endpoint
+        fallback_behavior: http_admin_endpoint
   - id: usr2
     name: SIGUSR2
     unix_number: 12
@@ -129,13 +143,16 @@ signals:
     exit_code: 140  # 128 + 12
     usage_notes: Application-specific signal (e.g., toggle debug mode, trigger profiling, rotate credentials). Helper libraries provide registration API; application provides custom handler.
     windows_fallback:
+      fallback_behavior: http_admin_endpoint
       log_level: WARN
       log_message: "SIGUSR2 not available on Windows; use HTTP POST /admin/signal with signal=USR2 for custom operations"
+      log_template: "signal=${signal} platform=${platform} fallback=${fallback_behavior} message='${operation_hint}'"
+      operation_hint: "POST /admin/signal with signal=USR2"
       telemetry_event: fulmen.signal.unsupported
       telemetry_tags:
         signal: SIGUSR2
         platform: windows
-        fallback: http_admin_endpoint
+        fallback_behavior: http_admin_endpoint
 behaviors:
   - id: graceful_shutdown
     name: Graceful Shutdown

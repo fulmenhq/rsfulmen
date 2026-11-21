@@ -1,0 +1,3738 @@
+{
+  "contract": "tabular-exchange/0.1.0",
+  "description": "Cases for matching a result to an output and to a request. Each case gives the result (result, a JSON value; or result_text, the exact text of a result that a JSON value cannot carry; null when no result is held), the candidate output in hexadecimal (null when none is held), and the caller's expectations (an absent member is an expectation that was not supplied). verdict is requested-run-completed, output-agreement or not-established; a not-established case names the rule identifier, and every case names in decided_by the step of section 8 of semantic-validation.md that decides it. materials gives the bytes the digests were computed from. A result given as a JSON value stands for its serialization as UTF-8 text.",
+  "materials": {
+    "source": {
+      "text": "[\"a\" ]\n",
+      "bytes": 7,
+      "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+      "note": "The source of the request."
+    },
+    "source-same-length": {
+      "text": "[ \"a\"]\n",
+      "bytes": 7,
+      "sha256": "58bc6cc0678903152caa131ba694db798e7c66987e75bd6c57a20cef1eb3cb43",
+      "note": "Another source of the same length holding the same row."
+    },
+    "source-other-length": {
+      "text": "[\"a\"]\n",
+      "bytes": 6,
+      "sha256": "92260ea0cbd70738c0bccba89c8dbf5881ec50d1a09891ea531aa254a783c9cd",
+      "note": "Another source of another length holding the same row."
+    },
+    "schema": {
+      "text": "{\"format\":\"tabular-exchange.schema/0\",\"columns\":[{\"id\":\"a\",\"label\":\"A\",\"type\":\"string\",\"nullable\":false}]}",
+      "bytes": 106,
+      "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+      "note": "The schema of the request."
+    },
+    "schema-same-length": {
+      "text": "{\"format\":\"tabular-exchange.schema/0\",\"columns\":[{\"label\":\"A\",\"id\":\"a\",\"type\":\"string\",\"nullable\":false}]}",
+      "bytes": 106,
+      "sha256": "9c414ee3a47991e11e9df415b489ce70b0198c698c09db3be0267e996534be60",
+      "note": "The same schema with two members in the other order."
+    },
+    "schema-other-length": {
+      "text": "{\"format\":\"tabular-exchange.schema/0\",\"columns\":[{\"id\":\"a\",\"label\":\"A\",\"type\":\"string\",\"nullable\":false}]}\n",
+      "bytes": 107,
+      "sha256": "a30d70e3542d4afc78a13e36c3a25cd9a71e4b58ac0c2494b97bdeffdc15b4fe",
+      "note": "The same schema followed by a line feed."
+    },
+    "policy": {
+      "text": "{\"format\":\"tabular-exchange.policy/0\",\"exact_numbers\":\"require-exact\"}",
+      "bytes": 70,
+      "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+      "note": "The policy of the request."
+    },
+    "policy-same-length": {
+      "text": "{\"exact_numbers\":\"require-exact\",\"format\":\"tabular-exchange.policy/0\"}",
+      "bytes": 70,
+      "sha256": "e11fad1c71bc0b425e220b67cccb87bd23d55aef140b0bd4dc499a688724389d",
+      "note": "The same policy with its members in the other order."
+    },
+    "policy-other-length": {
+      "text": "{\"format\":\"tabular-exchange.policy/0\",\"exact_numbers\":\"text-always\"}",
+      "bytes": 68,
+      "sha256": "9f274b8be58be5cf3fe5bda4a36607c61621801e73898cb94cc2e6751daf73a8",
+      "note": "Another policy. The table has no exact-number column, so the output is the same."
+    },
+    "output": {
+      "text": "example output bytes\n",
+      "bytes": 21,
+      "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+      "note": "The candidate output."
+    },
+    "output-same-length": {
+      "text": "example output bytez\n",
+      "bytes": 21,
+      "sha256": "a72ef9c61b590494a971ab5dcf6ff87bba37f3d96d9ea94abaa4526d2dc80589",
+      "note": "Other bytes of the same length."
+    }
+  },
+  "cases": [
+    {
+      "name": "output agreement",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {},
+      "verdict": "output-agreement",
+      "decided_by": "M-16"
+    },
+    {
+      "name": "output agreement: empty output",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "",
+      "expectations": {},
+      "verdict": "output-agreement",
+      "decided_by": "M-16"
+    },
+    {
+      "name": "stale run, no expectations",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0041",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {},
+      "verdict": "output-agreement",
+      "decided_by": "M-16",
+      "note": "The result is from an earlier run that happened to produce the same bytes. With no expectations this is all that can be said, and it is not evidence that request-0042 completed. Compare the case named stale run."
+    },
+    {
+      "name": "output length differs",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 20
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "output-length-mismatch",
+      "decided_by": "M-14"
+    },
+    {
+      "name": "output digest differs",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f757470757420627974657a0a",
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "output-digest-mismatch",
+      "decided_by": "M-15"
+    },
+    {
+      "name": "output truncated",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f7574707574206279",
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "output-length-mismatch",
+      "decided_by": "M-14"
+    },
+    {
+      "name": "mutation: one hexadecimal digit of output.sha256",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b50",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "output-digest-mismatch",
+      "decided_by": "M-15"
+    },
+    {
+      "name": "missing result",
+      "result": null,
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "result-missing",
+      "decided_by": "M-03"
+    },
+    {
+      "name": "missing output",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": null,
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "output-missing",
+      "decided_by": "M-13"
+    },
+    {
+      "name": "missing result and missing output",
+      "result": null,
+      "output_hex": null,
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "result-missing",
+      "decided_by": "M-03"
+    },
+    {
+      "name": "status: refused",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "refused",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "refusal": {
+          "category": "schema-mismatch",
+          "rule": "null-not-allowed"
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "result-not-ok",
+      "decided_by": "M-05"
+    },
+    {
+      "name": "status: failed",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "failed",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "refusal": {
+          "category": "io-failure",
+          "rule": "example-write-failed"
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "result-not-ok",
+      "decided_by": "M-05"
+    },
+    {
+      "name": "status: cancelled",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "cancelled",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "refusal": {
+          "category": "cancelled",
+          "rule": "example-interrupted"
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "result-not-ok",
+      "decided_by": "M-05"
+    },
+    {
+      "name": "status: refused, source not read",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "refused",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "refusal": {
+          "category": "schema-mismatch",
+          "rule": "null-not-allowed"
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "result-not-ok",
+      "decided_by": "M-05",
+      "note": "A valid refusal with no source entry. The matcher stops at the status and does not look for the entry."
+    },
+    {
+      "name": "result: ok without counts",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "result-member-missing",
+      "decided_by": "M-04",
+      "note": "A result that is refused as a document establishes nothing, whatever digest it carries."
+    },
+    {
+      "name": "result: ok without output",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "result-member-missing",
+      "decided_by": "M-04"
+    },
+    {
+      "name": "result: refused with an output member",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "refused",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "refusal": {
+          "category": "schema-mismatch",
+          "rule": "null-not-allowed"
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "result-member-unknown",
+      "decided_by": "M-04",
+      "note": "The smuggled member carries the true digest and length of the candidate. The result is refused at O-03 and the member is never compared."
+    },
+    {
+      "name": "result: refused with a malformed output member",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "refused",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "refusal": {
+          "category": "schema-mismatch",
+          "rule": "null-not-allowed"
+        },
+        "output": {
+          "sha256": "NOT-A-DIGEST",
+          "bytes": 21
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "result-member-unknown",
+      "decided_by": "M-04",
+      "note": "Presence is settled before content: result-member-unknown, not result-member-invalid."
+    },
+    {
+      "name": "result: cancelled with counts",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "cancelled",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "refusal": {
+          "category": "cancelled",
+          "rule": "example-interrupted"
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "result-member-unknown",
+      "decided_by": "M-04"
+    },
+    {
+      "name": "result: ok with a refusal",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        },
+        "refusal": {
+          "category": "internal",
+          "rule": "example-late-failure"
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "result-member-unknown",
+      "decided_by": "M-04"
+    },
+    {
+      "name": "result: status in upper case",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "OK",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "result-member-invalid",
+      "decided_by": "M-04"
+    },
+    {
+      "name": "result: status missing",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "result-member-missing",
+      "decided_by": "M-04"
+    },
+    {
+      "name": "result: output is null",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": null,
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "result-not-an-object",
+      "decided_by": "M-04"
+    },
+    {
+      "name": "result: another contract revision",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.2.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "result-contract-unsupported",
+      "decided_by": "M-04"
+    },
+    {
+      "name": "result: another wire-format revision",
+      "result": {
+        "format": "tabular-exchange.result/1",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "result-format-unsupported",
+      "decided_by": "M-04"
+    },
+    {
+      "name": "result: output digest in upper case",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "BAEE5FA8BFF3EE9D16A0842FF2149386CB32E50EEF205B5AF305485861AC6B55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "result-member-invalid",
+      "decided_by": "M-04",
+      "note": "A digest is lowercase. It is not folded and then compared."
+    },
+    {
+      "name": "result: counts inconsistent",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 2,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "result-counts-inconsistent",
+      "decided_by": "M-04",
+      "note": "One row and two nulls. Every digest matches; the result is still not a valid result."
+    },
+    {
+      "name": "result: status key repeated",
+      "result_text": "{\"format\":\"tabular-exchange.result/0\",\"contract\":\"tabular-exchange/0.1.0\",\"status\":\"refused\",\"status\":\"ok\",\"run_id\":\"request-0042\",\"profile\":{\"id\":\"example-destination/r1\",\"sha256\":\"c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06\"},\"inputs\":{\"source\":{\"sha256\":\"4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6\",\"bytes\":7},\"schema\":{\"sha256\":\"3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1\",\"bytes\":106},\"policy\":{\"sha256\":\"717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8\",\"bytes\":70}},\"output\":{\"sha256\":\"baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55\",\"bytes\":21},\"counts\":{\"rows\":1,\"columns\":[{\"id\":\"a\",\"representation\":\"text\",\"null\":0,\"empty\":0}]}}",
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "result-malformed",
+      "decided_by": "M-04",
+      "note": "A parser that keeps the last of two keys reads ok and one that keeps the first reads refused. A repeated key is refused before either is read."
+    },
+    {
+      "name": "result: not JSON",
+      "result_text": "{\"format\":\"tabular-exchange.result/0\",\"contract\":\"tabular-exchange/0.1.0\",\"status\":\"ok\",\"run_id\":\"request-0042\",\"profile\":{\"id\":\"example-destination/r1\",\"sha256\":\"c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06\"},\"inputs\":{\"source\":{\"sha256\":\"4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6\",\"bytes\":7},\"schema\":{\"sha256\":\"3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1\",\"bytes\":106},\"policy\":{\"sha256\":\"717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8\",\"bytes\":70}},\"output\":{\"sha256\":\"baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55\",\"bytes\":21},\"counts\":{\"rows\":1,\"columns\":[{\"id\":\"a\",\"representation\":\"text\",\"null\":0,\"empty\":0}]}",
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "result-malformed",
+      "decided_by": "M-04"
+    },
+    {
+      "name": "result: byte order mark",
+      "result_text": "\ufeff{\"format\":\"tabular-exchange.result/0\",\"contract\":\"tabular-exchange/0.1.0\",\"status\":\"ok\",\"run_id\":\"request-0042\",\"profile\":{\"id\":\"example-destination/r1\",\"sha256\":\"c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06\"},\"inputs\":{\"source\":{\"sha256\":\"4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6\",\"bytes\":7},\"schema\":{\"sha256\":\"3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1\",\"bytes\":106},\"policy\":{\"sha256\":\"717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8\",\"bytes\":70}},\"output\":{\"sha256\":\"baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55\",\"bytes\":21},\"counts\":{\"rows\":1,\"columns\":[{\"id\":\"a\",\"representation\":\"text\",\"null\":0,\"empty\":0}]}}",
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "result-malformed",
+      "decided_by": "M-04"
+    },
+    {
+      "name": "result: a JSON array",
+      "result_text": "[{\"format\":\"tabular-exchange.result/0\",\"contract\":\"tabular-exchange/0.1.0\",\"status\":\"ok\",\"run_id\":\"request-0042\",\"profile\":{\"id\":\"example-destination/r1\",\"sha256\":\"c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06\"},\"inputs\":{\"source\":{\"sha256\":\"4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6\",\"bytes\":7},\"schema\":{\"sha256\":\"3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1\",\"bytes\":106},\"policy\":{\"sha256\":\"717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8\",\"bytes\":70}},\"output\":{\"sha256\":\"baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55\",\"bytes\":21},\"counts\":{\"rows\":1,\"columns\":[{\"id\":\"a\",\"representation\":\"text\",\"null\":0,\"empty\":0}]}}]",
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {},
+      "verdict": "not-established",
+      "rule": "result-not-an-object",
+      "decided_by": "M-04"
+    },
+    {
+      "name": "requested run completed",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "requested-run-completed",
+      "decided_by": "M-16"
+    },
+    {
+      "name": "stale run",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0041",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "binding-run-id-mismatch",
+      "decided_by": "M-06",
+      "note": "A valid result of an earlier run, the same inputs and the same output bytes. Only the caller's own run identifier tells it from the run that was requested."
+    },
+    {
+      "name": "run id differs in letter case",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "Request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "binding-run-id-mismatch",
+      "decided_by": "M-06"
+    },
+    {
+      "name": "different source, identical output",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "58bc6cc0678903152caa131ba694db798e7c66987e75bd6c57a20cef1eb3cb43",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "binding-source-digest-mismatch",
+      "decided_by": "M-08",
+      "note": "The result is for another source of the same length that holds the same row, so the output bytes are identical."
+    },
+    {
+      "name": "different source of another length",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "92260ea0cbd70738c0bccba89c8dbf5881ec50d1a09891ea531aa254a783c9cd",
+            "bytes": 6
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "binding-source-length-mismatch",
+      "decided_by": "M-07"
+    },
+    {
+      "name": "different schema, identical output",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "9c414ee3a47991e11e9df415b489ce70b0198c698c09db3be0267e996534be60",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "binding-schema-digest-mismatch",
+      "decided_by": "M-10"
+    },
+    {
+      "name": "schema length differs",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "a30d70e3542d4afc78a13e36c3a25cd9a71e4b58ac0c2494b97bdeffdc15b4fe",
+            "bytes": 107
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "binding-schema-length-mismatch",
+      "decided_by": "M-09"
+    },
+    {
+      "name": "different policy, identical output",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "e11fad1c71bc0b425e220b67cccb87bd23d55aef140b0bd4dc499a688724389d",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "binding-policy-digest-mismatch",
+      "decided_by": "M-12"
+    },
+    {
+      "name": "policy length differs",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "9f274b8be58be5cf3fe5bda4a36607c61621801e73898cb94cc2e6751daf73a8",
+            "bytes": 68
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "binding-policy-length-mismatch",
+      "decided_by": "M-11",
+      "note": "The result is for a policy that differs in exact_numbers. The table has no exact-number column, so the output bytes are identical."
+    },
+    {
+      "name": "missing result, all expectations",
+      "result": null,
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "result-missing",
+      "decided_by": "M-03"
+    },
+    {
+      "name": "missing output, all expectations",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": null,
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "output-missing",
+      "decided_by": "M-13"
+    },
+    {
+      "name": "status: refused, all expectations",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "refused",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "refusal": {
+          "category": "schema-mismatch",
+          "rule": "null-not-allowed"
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "result-not-ok",
+      "decided_by": "M-05",
+      "note": "Every binding the refusal carries equals its expectation. No verdict binds a refusal to a request."
+    },
+    {
+      "name": "missing expectation: run_id",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "expectations-incomplete",
+      "decided_by": "M-01",
+      "note": "The three expectations supplied all match and the output agrees. The verdict is neither requested-run-completed nor output-agreement."
+    },
+    {
+      "name": "missing expectation: source",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "expectations-incomplete",
+      "decided_by": "M-01",
+      "note": "The three expectations supplied all match and the output agrees. The verdict is neither requested-run-completed nor output-agreement."
+    },
+    {
+      "name": "missing expectation: schema",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "expectations-incomplete",
+      "decided_by": "M-01",
+      "note": "The three expectations supplied all match and the output agrees. The verdict is neither requested-run-completed nor output-agreement."
+    },
+    {
+      "name": "missing expectation: policy",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        }
+      },
+      "verdict": "not-established",
+      "rule": "expectations-incomplete",
+      "decided_by": "M-01",
+      "note": "The three expectations supplied all match and the output agrees. The verdict is neither requested-run-completed nor output-agreement."
+    },
+    {
+      "name": "missing expectation: only run_id supplied",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042"
+      },
+      "verdict": "not-established",
+      "rule": "expectations-incomplete",
+      "decided_by": "M-01"
+    },
+    {
+      "name": "missing expectation: three supplied, one of them wrong",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0041",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        }
+      },
+      "verdict": "not-established",
+      "rule": "expectations-incomplete",
+      "decided_by": "M-01",
+      "note": "A partial set is not checked as far as it goes: the run identifier differs and the rule is still expectations-incomplete."
+    },
+    {
+      "name": "missing expectation: and no result",
+      "result": null,
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "expectations-incomplete",
+      "decided_by": "M-01",
+      "note": "Decided before the absence of a result is noticed."
+    },
+    {
+      "name": "expectation: digest in upper case",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4E49B5AA8CF275F315C09B9DD134BD9AECD3F42E25170BACC538876ED95A61F6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "expectation-invalid",
+      "decided_by": "M-02",
+      "note": "Not folded to lower case and compared."
+    },
+    {
+      "name": "expectation: digest of 63 digits",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "expectation-invalid",
+      "decided_by": "M-02"
+    },
+    {
+      "name": "expectation: length past the largest count",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 9007199254740992
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "expectation-invalid",
+      "decided_by": "M-02"
+    },
+    {
+      "name": "expectation: run identifier with a space",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request 0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "expectation-invalid",
+      "decided_by": "M-02"
+    },
+    {
+      "name": "expectation: empty run identifier",
+      "result": null,
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "expectation-invalid",
+      "decided_by": "M-02",
+      "note": "Decided before the absence of a result is noticed."
+    },
+    {
+      "name": "mutation: one hexadecimal digit of inputs.source.sha256",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd90ecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "binding-source-digest-mismatch",
+      "decided_by": "M-08"
+    },
+    {
+      "name": "mutation: one hexadecimal digit of inputs.schema.sha256",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480149df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "binding-schema-digest-mismatch",
+      "decided_by": "M-10"
+    },
+    {
+      "name": "mutation: one hexadecimal digit of inputs.policy.sha256",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec310bd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "binding-policy-digest-mismatch",
+      "decided_by": "M-12"
+    },
+    {
+      "name": "mutation: one hexadecimal digit of the expected source digest",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "0e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "binding-source-digest-mismatch",
+      "decided_by": "M-08"
+    },
+    {
+      "name": "mutation: inputs.policy.bytes off by one",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 71
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "binding-policy-length-mismatch",
+      "decided_by": "M-11",
+      "note": "The digest is still the right one."
+    },
+    {
+      "name": "mutation: expected source length off by one",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 6
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "binding-source-length-mismatch",
+      "decided_by": "M-07"
+    },
+    {
+      "name": "mutation: output.bytes off by one",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 22
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "output-length-mismatch",
+      "decided_by": "M-14",
+      "note": "Every binding matches and the digest is the right one."
+    },
+    {
+      "name": "mutation: one hexadecimal digit of output.sha256, all expectations",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "0aee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "output-digest-mismatch",
+      "decided_by": "M-15"
+    },
+    {
+      "name": "order: run id and output both differ",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0041",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f757470757420627974657a0a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "binding-run-id-mismatch",
+      "decided_by": "M-06",
+      "note": "Bindings are judged before the output."
+    },
+    {
+      "name": "order: source and policy both differ",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "58bc6cc0678903152caa131ba694db798e7c66987e75bd6c57a20cef1eb3cb43",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "e11fad1c71bc0b425e220b67cccb87bd23d55aef140b0bd4dc499a688724389d",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "binding-source-digest-mismatch",
+      "decided_by": "M-08"
+    },
+    {
+      "name": "result: refused with an output member, all expectations",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "refused",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "refusal": {
+          "category": "schema-mismatch",
+          "rule": "null-not-allowed"
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "result-member-unknown",
+      "decided_by": "M-04",
+      "note": "Every binding matches and the smuggled member describes the candidate exactly."
+    },
+    {
+      "name": "extension restates the status",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        },
+        "extensions": {
+          "example-tool": {
+            "status": "refused",
+            "run_id": "request-0041",
+            "output": {
+              "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+              "bytes": 0
+            }
+          }
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "requested-run-completed",
+      "decided_by": "M-16",
+      "note": "Extensions take no part in matching. Deleting the member gives the same verdict."
+    },
+    {
+      "name": "extension restates the run identifier",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0041",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        },
+        "extensions": {
+          "example-tool": {
+            "run_id": "request-0042"
+          }
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "binding-run-id-mismatch",
+      "decided_by": "M-06",
+      "note": "A stale result cannot be bound to the request through extension content."
+    },
+    {
+      "name": "result: extensions past the value bound",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "example-destination/r1",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        },
+        "extensions": {
+          "example-tool": {
+            "items": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28,
+              29,
+              30,
+              31,
+              32,
+              33,
+              34,
+              35,
+              36,
+              37,
+              38,
+              39,
+              40,
+              41,
+              42,
+              43,
+              44,
+              45,
+              46,
+              47,
+              48,
+              49,
+              50,
+              51,
+              52,
+              53,
+              54,
+              55,
+              56,
+              57,
+              58,
+              59,
+              60,
+              61,
+              62,
+              63,
+              64,
+              65,
+              66,
+              67,
+              68,
+              69,
+              70,
+              71,
+              72,
+              73,
+              74,
+              75,
+              76,
+              77,
+              78,
+              79,
+              80,
+              81,
+              82,
+              83,
+              84,
+              85,
+              86,
+              87,
+              88,
+              89,
+              90,
+              91,
+              92,
+              93,
+              94,
+              95,
+              96,
+              97,
+              98,
+              99,
+              100,
+              101,
+              102,
+              103,
+              104,
+              105,
+              106,
+              107,
+              108,
+              109,
+              110,
+              111,
+              112,
+              113,
+              114,
+              115,
+              116,
+              117,
+              118,
+              119,
+              120,
+              121,
+              122,
+              123,
+              124,
+              125,
+              126,
+              127,
+              128,
+              129,
+              130,
+              131,
+              132,
+              133,
+              134,
+              135,
+              136,
+              137,
+              138,
+              139,
+              140,
+              141,
+              142,
+              143,
+              144,
+              145,
+              146,
+              147,
+              148,
+              149,
+              150,
+              151,
+              152,
+              153,
+              154,
+              155,
+              156,
+              157,
+              158,
+              159,
+              160,
+              161,
+              162,
+              163,
+              164,
+              165,
+              166,
+              167,
+              168,
+              169,
+              170,
+              171,
+              172,
+              173,
+              174,
+              175,
+              176,
+              177,
+              178,
+              179,
+              180,
+              181,
+              182,
+              183,
+              184,
+              185,
+              186,
+              187,
+              188,
+              189,
+              190,
+              191,
+              192,
+              193,
+              194,
+              195,
+              196,
+              197,
+              198,
+              199,
+              200,
+              201,
+              202,
+              203,
+              204,
+              205,
+              206,
+              207,
+              208,
+              209,
+              210,
+              211,
+              212,
+              213,
+              214,
+              215,
+              216,
+              217,
+              218,
+              219,
+              220,
+              221,
+              222,
+              223,
+              224,
+              225,
+              226,
+              227,
+              228,
+              229,
+              230,
+              231,
+              232,
+              233,
+              234,
+              235,
+              236,
+              237,
+              238,
+              239,
+              240,
+              241,
+              242,
+              243,
+              244,
+              245,
+              246,
+              247,
+              248,
+              249,
+              250,
+              251,
+              252,
+              253,
+              254
+            ]
+          }
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "not-established",
+      "rule": "result-member-invalid",
+      "decided_by": "M-04",
+      "note": "An unknown namespace is ignored only within the bounds."
+    },
+    {
+      "name": "another profile",
+      "result": {
+        "format": "tabular-exchange.result/0",
+        "contract": "tabular-exchange/0.1.0",
+        "status": "ok",
+        "run_id": "request-0042",
+        "profile": {
+          "id": "another-destination/r7",
+          "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+        },
+        "inputs": {
+          "source": {
+            "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+            "bytes": 7
+          },
+          "schema": {
+            "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+            "bytes": 106
+          },
+          "policy": {
+            "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+            "bytes": 70
+          }
+        },
+        "output": {
+          "sha256": "baee5fa8bff3ee9d16a0842ff2149386cb32e50eef205b5af305485861ac6b55",
+          "bytes": 21
+        },
+        "counts": {
+          "rows": 1,
+          "columns": [
+            {
+              "id": "a",
+              "representation": "text",
+              "null": 0,
+              "empty": 0
+            }
+          ]
+        }
+      },
+      "output_hex": "6578616d706c65206f75747075742062797465730a",
+      "expectations": {
+        "run_id": "request-0042",
+        "source": {
+          "sha256": "4e49b5aa8cf275f315c09b9dd134bd9aecd3f42e25170bacc538876ed95a61f6",
+          "bytes": 7
+        },
+        "schema": {
+          "sha256": "3723b7957722c1c59e3732ce3374480049df9b98ace8baae6c68d0648df501a1",
+          "bytes": 106
+        },
+        "policy": {
+          "sha256": "717f019993ca602fbb480ec0cdbec31cbd6388116b2e16689c1f4bed735886d8",
+          "bytes": 70
+        }
+      },
+      "verdict": "requested-run-completed",
+      "decided_by": "M-16",
+      "note": "profile takes no part in matching. A consumer that requires a profile compares it itself."
+    }
+  ]
+}

@@ -75,7 +75,7 @@ Consumer config: [`.goneat/ssot-consumer.yaml`](../.goneat/ssot-consumer.yaml).
 sources:
   - name: crucible
     repo: fulmenhq/crucible
-    ref: v0.4.19
+    ref: v0.5.1
 ```
 
 ```bash

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/data/tabular-exchange/v0.1.0/row.schema.json",
+  "title": "Tabular Exchange Row",
+  "description": "Shape of one row after its line has been parsed as JSON: an array whose elements are null, true, false or a string. This schema cannot express the line framing, the lexical rules for tokens, the number of elements or the typing of each element by its column; those are in the standard and in semantic-validation.md.",
+  "type": "array",
+  "items": {
+    "type": [
+      "null",
+      "boolean",
+      "string"
+    ]
+  }
+}

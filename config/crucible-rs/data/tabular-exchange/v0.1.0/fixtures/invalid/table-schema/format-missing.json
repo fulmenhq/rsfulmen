@@ -1,0 +1,10 @@
+{
+  "columns": [
+    {
+      "id": "a",
+      "label": "A",
+      "type": "string",
+      "nullable": true
+    }
+  ]
+}

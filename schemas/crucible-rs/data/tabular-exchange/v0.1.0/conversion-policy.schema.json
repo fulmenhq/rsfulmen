@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/data/tabular-exchange/v0.1.0/conversion-policy.schema.json",
+  "title": "Tabular Exchange Conversion Policy",
+  "description": "Structural shape of a conversion policy document, wire format tabular-exchange.policy/0. Structural validation is necessary and not sufficient: see semantic-validation.md in this directory for the rules this schema cannot express.",
+  "type": "object",
+  "properties": {
+    "format": {
+      "description": "Document kind and wire-format revision. A reader checks this member before any other.",
+      "const": "tabular-exchange.policy/0"
+    },
+    "exact_numbers": {
+      "description": "How integer and decimal columns are represented in a destination that has a native numeric form. Applies to every such column of the conversion.",
+      "enum": [
+        "require-exact",
+        "text-if-needed",
+        "text-always"
+      ]
+    },
+    "quantize": {
+      "description": "Decimal columns to re-express at another scale. At most one entry per column; the uniqueness rule is semantic.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/quantize"
+      }
+    },
+    "extensions": {
+      "$ref": "#/$defs/extensions"
+    }
+  },
+  "required": [
+    "format",
+    "exact_numbers"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "quantize": {
+      "type": "object",
+      "properties": {
+        "column": {
+          "description": "Identifier of a decimal column of the schema the policy is used with.",
+          "type": "string"
+        },
+        "scale": {
+          "description": "Target scale. Must not exceed the declared precision of the column; that rule is semantic.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 38
+        },
+        "rounding": {
+          "enum": [
+            "half-even",
+            "half-away-from-zero",
+            "toward-zero",
+            "toward-positive",
+            "toward-negative"
+          ]
+        }
+      },
+      "required": [
+        "column",
+        "scale",
+        "rounding"
+      ],
+      "additionalProperties": false
+    },
+    "extensions": {
+      "description": "Settings defined by an implementation or a destination profile, keyed by namespace. A reader refuses a policy that carries a namespace it does not implement. Bounded: at most 8 namespaces, strings of at most 256 code points, unsigned integers up to 9007199254740991, and content no deeper than depth 6 of the document. The bound of 256 values in total is semantic. The content of each namespace is otherwise defined by its owner.",
+      "type": "object",
+      "maxProperties": 8,
+      "propertyNames": {
+        "maxLength": 64
+      },
+      "patternProperties": {
+        "^[a-z][a-z0-9]*(-[a-z0-9]+)*$": {
+          "$ref": "#/$defs/extensionNamespace"
+        }
+      },
+      "additionalProperties": false
+    },
+    "extensionNamespace": {
+      "description": "The object a namespace owns, at depth 3 of the document.",
+      "type": "object",
+      "propertyNames": {
+        "maxLength": 256
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/extensionValue4"
+      }
+    },
+    "extensionValue4": {
+      "description": "A value at depth 4 of the document.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/extensionScalar"
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "maxLength": 256
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/extensionValue5"
+          }
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/extensionValue5"
+          }
+        }
+      ]
+    },
+    "extensionValue5": {
+      "description": "A value at depth 5 of the document.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/extensionScalar"
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "maxLength": 256
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/extensionValue6"
+          }
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/extensionValue6"
+          }
+        }
+      ]
+    },
+    "extensionValue6": {
+      "description": "A value at depth 6 of the document.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/extensionScalar"
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "maxLength": 256
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/extensionScalar"
+          }
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/extensionScalar"
+          }
+        }
+      ]
+    },
+    "extensionScalar": {
+      "description": "A value under extensions that is not an object or an array.",
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string",
+          "maxLength": 256
+        },
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      ]
+    }
+  }
+}

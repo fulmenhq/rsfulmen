@@ -20,12 +20,12 @@ Each library MUST expose functions that allow consumers to identify MIME types u
 
 ### Required API Surface
 
-| Function                 | Signature                        | Description                                 |
-| ------------------------ | -------------------------------- | ------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------ |
-| `detectMimeType`         | `(input: bytes                   | stream) -> MimeType                         | null`                      | Inspect raw bytes (or stream) and return catalog entry or `null` when unknown. |
-| `isSupportedMimeType`    | `(mime: string) -> bool`         | Return `true` if MIME string is in catalog. |
-| `getMimeTypeByExtension` | `(extension: string) -> MimeType | null`                                       | Resolve by file extension. |
-| `listMimeTypes`          | `() -> Iterable<MimeType>`       | Enumerate curated MIME entries.             |
+| Function                 | Signature                                      | Description                                                                    |
+| ------------------------ | ---------------------------------------------- | ------------------------------------------------------------------------------ |
+| `detectMimeType`         | `(input: bytes \| stream) -> MimeType \| null` | Inspect raw bytes (or stream) and return catalog entry or `null` when unknown. |
+| `isSupportedMimeType`    | `(mime: string) -> bool`                       | Return `true` if MIME string is in catalog.                                    |
+| `getMimeTypeByExtension` | `(extension: string) -> MimeType \| null`      | Resolve by file extension.                                                     |
+| `listMimeTypes`          | `() -> Iterable<MimeType>`                     | Enumerate curated MIME entries.                                                |
 
 ### Implementation Notes
 

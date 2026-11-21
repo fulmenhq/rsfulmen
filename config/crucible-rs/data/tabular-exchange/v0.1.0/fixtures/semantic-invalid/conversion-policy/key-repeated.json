@@ -1,0 +1,5 @@
+{
+  "format": "tabular-exchange.policy/0",
+  "exact_numbers": "require-exact",
+  "exact_numbers": "text-always"
+}

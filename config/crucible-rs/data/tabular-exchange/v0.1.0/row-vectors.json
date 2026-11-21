@@ -1,0 +1,832 @@
+{
+  "contract": "tabular-exchange/0.1.0",
+  "description": "Inputs in the rows encoding and what a conforming reader does with each, under the schema given here, or under the schema a case carries. input is the exact text of the input, encoded as UTF-8; input_hex gives the bytes of an input that a JSON string cannot carry. An accepted input states in rows the number of rows read, as a count. A refusal names the category and rule, and the zero-based row and the column identifier when the refusal has them.",
+  "schema": {
+    "format": "tabular-exchange.schema/0",
+    "columns": [
+      {
+        "id": "id",
+        "label": "Id",
+        "type": "string",
+        "nullable": false
+      },
+      {
+        "id": "qty",
+        "label": "Qty",
+        "type": "integer",
+        "nullable": true
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "empty input",
+      "input": "",
+      "rows": 0,
+      "verdict": "accept"
+    },
+    {
+      "name": "one row",
+      "input": "[\"a\",\"1\"]\n",
+      "rows": 1,
+      "verdict": "accept"
+    },
+    {
+      "name": "no final terminator",
+      "input": "[\"a\",\"1\"]",
+      "rows": 1,
+      "verdict": "accept"
+    },
+    {
+      "name": "CRLF terminators",
+      "input": "[\"a\",\"1\"]\r\n[\"b\",null]\r\n",
+      "rows": 2,
+      "verdict": "accept"
+    },
+    {
+      "name": "mixed terminators",
+      "input": "[\"a\",\"1\"]\r\n[\"b\",null]\n[\"c\",\"-3\"]",
+      "rows": 3,
+      "verdict": "accept"
+    },
+    {
+      "name": "spaces and tabs between tokens",
+      "input": " [ \"a\" ,\t\"1\" ] \n",
+      "rows": 1,
+      "verdict": "accept"
+    },
+    {
+      "name": "escapes",
+      "input": "[\"caf\\u00e9 \\ud83d\\ude00 \\\"q\\\" \\\\ \\/ \\n\",\"1\"]\n",
+      "rows": 1,
+      "verdict": "accept"
+    },
+    {
+      "name": "characters outside ASCII",
+      "input": "[\"café 😀\",\"1\"]\n",
+      "rows": 1,
+      "verdict": "accept"
+    },
+    {
+      "name": "empty string is a value",
+      "input": "[\"\",null]\n",
+      "rows": 1,
+      "verdict": "accept"
+    },
+    {
+      "name": "byte order mark",
+      "input_hex": "efbbbf5b2261222c2231225d0a",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "byte-order-mark"
+    },
+    {
+      "name": "invalid UTF-8",
+      "input_hex": "5b2261222c2231225d0a5b22ff222c2232225d0a",
+      "row": 1,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "invalid-utf8"
+    },
+    {
+      "name": "blank line between rows",
+      "input": "[\"a\",\"1\"]\n\n[\"b\",\"2\"]\n",
+      "row": 1,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "blank-line"
+    },
+    {
+      "name": "blank line at the end",
+      "input": "[\"a\",\"1\"]\n\n",
+      "row": 1,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "blank-line"
+    },
+    {
+      "name": "only a line terminator",
+      "input": "\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "blank-line"
+    },
+    {
+      "name": "only spaces",
+      "input": "   \n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "blank-line"
+    },
+    {
+      "name": "an object",
+      "input": "{\"id\":\"a\",\"qty\":\"1\"}\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "not-an-array"
+    },
+    {
+      "name": "a string",
+      "input": "\"a\"\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "not-an-array"
+    },
+    {
+      "name": "a literal",
+      "input": "null\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "not-an-array"
+    },
+    {
+      "name": "number: integer",
+      "input": "[\"a\",1]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "numeric-literal"
+    },
+    {
+      "name": "number: negative",
+      "input": "[\"a\",-1]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "numeric-literal"
+    },
+    {
+      "name": "number: fraction",
+      "input": "[\"a\",1.5]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "numeric-literal"
+    },
+    {
+      "name": "number: exponent",
+      "input": "[\"a\",1e3]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "numeric-literal"
+    },
+    {
+      "name": "number: in a string column",
+      "input": "[7,null]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "numeric-literal"
+    },
+    {
+      "name": "number: negative zero",
+      "input": "[\"a\",-0]\n",
+      "row": 0,
+      "note": "A JSON number, though not a spelling this standard accepts for any value.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "numeric-literal"
+    },
+    {
+      "name": "number: fraction and signed exponent",
+      "input": "[\"a\",-1.0E-2]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "numeric-literal"
+    },
+    {
+      "name": "number: followed by a space",
+      "input": "[\"a\",1 ]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "numeric-literal"
+    },
+    {
+      "name": "number: then a second token",
+      "input": "[\"a\",1 2]\n",
+      "row": 0,
+      "note": "The token is a number; the line is judged from left to right and the number is reported.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "numeric-literal"
+    },
+    {
+      "name": "number: at the end of the line",
+      "input": "[\"a\",1",
+      "row": 0,
+      "note": "The token is a number; the missing bracket comes after it.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "numeric-literal"
+    },
+    {
+      "name": "not a number: a lone minus sign",
+      "input": "[\"a\",-]\n",
+      "row": 0,
+      "note": "Begins like a number and is not one: the line is not JSON.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "malformed-row"
+    },
+    {
+      "name": "not a number: leading zero",
+      "input": "[\"a\",01]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "malformed-row"
+    },
+    {
+      "name": "not a number: point without digits",
+      "input": "[\"a\",1.]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "malformed-row"
+    },
+    {
+      "name": "not a number: exponent without digits",
+      "input": "[\"a\",1e]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "malformed-row"
+    },
+    {
+      "name": "not a number: letter after digits",
+      "input": "[\"a\",1x]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "malformed-row"
+    },
+    {
+      "name": "not a number: hexadecimal",
+      "input": "[\"a\",0x10]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "malformed-row"
+    },
+    {
+      "name": "not a number: two minus signs",
+      "input": "[\"a\",--1]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "malformed-row"
+    },
+    {
+      "name": "not a number: quote after digits",
+      "input": "[\"a\",12\"]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "malformed-row"
+    },
+    {
+      "name": "not a number: plus sign",
+      "input": "[\"a\",+1]\n",
+      "row": 0,
+      "note": "Does not begin like a number.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "malformed-row"
+    },
+    {
+      "name": "not a number: leading point",
+      "input": "[\"a\",.5]\n",
+      "row": 0,
+      "note": "Does not begin like a number.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "malformed-row"
+    },
+    {
+      "name": "nested array",
+      "input": "[\"a\",[\"1\"]]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "nested-value"
+    },
+    {
+      "name": "nested object",
+      "input": "[\"a\",{}]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "nested-value"
+    },
+    {
+      "name": "text after the array",
+      "input": "[\"a\",\"1\"] x\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "trailing-content"
+    },
+    {
+      "name": "two arrays on a line",
+      "input": "[\"a\",\"1\"][\"b\",\"2\"]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "trailing-content"
+    },
+    {
+      "name": "carriage return inside a line",
+      "input": "[\"a\",\"1\"]\r[\"b\",\"2\"]\n",
+      "row": 0,
+      "note": "A carriage return ends a line only directly before a line feed.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "trailing-content"
+    },
+    {
+      "name": "comment",
+      "input": "[\"a\",\"1\"] // note\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "trailing-content"
+    },
+    {
+      "name": "trailing comma",
+      "input": "[\"a\",\"1\",]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "malformed-row"
+    },
+    {
+      "name": "missing comma",
+      "input": "[\"a\" \"1\"]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "malformed-row"
+    },
+    {
+      "name": "unclosed array",
+      "input": "[\"a\",\"1\"\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "malformed-row"
+    },
+    {
+      "name": "unclosed string",
+      "input": "[\"a\",\"1]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "malformed-row"
+    },
+    {
+      "name": "NaN",
+      "input": "[\"a\",NaN]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "malformed-row"
+    },
+    {
+      "name": "capitalized literal",
+      "input": "[\"a\",True]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "malformed-row"
+    },
+    {
+      "name": "truncated literal",
+      "input": "[\"a\",nul]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "malformed-row"
+    },
+    {
+      "name": "single quotes",
+      "input": "['a','1']\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "malformed-row"
+    },
+    {
+      "name": "form feed between tokens",
+      "input": "[\"a\",\f\"1\"]\n",
+      "row": 0,
+      "note": "Only spaces and tabs separate tokens.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "malformed-row"
+    },
+    {
+      "name": "unknown escape",
+      "input": "[\"\\q\",\"1\"]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "invalid-string"
+    },
+    {
+      "name": "lone high surrogate",
+      "input": "[\"\\ud800\",\"1\"]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "invalid-string"
+    },
+    {
+      "name": "lone low surrogate",
+      "input": "[\"\\udc00\",\"1\"]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "invalid-string"
+    },
+    {
+      "name": "short unicode escape",
+      "input": "[\"\\u00e\",\"1\"]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "invalid-string"
+    },
+    {
+      "name": "unescaped tab in a string",
+      "input": "[\"a\tb\",\"1\"]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "invalid-string"
+    },
+    {
+      "name": "unescaped control character",
+      "input": "[\"a\u0001b\",\"1\"]\n",
+      "row": 0,
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "invalid-string"
+    },
+    {
+      "name": "too few elements",
+      "input": "[\"a\"]\n",
+      "row": 0,
+      "column": "qty",
+      "note": "A short row names its first missing column.",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "arity-mismatch"
+    },
+    {
+      "name": "no elements",
+      "input": "[]\n",
+      "row": 0,
+      "column": "id",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "arity-mismatch"
+    },
+    {
+      "name": "too many elements",
+      "input": "[\"a\",\"1\",\"x\"]\n",
+      "row": 0,
+      "note": "A long row names no column.",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "arity-mismatch"
+    },
+    {
+      "name": "arity before values",
+      "input": "[null]\n",
+      "row": 0,
+      "column": "qty",
+      "note": "The number of elements is judged before any element.",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "arity-mismatch"
+    },
+    {
+      "name": "first fault in a row",
+      "input": "[\"a\",\"1\"]\n[null,\"x\"]\n",
+      "row": 1,
+      "column": "id",
+      "note": "Columns are judged in schema order; the second element is also at fault.",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "null-not-allowed"
+    },
+    {
+      "name": "first faulty row",
+      "input": "[\"a\",\"1\"]\n[\"b\",\"007\"]\n[\"c\",7]\n",
+      "row": 1,
+      "column": "qty",
+      "note": "Rows are judged in order; the third line is also at fault.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-leading-zero"
+    },
+    {
+      "name": "boolean in a string column",
+      "input": "[true,\"1\"]\n",
+      "row": 0,
+      "column": "id",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "wrong-scalar-kind"
+    },
+    {
+      "name": "timestamp: both kinds accepted",
+      "schema": {
+        "format": "tabular-exchange.schema/0",
+        "columns": [
+          {
+            "id": "seen",
+            "label": "Seen",
+            "type": "local-timestamp",
+            "fraction": 0,
+            "nullable": false
+          },
+          {
+            "id": "sent",
+            "label": "Sent",
+            "type": "offset-timestamp",
+            "fraction": 0,
+            "nullable": true
+          }
+        ]
+      },
+      "input": "[\"2026-11-19T08:30:00\",\"2026-11-19T08:30:00Z\"]\n[\"2026-11-19T08:30:00\",null]\n",
+      "rows": 2,
+      "verdict": "accept"
+    },
+    {
+      "name": "timestamp: offset on a local timestamp",
+      "schema": {
+        "format": "tabular-exchange.schema/0",
+        "columns": [
+          {
+            "id": "seen",
+            "label": "Seen",
+            "type": "local-timestamp",
+            "fraction": 0,
+            "nullable": false
+          },
+          {
+            "id": "sent",
+            "label": "Sent",
+            "type": "offset-timestamp",
+            "fraction": 0,
+            "nullable": true
+          }
+        ]
+      },
+      "input": "[\"2026-11-19T08:30:00Z\",null]\n",
+      "row": 0,
+      "column": "seen",
+      "note": "A well-formed timestamp of the other type.",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "temporal-offset-mismatch"
+    },
+    {
+      "name": "timestamp: no offset on an offset timestamp",
+      "schema": {
+        "format": "tabular-exchange.schema/0",
+        "columns": [
+          {
+            "id": "seen",
+            "label": "Seen",
+            "type": "local-timestamp",
+            "fraction": 0,
+            "nullable": false
+          },
+          {
+            "id": "sent",
+            "label": "Sent",
+            "type": "offset-timestamp",
+            "fraction": 0,
+            "nullable": true
+          }
+        ]
+      },
+      "input": "[\"2026-11-19T08:30:00\",null]\n[\"2026-11-19T08:30:00\",\"2026-11-19T08:30:00\"]\n",
+      "row": 1,
+      "column": "sent",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "temporal-offset-mismatch"
+    },
+    {
+      "name": "timestamp: malformed offset on a local timestamp",
+      "schema": {
+        "format": "tabular-exchange.schema/0",
+        "columns": [
+          {
+            "id": "seen",
+            "label": "Seen",
+            "type": "local-timestamp",
+            "fraction": 0,
+            "nullable": false
+          },
+          {
+            "id": "sent",
+            "label": "Sent",
+            "type": "offset-timestamp",
+            "fraction": 0,
+            "nullable": true
+          }
+        ]
+      },
+      "input": "[\"2026-11-19T08:30:00+24:00\",null]\n",
+      "row": 0,
+      "column": "seen",
+      "note": "Malformed in a column of either type.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-offset"
+    },
+    {
+      "name": "timestamp: malformed offset on an offset timestamp",
+      "schema": {
+        "format": "tabular-exchange.schema/0",
+        "columns": [
+          {
+            "id": "seen",
+            "label": "Seen",
+            "type": "local-timestamp",
+            "fraction": 0,
+            "nullable": false
+          },
+          {
+            "id": "sent",
+            "label": "Sent",
+            "type": "offset-timestamp",
+            "fraction": 0,
+            "nullable": true
+          }
+        ]
+      },
+      "input": "[\"2026-11-19T08:30:00\",\"2026-11-19T08:30:00+24:00\"]\n",
+      "row": 0,
+      "column": "sent",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-offset"
+    },
+    {
+      "name": "timestamp: negative zero offset",
+      "schema": {
+        "format": "tabular-exchange.schema/0",
+        "columns": [
+          {
+            "id": "seen",
+            "label": "Seen",
+            "type": "local-timestamp",
+            "fraction": 0,
+            "nullable": false
+          },
+          {
+            "id": "sent",
+            "label": "Sent",
+            "type": "offset-timestamp",
+            "fraction": 0,
+            "nullable": true
+          }
+        ]
+      },
+      "input": "[\"2026-11-19T08:30:00\",\"2026-11-19T08:30:00-00:00\"]\n",
+      "row": 0,
+      "column": "sent",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-negative-zero-offset"
+    },
+    {
+      "name": "timestamp: negative zero offset on a local timestamp",
+      "schema": {
+        "format": "tabular-exchange.schema/0",
+        "columns": [
+          {
+            "id": "seen",
+            "label": "Seen",
+            "type": "local-timestamp",
+            "fraction": 0,
+            "nullable": false
+          },
+          {
+            "id": "sent",
+            "label": "Sent",
+            "type": "offset-timestamp",
+            "fraction": 0,
+            "nullable": true
+          }
+        ]
+      },
+      "input": "[\"2026-11-19T08:30:00-00:00\",null]\n",
+      "row": 0,
+      "column": "seen",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-negative-zero-offset"
+    },
+    {
+      "name": "timestamp: fraction width",
+      "schema": {
+        "format": "tabular-exchange.schema/0",
+        "columns": [
+          {
+            "id": "seen",
+            "label": "Seen",
+            "type": "local-timestamp",
+            "fraction": 0,
+            "nullable": false
+          },
+          {
+            "id": "sent",
+            "label": "Sent",
+            "type": "offset-timestamp",
+            "fraction": 0,
+            "nullable": true
+          }
+        ]
+      },
+      "input": "[\"2026-11-19T08:30:00.5\",null]\n",
+      "row": 0,
+      "column": "seen",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "temporal-fraction-mismatch"
+    },
+    {
+      "name": "timestamp: malformed offset before fraction width",
+      "schema": {
+        "format": "tabular-exchange.schema/0",
+        "columns": [
+          {
+            "id": "seen",
+            "label": "Seen",
+            "type": "local-timestamp",
+            "fraction": 0,
+            "nullable": false
+          },
+          {
+            "id": "sent",
+            "label": "Sent",
+            "type": "offset-timestamp",
+            "fraction": 0,
+            "nullable": true
+          }
+        ]
+      },
+      "input": "[\"2026-11-19T08:30:00\",\"2026-11-19T08:30:00.5+24:00\"]\n",
+      "row": 0,
+      "column": "sent",
+      "note": "No timestamp column accepts the text, so it is not a mismatch with the schema.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-offset"
+    },
+    {
+      "name": "timestamp: first fault in schema order",
+      "schema": {
+        "format": "tabular-exchange.schema/0",
+        "columns": [
+          {
+            "id": "seen",
+            "label": "Seen",
+            "type": "local-timestamp",
+            "fraction": 0,
+            "nullable": false
+          },
+          {
+            "id": "sent",
+            "label": "Sent",
+            "type": "offset-timestamp",
+            "fraction": 0,
+            "nullable": true
+          }
+        ]
+      },
+      "input": "[\"2026-11-19T08:30:00Z\",\"2026-11-19T08:30:00+24:00\"]\n",
+      "row": 0,
+      "column": "seen",
+      "note": "Columns are judged in schema order; the second element is also at fault.",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "temporal-offset-mismatch"
+    }
+  ]
+}

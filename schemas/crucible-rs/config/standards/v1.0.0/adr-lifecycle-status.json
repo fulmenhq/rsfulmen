@@ -18,7 +18,7 @@
     "stable",
     "deprecated"
   ],
-  "definitions": {
+  "x-adr-metadata": {
     "statusDescriptions": {
       "proposal": "Under evaluation, not yet accepted. Teams should review and provide feedback. Not for production use.",
       "experimental": "Approved for trial use. May change based on implementation feedback. Use with caution in non-critical paths.",

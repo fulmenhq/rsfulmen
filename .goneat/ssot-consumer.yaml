@@ -2,7 +2,7 @@ version: v1.1.0
 sources:
   - name: crucible
     repo: fulmenhq/crucible
-    ref: v0.4.19
+    ref: v0.5.1
     sync_path_base: lang/rust
     force_remote: true
     assets:

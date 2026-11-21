@@ -1,0 +1,85 @@
+{
+  "format": "tabular-exchange.result/0",
+  "contract": "tabular-exchange/0.1.0",
+  "status": "ok",
+  "run_id": "case-0001",
+  "profile": {
+    "id": "example-destination/r1",
+    "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+  },
+  "inputs": {
+    "source": {
+      "sha256": "41cf6794ba4200b839c53531555f0f3998df4cbb01a4d5cb0b94e3ca5e23947d",
+      "bytes": 196
+    },
+    "schema": {
+      "sha256": "df0ad6e43880f09c90ebf95f19110178aba6890df0010ebda7485029e2b543b4",
+      "bytes": 812
+    },
+    "policy": {
+      "sha256": "823412d1eacb67956220e532959f0104603057c88704863ca38e7cd188fda812",
+      "bytes": 148
+    }
+  },
+  "output": {
+    "sha256": "e0ee8bb50685e05fa0f47ed04203ae953fdfd055f5bd2892ea186504254f8c3a",
+    "bytes": 6103
+  },
+  "counts": {
+    "rows": 3,
+    "columns": [
+      {
+        "id": "invoice",
+        "representation": "text",
+        "null": 0,
+        "empty": 1
+      },
+      {
+        "id": "qty",
+        "representation": "native",
+        "null": 0,
+        "empty": 0,
+        "numeric": 3,
+        "text_fallback": 0,
+        "text_forced": 0,
+        "quantized": 0,
+        "scale_changed": 0
+      },
+      {
+        "id": "amount",
+        "representation": "native",
+        "null": 1,
+        "empty": 0,
+        "numeric": 2,
+        "text_fallback": 0,
+        "text_forced": 0,
+        "quantized": 1,
+        "scale_changed": 2
+      },
+      {
+        "id": "paid",
+        "representation": "native",
+        "null": 4,
+        "empty": 0
+      },
+      {
+        "id": "day",
+        "representation": "text",
+        "null": 0,
+        "empty": 0
+      },
+      {
+        "id": "seen",
+        "representation": "text",
+        "null": 0,
+        "empty": 0
+      },
+      {
+        "id": "sent",
+        "representation": "text",
+        "null": 3,
+        "empty": 0
+      }
+    ]
+  }
+}

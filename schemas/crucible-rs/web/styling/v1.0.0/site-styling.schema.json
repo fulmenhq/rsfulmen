@@ -5,6 +5,23 @@
   "title": "Fulmen Site Styling",
   "description": "Standardized styling configuration for Fulmen web templates, including palettes, typography, and icons",
   "properties": {
+    "$schema": {
+      "type": "string",
+      "enum": [
+        "https://schemas.fulmenhq.dev/crucible/web/styling/v1.0.0/site-styling.schema.json",
+        "https://schemas.fulmenhq.dev/web/styling/v1.0.0/site-styling.schema.json"
+      ],
+      "description": "Optional schema declaration using the canonical ID or published alias"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[vV]?[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Optional configuration version, with an optional v prefix"
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional human-readable configuration description"
+    },
     "themes": {
       "type": "object",
       "description": "Light and dark mode palettes",

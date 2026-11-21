@@ -1,0 +1,6 @@
+{
+  "format": "tabular-exchange.schema/0",
+  "columns": [
+    {"id": "a", "label": "A", "type": "string", "nullable": true, "note": [[1]]}
+  ]
+}

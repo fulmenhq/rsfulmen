@@ -1,0 +1,12 @@
+{
+  "format": "tabular-exchange.policy/0",
+  "exact_numbers": "text-always",
+  "extensions": {
+    "example-destination": {
+      "sheet": "Data",
+      "limits": {
+        "max_rows": 1000
+      }
+    }
+  }
+}

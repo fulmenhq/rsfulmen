@@ -1,0 +1,12 @@
+{
+  "format": "tabular-exchange.schema/0",
+  "columns": [
+    {
+      "id": "a",
+      "label": "A",
+      "type": "offset-timestamp",
+      "fraction": 10,
+      "nullable": true
+    }
+  ]
+}

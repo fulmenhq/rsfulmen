@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/branding/v1.0.0/ecosystem.schema.json",
+  "title": "Fulmen Ecosystem Brand Summary",
+  "description": "Display text and structured attribution for about endpoints and extended version output",
+  "type": "object",
+  "required": [
+    "version",
+    "motto",
+    "built_by",
+    "url",
+    "metadata"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "https://schemas.fulmenhq.dev/crucible/branding/v1.0.0/ecosystem.schema.json",
+      "description": "Optional schema declaration"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "motto": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Primary one-line motto"
+    },
+    "motto_extended": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional extended motto"
+    },
+    "built_by": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Display attribution"
+    },
+    "url": {
+      "$ref": "#/$defs/webURL"
+    },
+    "metadata": {
+      "type": "object",
+      "required": [
+        "org",
+        "maintainer",
+        "url",
+        "source",
+        "tagline"
+      ],
+      "properties": {
+        "org": {
+          "type": "string",
+          "minLength": 1
+        },
+        "maintainer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "$ref": "#/$defs/webURL"
+        },
+        "source": {
+          "$ref": "#/$defs/webURL"
+        },
+        "tagline": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "webURL": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https?://[^/?#\\s]+[^\\s]*$",
+      "description": "Absolute HTTP or HTTPS URL"
+    }
+  },
+  "additionalProperties": false
+}

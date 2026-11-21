@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/data/tabular-exchange/v0.1.0/table-schema.schema.json",
+  "title": "Tabular Exchange Table Schema",
+  "description": "Structural shape of a table schema document, wire format tabular-exchange.schema/0. Structural validation is necessary and not sufficient: see semantic-validation.md in this directory for the rules this schema cannot express.",
+  "type": "object",
+  "properties": {
+    "format": {
+      "description": "Document kind and wire-format revision. A reader checks this member before any other.",
+      "const": "tabular-exchange.schema/0"
+    },
+    "columns": {
+      "description": "Columns in order. Row values are matched to columns by position.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/column"
+      }
+    }
+  },
+  "required": [
+    "format",
+    "columns"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "columnId": {
+      "description": "Column identifier. Unique within the schema; compared as an exact sequence of Unicode code points.",
+      "type": "string",
+      "minLength": 1
+    },
+    "columnLabel": {
+      "description": "Display text. May be empty and may repeat.",
+      "type": "string"
+    },
+    "column": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/plainColumn"
+        },
+        {
+          "$ref": "#/$defs/decimalColumn"
+        },
+        {
+          "$ref": "#/$defs/timestampColumn"
+        }
+      ]
+    },
+    "plainColumn": {
+      "description": "A column whose type takes no parameters.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/columnId"
+        },
+        "label": {
+          "$ref": "#/$defs/columnLabel"
+        },
+        "type": {
+          "enum": [
+            "string",
+            "boolean",
+            "integer",
+            "date"
+          ]
+        },
+        "nullable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "type",
+        "nullable"
+      ],
+      "additionalProperties": false
+    },
+    "decimalColumn": {
+      "description": "An exact decimal column. The rule scale <= precision is semantic.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/columnId"
+        },
+        "label": {
+          "$ref": "#/$defs/columnLabel"
+        },
+        "type": {
+          "const": "decimal"
+        },
+        "precision": {
+          "description": "Largest number of significant digits in the coefficient.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 38
+        },
+        "scale": {
+          "description": "Exact number of digits after the decimal point.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 38
+        },
+        "nullable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "type",
+        "precision",
+        "scale",
+        "nullable"
+      ],
+      "additionalProperties": false
+    },
+    "timestampColumn": {
+      "description": "A timestamp column with a declared number of fractional-second digits.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/columnId"
+        },
+        "label": {
+          "$ref": "#/$defs/columnLabel"
+        },
+        "type": {
+          "enum": [
+            "local-timestamp",
+            "offset-timestamp"
+          ]
+        },
+        "fraction": {
+          "description": "Exact number of fractional-second digits.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9
+        },
+        "nullable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "type",
+        "fraction",
+        "nullable"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

@@ -2308,8 +2308,6 @@ mod tests {
         let mut valid = std::collections::BTreeMap::new();
         #[cfg(feature = "schema-validation")]
         let schema = compiled_signal_schema();
-        #[cfg(feature = "schema-validation")]
-        let mut tolerated_schema_drift = 0usize;
         for entry in std::fs::read_dir(&valid_dir).expect("valid fixtures") {
             let path = entry.unwrap().path();
             if path.extension().and_then(|e| e.to_str()) != Some("yaml") {
@@ -2324,18 +2322,7 @@ mod tests {
                     Ok(()) => Vec::new(),
                     Err(errors) => errors.map(|e| e.to_string()).collect(),
                 };
-                if !msgs.is_empty() {
-                    // Catalog fixtures predate the stricter windows_fallback required
-                    // set. Every other schema class must still pass.
-                    assert!(
-                        msgs.iter().all(|m| m.contains("windows_fallback")
-                            || m.contains("fallback_behavior")
-                            || m.contains("log_template")
-                            || m.contains("operation_hint")),
-                        "{path:?} unexpected schema errors: {msgs:?}"
-                    );
-                    tolerated_schema_drift += msgs.len();
-                }
+                assert!(msgs.is_empty(), "{path:?} schema errors: {msgs:?}");
             }
             let stem = path
                 .file_stem()
@@ -2344,12 +2331,6 @@ mod tests {
                 .replace('-', "_");
             valid.insert(stem, catalog);
         }
-        #[cfg(feature = "schema-validation")]
-        assert!(
-            tolerated_schema_drift > 0,
-            "complete.yaml vs signals.schema.json drift is gone; remove the windows_fallback allowlist"
-        );
-
         let invalid_dir = root.join("invalid");
         for entry in std::fs::read_dir(&invalid_dir).expect("invalid fixtures") {
             let path = entry.unwrap().path();

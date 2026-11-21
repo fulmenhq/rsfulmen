@@ -13,6 +13,7 @@ standards/
 ├── makefile-standard.md         # Required make targets & automation contract
 ├── observability/               # Logging, metrics, tracing standards
 ├── config/                      # Configuration discovery standards
+├── data/                        # Format-neutral data contracts (tabular exchange)
 ├── repository-versioning.md     # Version management strategies
 ├── schema-normalization.md      # Canonical schema comparison utilities
 ├── release-checklist-standard.md # Release checklist template + usage guidance
@@ -42,6 +43,7 @@ standards/
    - [Makefile Standard](makefile-standard.md) - Required make targets and automation contract
    - Observability standards (logging, metrics, traces) – see [observability/README.md](observability/README.md)
    - Configuration standards – see [config/README.md](config/README.md)
+   - Data contracts – [Tabular Exchange Standard](data/tabular-exchange.md)
    - Machine-readable taxonomies – see `config/taxonomy/` (schemas in `schemas/taxonomy/`)
 2. **Agentic Attribution** - How AI agents contribute to projects
 3. **API Standards** - HTTP/REST and gRPC conventions (`docs/standards/protocol/`)

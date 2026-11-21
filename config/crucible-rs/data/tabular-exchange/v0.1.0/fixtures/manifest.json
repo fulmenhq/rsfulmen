@@ -1,0 +1,1307 @@
+{
+  "contract": "tabular-exchange/0.1.0",
+  "description": "Every fixture under fixtures/, the layer that decides it and, for a refusal, the category and rule a conforming reader reports. A fixture under invalid/ fails its JSON Schema. A fixture under semantic-invalid/ satisfies its JSON Schema after lenient parsing and is refused by a rule in semantic-validation.md. with_schema and with_policy name the table schema and the conversion policy a cross-document rule is checked against. strict_parse marks a file that a parser refusing repeated keys cannot load. Namespaces in fixtures are reserved example namespaces, which no reader implements: a policy that carries one is refused by every reader, and a result that carries one is read by every consumer as if the namespace were absent.",
+  "fixtures": [
+    {
+      "path": "fixtures/valid/table-schema/all-types.json",
+      "document": "table-schema",
+      "verdict": "accept",
+      "note": "Every type. One label is empty and one label repeats."
+    },
+    {
+      "path": "fixtures/valid/table-schema/minimal.json",
+      "document": "table-schema",
+      "verdict": "accept"
+    },
+    {
+      "path": "fixtures/valid/table-schema/bounds.json",
+      "document": "table-schema",
+      "verdict": "accept",
+      "note": "Smallest and largest type parameters."
+    },
+    {
+      "path": "fixtures/invalid/table-schema/format-missing.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "schema-format-unsupported"
+    },
+    {
+      "path": "fixtures/invalid/table-schema/format-other-revision.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "schema-format-unsupported",
+      "note": "The format member is checked before any other member, so the other faults are not reported."
+    },
+    {
+      "path": "fixtures/invalid/table-schema/format-other-kind.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "schema-format-unsupported"
+    },
+    {
+      "path": "fixtures/invalid/table-schema/format-not-a-string.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "schema-format-unsupported"
+    },
+    {
+      "path": "fixtures/invalid/table-schema/not-an-object.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "schema-not-an-object"
+    },
+    {
+      "path": "fixtures/invalid/table-schema/columns-missing.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "schema-member-missing"
+    },
+    {
+      "path": "fixtures/invalid/table-schema/columns-not-an-array.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "schema-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/table-schema/columns-empty.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "schema-columns-invalid"
+    },
+    {
+      "path": "fixtures/invalid/table-schema/column-id-empty.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "schema-columns-invalid"
+    },
+    {
+      "path": "fixtures/invalid/table-schema/column-not-an-object.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "schema-not-an-object"
+    },
+    {
+      "path": "fixtures/invalid/table-schema/member-unknown.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "schema-member-unknown"
+    },
+    {
+      "path": "fixtures/invalid/table-schema/column-member-unknown.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "schema-member-unknown"
+    },
+    {
+      "path": "fixtures/invalid/table-schema/precision-on-integer.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "schema-member-unknown",
+      "note": "A type parameter on a type that does not take it is an unknown member."
+    },
+    {
+      "path": "fixtures/invalid/table-schema/fraction-on-date.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "schema-member-unknown"
+    },
+    {
+      "path": "fixtures/invalid/table-schema/fraction-on-decimal.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "schema-member-unknown"
+    },
+    {
+      "path": "fixtures/invalid/table-schema/decimal-precision-missing.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "schema-member-missing"
+    },
+    {
+      "path": "fixtures/invalid/table-schema/decimal-scale-missing.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "schema-member-missing"
+    },
+    {
+      "path": "fixtures/invalid/table-schema/timestamp-fraction-missing.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "schema-member-missing"
+    },
+    {
+      "path": "fixtures/invalid/table-schema/nullable-missing.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "schema-member-missing"
+    },
+    {
+      "path": "fixtures/invalid/table-schema/label-missing.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "schema-member-missing"
+    },
+    {
+      "path": "fixtures/invalid/table-schema/nullable-not-boolean.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "schema-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/table-schema/precision-zero.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "schema-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/table-schema/precision-39.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "schema-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/table-schema/precision-not-an-integer.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "schema-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/table-schema/fraction-10.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "schema-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/table-schema/type-unknown.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "unsupported-type",
+      "rule": "schema-type-unsupported",
+      "note": "JSON Schema reports only that the document is invalid. A reader reports the category unsupported-type."
+    },
+    {
+      "path": "fixtures/invalid/table-schema/type-letter-case.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "unsupported-type",
+      "rule": "schema-type-unsupported"
+    },
+    {
+      "path": "fixtures/semantic-invalid/table-schema/column-id-repeated.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "schema-columns-invalid"
+    },
+    {
+      "path": "fixtures/semantic-invalid/table-schema/scale-exceeds-precision.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "schema-member-invalid"
+    },
+    {
+      "path": "fixtures/semantic-invalid/table-schema/key-repeated.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "schema-malformed",
+      "strict_parse": "refuse",
+      "note": "A repeated key. A lenient JSON parser keeps one of the two members and the result satisfies the JSON Schema."
+    },
+    {
+      "path": "fixtures/semantic-invalid/table-schema/number-with-fraction.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "schema-malformed",
+      "note": "12.0 is an integer to JSON Schema. The document grammar admits only digits in a number."
+    },
+    {
+      "path": "fixtures/semantic-invalid/table-schema/number-with-exponent.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "schema-malformed"
+    },
+    {
+      "path": "fixtures/invalid/table-schema/nested-too-deeply.json",
+      "document": "table-schema",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "schema-malformed",
+      "note": "Nesting is bounded before members are examined, so a reader reports schema-malformed and not schema-member-unknown."
+    },
+    {
+      "path": "fixtures/valid/conversion-policy/minimal.json",
+      "document": "conversion-policy",
+      "verdict": "accept"
+    },
+    {
+      "path": "fixtures/valid/conversion-policy/quantize.json",
+      "document": "conversion-policy",
+      "verdict": "accept",
+      "with_schema": "fixtures/valid/table-schema/all-types.json"
+    },
+    {
+      "path": "fixtures/valid/conversion-policy/quantize-empty.json",
+      "document": "conversion-policy",
+      "verdict": "accept",
+      "note": "An empty quantize list means the same as an absent one."
+    },
+    {
+      "path": "fixtures/valid/conversion-policy/every-rounding-mode.json",
+      "document": "conversion-policy",
+      "verdict": "accept",
+      "with_schema": "fixtures/valid/table-schema/bounds.json",
+      "note": "Three of the five modes; toward-positive and toward-negative are exercised in value-vectors.json."
+    },
+    {
+      "path": "fixtures/invalid/conversion-policy/format-missing.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "policy-format-unsupported"
+    },
+    {
+      "path": "fixtures/invalid/conversion-policy/format-other-kind.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "policy-format-unsupported"
+    },
+    {
+      "path": "fixtures/invalid/conversion-policy/exact-numbers-missing.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "policy-member-missing",
+      "note": "There is no default representation policy."
+    },
+    {
+      "path": "fixtures/invalid/conversion-policy/exact-numbers-unknown.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "policy-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/conversion-policy/exact-numbers-not-a-string.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "policy-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/conversion-policy/member-unknown.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "policy-member-unknown",
+      "note": "A destination setting written as a top-level member. Destination settings belong under extensions."
+    },
+    {
+      "path": "fixtures/invalid/conversion-policy/quantize-not-an-array.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "policy-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/conversion-policy/quantize-entry-member-unknown.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "policy-member-unknown"
+    },
+    {
+      "path": "fixtures/invalid/conversion-policy/quantize-rounding-missing.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "policy-member-missing"
+    },
+    {
+      "path": "fixtures/invalid/conversion-policy/quantize-rounding-unknown.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "policy-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/conversion-policy/quantize-scale-39.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "policy-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/conversion-policy/quantize-scale-not-an-integer.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "policy-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/conversion-policy/extension-namespace-malformed.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "policy-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/conversion-policy/extension-not-an-object.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "policy-not-an-object"
+    },
+    {
+      "path": "fixtures/invalid/conversion-policy/quantize-entry-not-an-object.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "policy-not-an-object"
+    },
+    {
+      "path": "fixtures/invalid/conversion-policy/not-an-object.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "policy-not-an-object"
+    },
+    {
+      "path": "fixtures/invalid/conversion-policy/extensions-past-depth-bound.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "policy-malformed",
+      "note": "The array inside the record of the list is at depth 7. Nesting is judged before any namespace is looked up, so the rule is policy-malformed and not policy-extension-unsupported."
+    },
+    {
+      "path": "fixtures/invalid/conversion-policy/extensions-too-many-namespaces.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "policy-member-invalid",
+      "note": "Nine namespaces; the bound is eight."
+    },
+    {
+      "path": "fixtures/invalid/conversion-policy/extension-string-too-long.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "policy-member-invalid",
+      "note": "A string of 257 code points; the bound is 256."
+    },
+    {
+      "path": "fixtures/invalid/conversion-policy/extension-number-past-max.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "policy-member-invalid",
+      "note": "9007199254740992; a number under extensions is bounded like any other."
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-policy/quantize-column-repeated.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "policy-quantize-duplicate"
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-policy/quantize-column-unknown.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "schema-mismatch",
+      "rule": "quantize-unknown-column",
+      "with_schema": "fixtures/valid/table-schema/all-types.json"
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-policy/quantize-column-not-decimal.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "schema-mismatch",
+      "rule": "quantize-not-decimal",
+      "with_schema": "fixtures/valid/table-schema/all-types.json"
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-policy/quantize-scale-exceeds-precision.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "schema-mismatch",
+      "rule": "quantize-scale-too-large",
+      "with_schema": "fixtures/valid/table-schema/all-types.json",
+      "note": "The column is decimal(12,4); a target scale of 13 exceeds its precision."
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-policy/key-repeated.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "policy-malformed",
+      "strict_parse": "refuse"
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-policy/extension-unknown.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "policy-extension-unsupported",
+      "note": "Within every bound. The namespace is a reserved example namespace, which no reader implements, so every reader refuses it. With the extensions member deleted the policy is accepted."
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-policy/extensions-at-depth-bound.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "policy-extension-unsupported",
+      "note": "A list of records inside a record reaches depth 6, the bound. Refused only because the namespace is not implemented."
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-policy/extensions-too-many-values.json",
+      "document": "conversion-policy",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "policy-member-invalid",
+      "note": "257 values under extensions: the namespace object, items, and 255 elements. The bound is 256, and it is judged before the namespace is looked up."
+    },
+    {
+      "path": "fixtures/valid/conversion-result/ok.json",
+      "document": "conversion-result",
+      "verdict": "accept",
+      "with_schema": "fixtures/valid/table-schema/all-types.json",
+      "with_policy": "fixtures/valid/conversion-policy/quantize.json",
+      "note": "Digests in result fixtures are illustrative; they are not digests of files in this directory. The amount column was quantized: both non-null cells changed scale and one changed value."
+    },
+    {
+      "path": "fixtures/valid/conversion-result/ok-text-fallback.json",
+      "document": "conversion-result",
+      "verdict": "accept",
+      "with_schema": "fixtures/valid/table-schema/all-types.json",
+      "with_policy": "fixtures/valid/conversion-policy/quantize.json",
+      "note": "Under text-if-needed one integer column fell back to text and the decimal column stayed native."
+    },
+    {
+      "path": "fixtures/valid/conversion-result/ok-text-forced.json",
+      "document": "conversion-result",
+      "verdict": "accept",
+      "with_schema": "fixtures/valid/table-schema/all-types.json",
+      "with_policy": "fixtures/valid/conversion-policy/quantize-empty.json"
+    },
+    {
+      "path": "fixtures/valid/conversion-result/ok-zero-rows.json",
+      "document": "conversion-result",
+      "verdict": "accept",
+      "with_schema": "fixtures/valid/table-schema/all-types.json"
+    },
+    {
+      "path": "fixtures/valid/conversion-result/ok-quantized-all-null.json",
+      "document": "conversion-result",
+      "verdict": "accept",
+      "with_schema": "fixtures/valid/table-schema/all-types.json",
+      "with_policy": "fixtures/valid/conversion-policy/quantize.json",
+      "note": "The policy quantizes amount to another scale and every row of the column is null, so scale_changed is 0."
+    },
+    {
+      "path": "fixtures/valid/conversion-result/ok-extensions.json",
+      "document": "conversion-result",
+      "verdict": "accept",
+      "with_schema": "fixtures/valid/table-schema/all-types.json"
+    },
+    {
+      "path": "fixtures/valid/conversion-result/refused-located.json",
+      "document": "conversion-result",
+      "verdict": "accept",
+      "note": "The source was not read to its end, so it has no entry under inputs."
+    },
+    {
+      "path": "fixtures/valid/conversion-result/refused-document.json",
+      "document": "conversion-result",
+      "verdict": "accept"
+    },
+    {
+      "path": "fixtures/valid/conversion-result/refused-limit.json",
+      "document": "conversion-result",
+      "verdict": "accept"
+    },
+    {
+      "path": "fixtures/valid/conversion-result/failed-no-inputs.json",
+      "document": "conversion-result",
+      "verdict": "accept",
+      "note": "The rule identifier is one an implementation defines."
+    },
+    {
+      "path": "fixtures/valid/conversion-result/failed-exhaustion.json",
+      "document": "conversion-result",
+      "verdict": "accept",
+      "note": "resource-limit is a refusal when a declared limit was exceeded and a failure when the system ran out of a resource."
+    },
+    {
+      "path": "fixtures/valid/conversion-result/cancelled.json",
+      "document": "conversion-result",
+      "verdict": "accept"
+    },
+    {
+      "path": "fixtures/valid/conversion-result/ok-extensions-at-depth-bound.json",
+      "document": "conversion-result",
+      "verdict": "accept",
+      "with_schema": "fixtures/valid/table-schema/all-types.json",
+      "with_policy": "fixtures/valid/conversion-policy/quantize.json",
+      "note": "A list of records inside a record reaches depth 6, the bound. The namespace is unknown to every consumer and is ignored."
+    },
+    {
+      "path": "fixtures/valid/conversion-result/ok-extensions-at-count-bounds.json",
+      "document": "conversion-result",
+      "verdict": "accept",
+      "with_schema": "fixtures/valid/table-schema/all-types.json",
+      "note": "Eight namespaces, 256 values in total and a string of 256 code points: each bound is met exactly."
+    },
+    {
+      "path": "fixtures/valid/conversion-result/ok-extensions-restating.json",
+      "document": "conversion-result",
+      "verdict": "accept",
+      "with_schema": "fixtures/valid/table-schema/all-types.json",
+      "note": "The namespace restates members this standard defines, with other values. A consumer ignores it: the result is ok, with the run identifier and output of its own members."
+    },
+    {
+      "path": "fixtures/valid/conversion-result/refused-extensions.json",
+      "document": "conversion-result",
+      "verdict": "accept",
+      "note": "A result that is not ok may carry extensions."
+    },
+    {
+      "path": "fixtures/valid/conversion-result/ok-count-max.json",
+      "document": "conversion-result",
+      "verdict": "accept",
+      "note": "rows, a source length and the output length are 9007199254740991, the largest count. qty has one null, so numeric is one less: the counters are consistent at the bound."
+    },
+    {
+      "path": "fixtures/valid/conversion-result/refused-count-max.json",
+      "document": "conversion-result",
+      "verdict": "accept",
+      "note": "A refusal located at row 9007199254740991, and an input of that length: the bound on counts holds in a result that is not ok."
+    },
+    {
+      "path": "fixtures/valid/conversion-result/failed-count-max.json",
+      "document": "conversion-result",
+      "verdict": "accept"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/format-missing.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-format-unsupported"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/format-other-revision.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-format-unsupported"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/contract-missing.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-missing"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/contract-other-revision.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-contract-unsupported",
+      "note": "A reader refuses a contract revision it does not implement. This schema describes revision 0.1.0 only."
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/status-unknown.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/run-id-with-space.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/run-id-empty.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/profile-not-an-object.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-not-an-object"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/profile-missing.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-missing"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/profile-without-revision.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/inputs-missing.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-missing"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/ok-without-output.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-missing"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/ok-without-counts.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-missing"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/ok-without-policy-input.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-missing",
+      "note": "A completed run read all three inputs to their end."
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/ok-with-refusal.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-unknown",
+      "note": "A member that does not apply to the status is an unknown member."
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/refused-with-output.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-unknown"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/refused-with-counts.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-unknown"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/refused-without-refusal.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-missing"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/refused-category-io-failure.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/failed-category-schema-mismatch.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/cancelled-category-internal.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/category-unknown.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/rule-not-kebab-case.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/refusal-with-value.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-unknown",
+      "note": "A refusal never carries a value from the data."
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/refusal-row-negative.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-malformed",
+      "note": "A signed number is outside the document grammar, so a reader reports result-malformed."
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/digest-uppercase.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/digest-truncated.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/output-with-path.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-unknown",
+      "note": "No member names a path."
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/input-unknown.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-unknown"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/member-unknown.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-unknown",
+      "note": "An implementation member written at the top level. Implementation members belong under extensions."
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/counters-incomplete.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-missing"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/counters-on-text.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-unknown"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/text-forced-without-counters.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-missing"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/representation-unknown.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/counts-columns-empty.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/extensions-past-depth-bound.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-malformed",
+      "note": "The array inside the record of the list is at depth 7. An unknown namespace is ignored only after the generic bounds hold."
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/extensions-too-many-namespaces.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-invalid",
+      "note": "Nine namespaces; the bound is eight."
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/extension-string-too-long.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-invalid",
+      "note": "A string of 257 code points; the bound is 256."
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/extension-number-past-max.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/extension-namespace-malformed.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/extension-not-an-object.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-not-an-object"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/ok-rows-past-max.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-invalid",
+      "note": "rows is 9007199254740992. Out of range, not malformed: the spelling is a valid number of the document grammar."
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/ok-rows-far-past-max.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-invalid",
+      "note": "rows has 31 digits. Still result-member-invalid, whatever the size; a reader does not report it as unparseable."
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/ok-output-bytes-past-max.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-invalid"
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/refused-row-past-max.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-invalid",
+      "note": "refusal.row is 9007199254740992."
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/failed-input-bytes-past-max.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-invalid",
+      "note": "inputs.source.bytes is 9007199254740992 in a failed result."
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/status-missing.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-missing",
+      "note": "Without a status nothing says which members apply; output and counts are not examined."
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/contract-other-and-status-unknown.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-contract-unsupported",
+      "note": "Two faults. contract is read before status."
+    },
+    {
+      "path": "fixtures/invalid/conversion-result/refused-with-output-malformed.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "json-schema",
+      "category": "invalid-input",
+      "rule": "result-member-unknown",
+      "note": "Two faults. The presence of output under a status that excludes it is settled before the member is examined, so the rule is result-member-unknown and not result-member-invalid."
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-result/counters-do-not-sum.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "result-counts-inconsistent",
+      "note": "qty has 3 non-null cells and reports 2 numeric, 0 text_fallback and 0 text_forced."
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-result/native-with-text-forced.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "result-counts-inconsistent"
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-result/text-fallback-with-numeric.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "result-counts-inconsistent"
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-result/null-exceeds-rows.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "result-counts-inconsistent"
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-result/empty-exceeds-non-null.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "result-counts-inconsistent"
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-result/quantized-exceeds-non-null.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "result-counts-inconsistent"
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-result/column-id-repeated.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "result-counts-inconsistent"
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-result/key-repeated.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "result-malformed",
+      "strict_parse": "refuse"
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-result/scale-changed-partial.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "result-counts-inconsistent",
+      "note": "Quantization changes the scale of every non-null cell of a column or of none."
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-result/quantized-exceeds-scale-changed.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "result-counts-inconsistent",
+      "note": "A value changes only when the scale is lowered."
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-result/policy-text-always-with-native.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "result-policy-mismatch",
+      "with_schema": "fixtures/valid/table-schema/all-types.json",
+      "with_policy": "fixtures/valid/conversion-policy/quantize-empty.json"
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-result/policy-require-exact-with-text-fallback.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "result-policy-mismatch",
+      "with_schema": "fixtures/valid/table-schema/all-types.json",
+      "with_policy": "fixtures/valid/conversion-policy/minimal.json"
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-result/policy-text-if-needed-with-text-forced.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "result-policy-mismatch",
+      "with_schema": "fixtures/valid/table-schema/all-types.json",
+      "with_policy": "fixtures/valid/conversion-policy/quantize.json",
+      "note": "The policy is text-if-needed, under which a column is native or text-fallback and never text-forced."
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-result/policy-without-quantize.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "result-policy-mismatch",
+      "with_schema": "fixtures/valid/table-schema/all-types.json",
+      "with_policy": "fixtures/valid/conversion-policy/minimal.json",
+      "note": "The policy quantizes no column and the result reports quantized cells."
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-result/policy-quantize-scale-not-counted.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "result-policy-mismatch",
+      "with_schema": "fixtures/valid/table-schema/all-types.json",
+      "with_policy": "fixtures/valid/conversion-policy/quantize.json",
+      "note": "The policy quantizes amount from scale 4 to scale 2. The column has 2 non-null cells and reports scale_changed 0. The counts are consistent on their own; only the policy shows the fault."
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-result/column-missing.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "result-schema-mismatch",
+      "with_schema": "fixtures/valid/table-schema/all-types.json"
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-result/columns-out-of-order.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "result-schema-mismatch",
+      "with_schema": "fixtures/valid/table-schema/all-types.json"
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-result/null-in-non-nullable.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "result-schema-mismatch",
+      "with_schema": "fixtures/valid/table-schema/all-types.json",
+      "note": "invoice is not nullable."
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-result/empty-in-non-string.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "result-schema-mismatch",
+      "with_schema": "fixtures/valid/table-schema/all-types.json"
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-result/counters-on-boolean.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "result-schema-mismatch",
+      "with_schema": "fixtures/valid/table-schema/all-types.json",
+      "note": "paid is a boolean column; the five counters appear on integer and decimal columns only."
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-result/counters-absent-on-integer.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "result-schema-mismatch",
+      "with_schema": "fixtures/valid/table-schema/all-types.json"
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-result/string-as-native.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "result-schema-mismatch",
+      "with_schema": "fixtures/valid/table-schema/all-types.json"
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-result/quantized-on-integer.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "result-schema-mismatch",
+      "with_schema": "fixtures/valid/table-schema/all-types.json",
+      "note": "Only a decimal column can be quantized."
+    },
+    {
+      "path": "fixtures/semantic-invalid/conversion-result/extensions-too-many-values.json",
+      "document": "conversion-result",
+      "verdict": "refuse",
+      "detected_by": "semantic-validation",
+      "category": "invalid-input",
+      "rule": "result-member-invalid",
+      "note": "257 values under extensions: the namespace object, items, and 255 elements. The bound is 256."
+    }
+  ]
+}

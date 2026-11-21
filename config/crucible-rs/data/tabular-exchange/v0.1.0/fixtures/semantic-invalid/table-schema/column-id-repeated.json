@@ -1,0 +1,23 @@
+{
+  "format": "tabular-exchange.schema/0",
+  "columns": [
+    {
+      "id": "a",
+      "label": "A",
+      "type": "string",
+      "nullable": true
+    },
+    {
+      "id": "b",
+      "label": "B",
+      "type": "integer",
+      "nullable": true
+    },
+    {
+      "id": "a",
+      "label": "A",
+      "type": "date",
+      "nullable": true
+    }
+  ]
+}

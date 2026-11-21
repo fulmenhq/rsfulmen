@@ -1,0 +1,14 @@
+{
+  "format": "tabular-exchange.schema/0",
+  "columns": [
+    {
+      "id": "a",
+      "label": "A",
+      "type": "decimal",
+      "precision": 4,
+      "scale": 2,
+      "fraction": 0,
+      "nullable": true
+    }
+  ]
+}
