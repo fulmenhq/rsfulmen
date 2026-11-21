@@ -46,6 +46,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   more characters becomes `:token` when it is all uppercase or changes
   case at least eight times. An all-lowercase word and a hyphenated name
   stay as written.
+- A second SIGINT inside the double-tap window calls the `set_force_exit`
+  hook with the double-tap exit code. Without a hook it still calls
+  `process::exit` with that code.
 
 ## [0.3.0] - 2026-10-20
 
