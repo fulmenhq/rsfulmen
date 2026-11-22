@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-11-22
+
+Patch release on the 0.1 line. The `foundry-core` catalogs load with
+`yamlprims`. MSRV remains 1.88. The embedded Crucible version is unchanged at v0.4.19.
+
+### Changed
+
+- **`foundry-core` loads its embedded catalogs with `yamlprims`.** This covers the
+  exit codes, signals, country codes and HTTP statuses catalogs. Builds that enable
+  only `foundry-core` no longer depend on `serde_yaml_ng` or `unsafe-libyaml`.
+  `serde_yaml_ng` is now an optional dependency. The features that use it enable
+  it, so the default and `full` feature sets are unchanged. The public API is
+  unchanged.
+- A test checks that `yamlprims` and `serde_yaml_ng` load the same data from
+  each `foundry-core` catalog. A CI step fails if the `foundry-core` dependency
+  tree contains `serde_yaml_ng` or `unsafe-libyaml`.
+
 ## [0.1.6] - 2026-08-20
 
 File-backed schema catalogs, fulpack create honesty, committed lockfile, and

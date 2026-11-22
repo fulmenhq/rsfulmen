@@ -421,10 +421,10 @@ struct RawSignalCatalog {
     signals: Vec<RawSignal>,
     behaviors: Vec<RawBehavior>,
     #[allow(dead_code)]
-    os_mappings: serde_yaml::Value, // We don't need to parse this in detail
+    os_mappings: yamlprims::Value, // We don't need to parse this in detail
     platform_support: Vec<RawPlatformSupport>,
     #[allow(dead_code)]
-    exit_codes: serde_yaml::Value, // We have exit_codes module for this
+    exit_codes: yamlprims::Value, // We have exit_codes module for this
 }
 
 // ============================================================================
@@ -456,7 +456,7 @@ struct SignalIndexes {
 
 impl SignalIndexes {
     fn load() -> FoundryResult<Self> {
-        let catalog: RawSignalCatalog = serde_yaml::from_str(SIGNALS_YAML)
+        let catalog: RawSignalCatalog = yamlprims::from_str(SIGNALS_YAML)
             .map_err(|e| FoundryError::LoadError(format!("Failed to parse signals.yaml: {}", e)))?;
 
         // Parse signals
