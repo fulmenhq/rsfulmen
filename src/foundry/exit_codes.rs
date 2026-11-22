@@ -206,7 +206,7 @@ fn parse_category_id(id: &str) -> Option<ExitCategory> {
 
 impl ExitCodeIndexes {
     fn load() -> FoundryResult<Self> {
-        let catalog: ExitCodeCatalog = serde_yaml::from_str(EXIT_CODES_YAML)
+        let catalog: ExitCodeCatalog = yamlprims::from_str(EXIT_CODES_YAML)
             .map_err(|e| FoundryError::LoadError(format!("Failed to parse exit codes: {}", e)))?;
 
         let mut all = Vec::new();
