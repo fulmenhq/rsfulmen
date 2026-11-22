@@ -7,8 +7,9 @@
 
 use super::error::FulpackError;
 use super::format::detect_format;
-use super::read::{corrupt, open};
+use super::read::{corrupt, gzip_entry_name, open};
 use super::types::{ArchiveFormat, ExtractOptions, ExtractResult, OverwriteMode};
+use std::ffi::OsStr;
 use std::fs;
 use std::io::{BufReader, Read};
 use std::path::{Component, Path, PathBuf};
@@ -141,13 +142,33 @@ impl<'a> ExtractCtx<'a> {
 // Security: resolve an entry path safely under the destination.
 // ---------------------------------------------------------------------------
 
+/// True if a path segment (from [`Path::components`]) names a drive once split
+/// on `/` and `\`: one ASCII letter then `:` (`C:`, `C:x`) on every platform,
+/// or any piece Windows parses as a path prefix. Pushing such a segment onto a
+/// `PathBuf` on Windows replaces the destination instead of joining under it.
+pub(super) fn is_drive_segment(seg: &OsStr) -> bool {
+    seg.to_string_lossy().split(['/', '\\']).any(|piece| {
+        let b = piece.as_bytes();
+        (b.len() >= 2 && b[0].is_ascii_alphabetic() && b[1] == b':')
+            || Path::new(piece)
+                .components()
+                .any(|c| matches!(c, Component::Prefix(_)))
+    })
+}
+
 /// Resolve `entry_path` (as stored in the archive) to a path under `dest`,
-/// rejecting absolute paths and `..` traversal. Returns the joined path.
+/// rejecting absolute paths (including drive letters in any segment) and `..`
+/// traversal. Returns the joined path.
 fn safe_join(dest: &Path, entry_path: &str) -> Result<PathBuf, FulpackError> {
     let candidate = Path::new(entry_path);
     let mut out = dest.to_path_buf();
     for component in candidate.components() {
         match component {
+            Component::Normal(seg) if is_drive_segment(seg) => {
+                return Err(FulpackError::AbsolutePath {
+                    path: entry_path.to_string(),
+                })
+            }
             Component::Normal(seg) => out.push(seg),
             Component::CurDir => {}
             Component::ParentDir => {
@@ -162,7 +183,22 @@ fn safe_join(dest: &Path, entry_path: &str) -> Result<PathBuf, FulpackError> {
             }
         }
     }
-    Ok(out)
+    ensure_contained(dest, out, entry_path)
+}
+
+/// Defense in depth: the joined path must stay lexically under `dest`.
+fn ensure_contained(
+    dest: &Path,
+    joined: PathBuf,
+    entry_path: &str,
+) -> Result<PathBuf, FulpackError> {
+    if joined.starts_with(dest) {
+        Ok(joined)
+    } else {
+        Err(FulpackError::PathTraversal {
+            path: entry_path.to_string(),
+        })
+    }
 }
 
 /// True if a symlink stored at `entry_rel` pointing at `target` would resolve
@@ -285,17 +321,7 @@ fn extract_zip<R: Read + std::io::Seek>(
 
 fn extract_gzip(archive: &Path, ctx: &mut ExtractCtx<'_>) -> Result<(), FulpackError> {
     let mut decoder = flate2::read::GzDecoder::new(BufReader::new(open(archive)?));
-    let name = decoder
-        .header()
-        .and_then(|h| h.filename())
-        .map(|b| String::from_utf8_lossy(b).into_owned())
-        .unwrap_or_else(|| {
-            archive
-                .file_stem()
-                .and_then(|s| s.to_str())
-                .unwrap_or("output")
-                .to_string()
-        });
+    let name = gzip_entry_name(decoder.header().and_then(|h| h.filename()), archive);
 
     // gzip is a single-entry archive; honor the same options as multi-entry formats.
     ctx.count_entry(0)?;
@@ -467,6 +493,42 @@ mod tests {
             Path::new("/tmp/x/a/b/c.txt")
         );
         assert_eq!(safe_join(dest, "./a/./b").unwrap(), Path::new("/tmp/x/a/b"));
+    }
+
+    #[test]
+    fn safe_join_rejects_a_drive_letter_in_any_segment() {
+        let dest = Path::new("/tmp/x");
+        for name in [
+            "C:evil.txt",
+            "C:\\evil.txt",
+            "dir/a:b.txt",
+            "./C:evil.txt",
+            "sub/C:/x",
+            "sub\\C:x",
+        ] {
+            assert_eq!(
+                safe_join(dest, name).unwrap_err().code(),
+                "ABSOLUTE_PATH",
+                "{name}"
+            );
+        }
+        for name in ["ab:c.txt", "foo:bar/x.txt", "dir/ab:c.txt"] {
+            assert!(safe_join(dest, name).unwrap().starts_with(dest), "{name}");
+        }
+    }
+
+    #[test]
+    fn ensure_contained_rejects_a_join_outside_dest() {
+        let dest = Path::new("/tmp/x");
+        let inside = PathBuf::from("/tmp/x/a/b.txt");
+        assert_eq!(
+            ensure_contained(dest, inside.clone(), "a/b.txt").unwrap(),
+            inside
+        );
+        for joined in ["/tmp/elsewhere/b.txt", "/tmp/xy/b.txt", "/b.txt"] {
+            let err = ensure_contained(dest, PathBuf::from(joined), "b.txt").unwrap_err();
+            assert_eq!(err.code(), "PATH_TRAVERSAL", "{joined}");
+        }
     }
 
     #[test]

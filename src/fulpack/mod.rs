@@ -479,6 +479,111 @@ mod tests {
         assert_eq!(fs::read(dest.join("é.txt")).unwrap(), b"flagged utf8");
     }
 
+    // One entry named `name`, either in the zip name field ("plain") or in a
+    // Unicode Path extra field over a different raw name ("extra").
+    fn zip_name_shapes(name: &str) -> [(&'static str, Vec<u8>); 2] {
+        let raw = b"legacy.txt";
+        let mut extra = vec![0x75, 0x70];
+        extra.extend_from_slice(&((5 + name.len()) as u16).to_le_bytes());
+        extra.push(1);
+        extra.extend_from_slice(&zip_test_crc32(raw).to_le_bytes());
+        extra.extend_from_slice(name.as_bytes());
+        [
+            ("plain", raw_name_zip(&[(name.as_bytes(), 0, b"", b"x")])),
+            ("extra", raw_name_zip(&[(raw, 0, &extra, b"x")])),
+        ]
+    }
+
+    #[test]
+    fn zip_drive_letter_names_are_absolute_on_every_platform() {
+        let tmp = TestDir::new();
+        // (entry name, scan path when scan strips a leading drive)
+        let names = [
+            ("C:\\evil.txt", Some("evil.txt")),
+            ("C:evil.txt", Some("evil.txt")),
+            ("c:/evil.txt", Some("evil.txt")),
+            ("dir/a:b.txt", None),
+            ("./C:evil.txt", None),
+            ("sub/C:/x", None),
+        ];
+        for (i, (name, scanned)) in names.into_iter().enumerate() {
+            for (shape, bytes) in zip_name_shapes(name) {
+                let archive = tmp.materialize(&format!("drive-{i}-{shape}.zip"), &bytes);
+                // scan is discovery: it lists the entry without rejecting it.
+                let entries = scan(&archive, None).unwrap();
+                assert_eq!(entries.len(), 1, "{name} ({shape})");
+                if let Some(scanned) = scanned {
+                    assert_eq!(paths(&entries), [scanned]);
+                }
+                let result = verify(&archive).unwrap();
+                assert!(!result.valid, "{name} ({shape})");
+                assert_eq!(result.errors, [format!("absolute path: {name}")]);
+                let dest = tmp.path.join(format!("out-{i}-{shape}"));
+                let err = extract(&archive, &dest, None).unwrap_err();
+                assert_eq!(err.code(), "ABSOLUTE_PATH", "{name} ({shape}): {err}");
+                let written = fs::read_dir(&dest).map_or(0, |d| d.count());
+                assert_eq!(written, 0, "{name} ({shape}) wrote into dest");
+            }
+        }
+    }
+
+    #[test]
+    fn zip_other_colon_names_are_not_drive_letters() {
+        let tmp = TestDir::new();
+        let names = ["ab:c.txt", "foo:bar/x.txt", "dir/ab:c.txt"];
+        for (i, name) in names.into_iter().enumerate() {
+            for (shape, bytes) in zip_name_shapes(name) {
+                let archive = tmp.materialize(&format!("colon-{i}-{shape}.zip"), &bytes);
+                assert_eq!(paths(&scan(&archive, None).unwrap()), [name]);
+                let result = verify(&archive).unwrap();
+                assert!(result.valid, "{name} ({shape}): {:?}", result.errors);
+                // Windows cannot create these names as plain files, so only
+                // Unix extracts them.
+                #[cfg(unix)]
+                {
+                    let dest = tmp.path.join(format!("out-{i}-{shape}"));
+                    let result = extract(&archive, &dest, None).unwrap();
+                    assert_eq!(result.extracted_count, 1);
+                    let written = fs::canonicalize(dest.join(name)).unwrap();
+                    assert!(written.starts_with(fs::canonicalize(&dest).unwrap()));
+                    assert_eq!(fs::read(written).unwrap(), b"x");
+                }
+            }
+        }
+    }
+
+    fn gzip_without_fname(payload: &[u8]) -> Vec<u8> {
+        let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+        encoder.write_all(payload).unwrap();
+        encoder.finish().unwrap()
+    }
+
+    #[test]
+    fn gzip_without_fname_uses_archive_stem_in_verify_and_extract() {
+        let tmp = TestDir::new();
+        let archive = tmp.materialize("payload.gz", &gzip_without_fname(b"x"));
+        let result = verify(&archive).unwrap();
+        assert!(result.valid, "{:?}", result.errors);
+        let dest = tmp.path.join("out");
+        extract(&archive, &dest, None).unwrap();
+        assert_eq!(fs::read(dest.join("payload")).unwrap(), b"x");
+    }
+
+    // Windows cannot create an archive file named with a drive letter.
+    #[cfg(unix)]
+    #[test]
+    fn gzip_without_fname_drive_letter_stem_is_rejected_consistently() {
+        let tmp = TestDir::new();
+        let archive = tmp.materialize("C:payload.gz", &gzip_without_fname(b"x"));
+        let result = verify(&archive).unwrap();
+        assert!(!result.valid);
+        assert_eq!(result.errors, ["absolute path: C:payload"]);
+        let dest = tmp.path.join("out");
+        let err = extract(&archive, &dest, None).unwrap_err();
+        assert_eq!(err.code(), "ABSOLUTE_PATH", "{err}");
+        assert_eq!(fs::read_dir(&dest).map_or(0, |d| d.count()), 0);
+    }
+
     #[test]
     fn extract_rejects_path_traversal() {
         let tmp = TestDir::new();

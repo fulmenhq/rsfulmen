@@ -49,6 +49,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A second SIGINT inside the double-tap window calls the `set_force_exit`
   hook with the double-tap exit code. Without a hook it still calls
   `process::exit` with that code.
+- `fulpack` extract and verify reject an entry name with a drive letter
+  in any segment (`C:\evil.txt`, `C:evil.txt`, `dir/a:b.txt`,
+  `sub/C:/x`) as an absolute path on every platform. This covers the zip
+  name field and the Unicode Path extra field. Other names with `:`
+  (`ab:c.txt`) stay as before. `scan` still lists the entry. Extract also
+  rejects any joined path that falls outside the destination.
+- For a gzip with no stored file name, verify now checks the same entry
+  name that extract writes: the archive name without `.gz`.
 
 ## [0.3.0] - 2026-10-20
 
