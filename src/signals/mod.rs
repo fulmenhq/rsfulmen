@@ -11,8 +11,11 @@
 //! Shutdown hooks run under the catalog `timeout_seconds` grace period
 //! (30s for SIGTERM, 5s for SIGINT; 30s when the field is absent; `0` takes
 //! the force-exit path immediately). Force-exit is `process::exit` unless a
-//! test/embedder installs [`SignalManager::set_force_exit`]. Double-tap does
-//! not use that hook: it calls `process::exit` with the configured code.
+//! test/embedder installs [`SignalManager::set_force_exit`]. Double-tap uses
+//! the same hook, passing the configured double-tap exit code.
+//! After a shutdown completes, `listen()` returns and a later SIGINT is
+//! ignored (no handlers, no double-tap) until `listen()` is called again,
+//! which re-arms the signals and starts a fresh double-tap window.
 //! Direct `dispatch_signal` callers still run the chain to completion before
 //! returning.
 
@@ -544,7 +547,8 @@ impl SignalManager {
         override_grace.unwrap_or_else(|| catalog_shutdown_grace(signal))
     }
 
-    /// Replace `process::exit` on grace expiry (and tests that must not abort).
+    /// Replace `process::exit` on grace expiry and on a double-tap SIGINT
+    /// (and in tests that must not abort). The hook receives the exit code.
     pub fn set_force_exit<F>(&self, hook: F)
     where
         F: Fn(i32) + Send + Sync + 'static,
@@ -933,7 +937,8 @@ impl SignalManager {
         let now = Instant::now();
         if let Some(first) = *first_sigint_at {
             if now.duration_since(first) <= config.window {
-                std::process::exit(config.exit_code);
+                self.invoke_force_exit(config.exit_code);
+                return;
             }
         }
 
@@ -2169,6 +2174,61 @@ mod tests {
 
         let _ = listener.join();
         // Double-tap should have exited 99 before the hook finished.
+        std::process::exit(1);
+    }
+
+    #[test]
+    fn second_sigint_during_shutdown_uses_force_exit_hook() {
+        if std::env::var_os("RSFULMEN_DOUBLE_TAP_HOOK_CHILD").is_some() {
+            second_sigint_force_exit_hook_child();
+            return;
+        }
+
+        let exe = std::env::current_exe().expect("test executable");
+        let output = std::process::Command::new(exe)
+            .env("RSFULMEN_DOUBLE_TAP_HOOK_CHILD", "1")
+            .args([
+                "signals::tests::second_sigint_during_shutdown_uses_force_exit_hook",
+                "--exact",
+                "--test-threads=1",
+            ])
+            .output()
+            .expect("spawn double-tap hook child");
+        assert_eq!(
+            output.status.code(),
+            Some(42),
+            "stdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    fn second_sigint_force_exit_hook_child() {
+        let manager = SignalManager::new();
+        manager.enable_double_tap(DoubleTapConfig {
+            window: Duration::from_secs(2),
+            message: String::new(),
+            exit_code: 99,
+        });
+        // Exit 42 only when the hook sees the double-tap code.
+        manager.set_force_exit(|code| std::process::exit(if code == 99 { 42 } else { 3 }));
+        manager.on_shutdown(|| {
+            thread::sleep(Duration::from_millis(300));
+            Ok(())
+        });
+
+        let injector = testing::SignalInjector::new(&manager);
+        let manager_listen = manager.clone();
+        let listener = thread::spawn(move || manager_listen.listen());
+        injector
+            .wait_for_listen(Duration::from_secs(1))
+            .expect("listener should start");
+        injector.inject(sigint_number()).expect("first SIGINT");
+        thread::sleep(Duration::from_millis(50));
+        injector.inject(sigint_number()).expect("second SIGINT");
+
+        let _ = listener.join();
+        // The hook should have exited 42 before the shutdown hook finished.
         std::process::exit(1);
     }
 

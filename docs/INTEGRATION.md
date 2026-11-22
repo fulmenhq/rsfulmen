@@ -217,7 +217,12 @@ Shutdown hooks run under the catalog `timeout_seconds` grace period:
 
 Override with `SignalManager::set_shutdown_grace`. The production force-exit
 path is `process::exit`; tests/embedders can intercept it with
-`set_force_exit`.
+`set_force_exit`. A double-tap SIGINT takes the same path with the double-tap
+exit code.
+
+After a shutdown completes, `listen()` returns. A later SIGINT is ignored
+until `listen()` is called again, which re-arms the signals and starts a fresh
+double-tap window.
 
 `POST /admin/signal` is a request helper, not a server. Auth, TLS, and 429
 rate-limit stay with the caller. The JSON adapter
