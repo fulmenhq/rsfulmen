@@ -107,10 +107,15 @@ jobs:
         if: matrix.features == 'foundry-core'
         run: |
           tree="$(cargo tree --locked -e normal --no-default-features --features foundry-core)"
-          if printf '%s\n' "$tree" | grep -E 'serde_yaml_ng|unsafe-libyaml'; then
-            echo "foundry-core must not depend on serde_yaml_ng or unsafe-libyaml" >&2
-            exit 1
-          fi
+          case "$tree" in
+            *yamlprims*) ;;
+            *) echo "foundry-core dependency tree is missing yamlprims" >&2; exit 1 ;;
+          esac
+          case "$tree" in
+            *serde_yaml_ng*|*unsafe-libyaml*)
+              echo "foundry-core must not depend on serde_yaml_ng or unsafe-libyaml" >&2
+              exit 1 ;;
+          esac
   # MSRV check
   msrv:
     name: MSRV (1.88)
