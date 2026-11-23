@@ -1,0 +1,2430 @@
+{
+  "contract": "tabular-exchange/0.1.0",
+  "description": "Spellings of values and what a conforming reader does with each. integer, decimal, date, local-timestamp and offset-timestamp give the text of a string element in a column of that type, with the type parameters where the type has them. cells gives a JSON element of any kind in a column. quantize gives a decimal value, a target scale and a rounding mode, and the text of the value after quantization; value_changed and scale_changed say whether the cell counts toward the quantized and scale_changed counters. A refusal names the category and rule a conforming reader reports.",
+  "integer": [
+    {
+      "text": "0",
+      "verdict": "accept"
+    },
+    {
+      "text": "7",
+      "verdict": "accept"
+    },
+    {
+      "text": "-7",
+      "verdict": "accept"
+    },
+    {
+      "text": "10",
+      "verdict": "accept"
+    },
+    {
+      "text": "9007199254740993",
+      "verdict": "accept"
+    },
+    {
+      "text": "12345678901234567890",
+      "verdict": "accept"
+    },
+    {
+      "text": "99999999999999999999999999999999999999",
+      "verdict": "accept"
+    },
+    {
+      "text": "-99999999999999999999999999999999999999",
+      "verdict": "accept"
+    },
+    {
+      "text": "10000000000000000000000000000000000000",
+      "verdict": "accept"
+    },
+    {
+      "text": "",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-empty"
+    },
+    {
+      "text": "-",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-empty"
+    },
+    {
+      "text": "+1",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-invalid-character"
+    },
+    {
+      "text": " 1",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-invalid-character"
+    },
+    {
+      "text": "1 ",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-invalid-character"
+    },
+    {
+      "text": "1e3",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-invalid-character"
+    },
+    {
+      "text": "1E3",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-invalid-character"
+    },
+    {
+      "text": "0x10",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-invalid-character"
+    },
+    {
+      "text": "1,000",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-invalid-character"
+    },
+    {
+      "text": "1_000",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-invalid-character"
+    },
+    {
+      "text": "--1",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-invalid-character"
+    },
+    {
+      "text": "١٢٣",
+      "note": "Arabic-Indic digits.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-invalid-character"
+    },
+    {
+      "text": "NaN",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-invalid-character"
+    },
+    {
+      "text": "true",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-invalid-character"
+    },
+    {
+      "text": "1.0e1",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-invalid-character"
+    },
+    {
+      "text": "007",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-leading-zero"
+    },
+    {
+      "text": "00",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-leading-zero"
+    },
+    {
+      "text": "-01",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-leading-zero"
+    },
+    {
+      "text": "-00",
+      "note": "The leading zero is reported before the sign of zero.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-leading-zero"
+    },
+    {
+      "text": "-0",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-negative-zero"
+    },
+    {
+      "text": "-0.0",
+      "note": "Grammar is judged before the type: negative zero, not a point mismatch.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-negative-zero"
+    },
+    {
+      "text": ".5",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-malformed"
+    },
+    {
+      "text": "-.5",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-malformed"
+    },
+    {
+      "text": "1.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-malformed"
+    },
+    {
+      "text": "1..2",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-malformed"
+    },
+    {
+      "text": ".",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-malformed"
+    },
+    {
+      "text": "1.2.3",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-malformed"
+    },
+    {
+      "text": "1.0",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "exact-point-mismatch"
+    },
+    {
+      "text": "0.0",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "exact-point-mismatch"
+    },
+    {
+      "text": "-1.5",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "exact-point-mismatch"
+    },
+    {
+      "text": "1000000000000000000000000000000000000.0",
+      "note": "38 significant digits: within the digit bound, so the type decides.",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "exact-point-mismatch"
+    },
+    {
+      "text": "100000000000000000000000000000000000000",
+      "note": "39 digits.",
+      "verdict": "refuse",
+      "category": "resource-limit",
+      "rule": "exact-too-many-digits"
+    },
+    {
+      "text": "-100000000000000000000000000000000000000",
+      "verdict": "refuse",
+      "category": "resource-limit",
+      "rule": "exact-too-many-digits"
+    },
+    {
+      "text": "10000000000000000000000000000000000000.0",
+      "note": "39 significant digits: the digit bound is judged before the type.",
+      "verdict": "refuse",
+      "category": "resource-limit",
+      "rule": "exact-too-many-digits"
+    }
+  ],
+  "decimal": [
+    {
+      "precision": 7,
+      "scale": 4,
+      "text": "123.4500",
+      "verdict": "accept"
+    },
+    {
+      "precision": 2,
+      "scale": 2,
+      "text": "0.01",
+      "verdict": "accept"
+    },
+    {
+      "precision": 2,
+      "scale": 2,
+      "text": "0.00",
+      "verdict": "accept"
+    },
+    {
+      "precision": 2,
+      "scale": 2,
+      "text": "0.99",
+      "verdict": "accept"
+    },
+    {
+      "precision": 6,
+      "scale": 2,
+      "text": "-1234.56",
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 2,
+      "text": "-0.05",
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 2,
+      "text": "1.00",
+      "verdict": "accept"
+    },
+    {
+      "precision": 2,
+      "scale": 0,
+      "text": "42",
+      "verdict": "accept"
+    },
+    {
+      "precision": 1,
+      "scale": 0,
+      "text": "0",
+      "verdict": "accept"
+    },
+    {
+      "precision": 38,
+      "scale": 0,
+      "text": "99999999999999999999999999999999999999",
+      "verdict": "accept"
+    },
+    {
+      "precision": 38,
+      "scale": 38,
+      "text": "0.99999999999999999999999999999999999999",
+      "verdict": "accept"
+    },
+    {
+      "precision": 38,
+      "scale": 38,
+      "text": "0.00000000000000000000000000000000000001",
+      "verdict": "accept"
+    },
+    {
+      "precision": 38,
+      "scale": 37,
+      "text": "-9.9999999999999999999999999999999999999",
+      "verdict": "accept"
+    },
+    {
+      "precision": 4,
+      "scale": 2,
+      "text": "12.34",
+      "verdict": "accept"
+    },
+    {
+      "precision": 6,
+      "scale": 4,
+      "text": "123.4500",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "exact-precision-exceeded"
+    },
+    {
+      "precision": 2,
+      "scale": 2,
+      "text": "1.00",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "exact-precision-exceeded"
+    },
+    {
+      "precision": 4,
+      "scale": 2,
+      "text": "123.45",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "exact-precision-exceeded"
+    },
+    {
+      "precision": 2,
+      "scale": 0,
+      "text": "123",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "exact-precision-exceeded"
+    },
+    {
+      "precision": 7,
+      "scale": 4,
+      "text": "123.45",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "exact-scale-mismatch"
+    },
+    {
+      "precision": 9,
+      "scale": 4,
+      "text": "123.45000",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "exact-scale-mismatch"
+    },
+    {
+      "precision": 3,
+      "scale": 2,
+      "text": "1.0",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "exact-scale-mismatch"
+    },
+    {
+      "precision": 38,
+      "scale": 2,
+      "text": "0.000",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "exact-scale-mismatch"
+    },
+    {
+      "precision": 7,
+      "scale": 4,
+      "text": "123",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "exact-point-mismatch"
+    },
+    {
+      "precision": 3,
+      "scale": 0,
+      "text": "1.5",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "exact-point-mismatch"
+    },
+    {
+      "precision": 3,
+      "scale": 0,
+      "text": "1.0",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "exact-point-mismatch"
+    },
+    {
+      "precision": 7,
+      "scale": 0,
+      "text": "123.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-malformed"
+    },
+    {
+      "precision": 2,
+      "scale": 1,
+      "text": ".5",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-malformed"
+    },
+    {
+      "precision": 2,
+      "scale": 1,
+      "text": "-.5",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-malformed"
+    },
+    {
+      "precision": 2,
+      "scale": 1,
+      "text": "1.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-malformed"
+    },
+    {
+      "precision": 2,
+      "scale": 1,
+      "text": "1..2",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-malformed"
+    },
+    {
+      "precision": 2,
+      "scale": 1,
+      "text": ".",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-malformed"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "1.2.3",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-malformed"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "01.5",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-leading-zero"
+    },
+    {
+      "precision": 2,
+      "scale": 1,
+      "text": "00.5",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-leading-zero"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "01.50",
+      "note": "Grammar is judged before the type: a leading zero, not a scale mismatch.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-leading-zero"
+    },
+    {
+      "precision": 2,
+      "scale": 2,
+      "text": "-0.00",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-negative-zero"
+    },
+    {
+      "precision": 1,
+      "scale": 0,
+      "text": "-0",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-negative-zero"
+    },
+    {
+      "precision": 2,
+      "scale": 2,
+      "text": "-0.0",
+      "note": "Grammar is judged before the type: negative zero, not a scale mismatch.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-negative-zero"
+    },
+    {
+      "precision": 2,
+      "scale": 1,
+      "text": "+1.5",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-invalid-character"
+    },
+    {
+      "precision": 4,
+      "scale": 3,
+      "text": "1.5e2",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-invalid-character"
+    },
+    {
+      "precision": 2,
+      "scale": 1,
+      "text": "1,5",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-invalid-character"
+    },
+    {
+      "precision": 2,
+      "scale": 1,
+      "text": " 1.5",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-invalid-character"
+    },
+    {
+      "precision": 2,
+      "scale": 1,
+      "text": "",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-empty"
+    },
+    {
+      "precision": 5,
+      "scale": 2,
+      "text": "1234567890123456789012345678901234567.89",
+      "note": "39 significant digits: the digit bound is judged before the declared precision.",
+      "verdict": "refuse",
+      "category": "resource-limit",
+      "rule": "exact-too-many-digits"
+    },
+    {
+      "precision": 38,
+      "scale": 38,
+      "text": "1.00000000000000000000000000000000000000",
+      "note": "39 significant digits.",
+      "verdict": "refuse",
+      "category": "resource-limit",
+      "rule": "exact-too-many-digits"
+    }
+  ],
+  "date": [
+    {
+      "text": "2026-11-19",
+      "verdict": "accept"
+    },
+    {
+      "text": "0001-01-01",
+      "verdict": "accept"
+    },
+    {
+      "text": "9999-12-31",
+      "verdict": "accept"
+    },
+    {
+      "text": "2024-02-29",
+      "verdict": "accept"
+    },
+    {
+      "text": "2000-02-29",
+      "verdict": "accept"
+    },
+    {
+      "text": "2023-02-29",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-date"
+    },
+    {
+      "text": "1900-02-29",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-date"
+    },
+    {
+      "text": "2026-02-30",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-date"
+    },
+    {
+      "text": "2026-04-31",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-date"
+    },
+    {
+      "text": "0000-01-01",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-date"
+    },
+    {
+      "text": "2026-13-01",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-date"
+    },
+    {
+      "text": "2026-00-10",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-date"
+    },
+    {
+      "text": "2026-01-00",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-date"
+    },
+    {
+      "text": "2026-01-32",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-date"
+    },
+    {
+      "text": "",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    },
+    {
+      "text": "2026-1-01",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    },
+    {
+      "text": "20260101",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    },
+    {
+      "text": "2026/01/01",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    },
+    {
+      "text": "26-01-01",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    },
+    {
+      "text": " 2026-01-01",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    },
+    {
+      "text": "2026-01-01 ",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    },
+    {
+      "text": "2026-01-0a",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    },
+    {
+      "text": "-001-01-01",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    },
+    {
+      "text": "+2026-01-01",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    },
+    {
+      "text": "2026-W01-1",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    },
+    {
+      "text": "2026-01-01T00:00:00",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    },
+    {
+      "text": "2026-01-01Z",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    },
+    {
+      "text": "２０２６-01-01",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    }
+  ],
+  "local-timestamp": [
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00",
+      "verdict": "accept"
+    },
+    {
+      "fraction": 1,
+      "text": "2026-11-19T08:30:00.5",
+      "verdict": "accept"
+    },
+    {
+      "fraction": 3,
+      "text": "2026-11-19T08:30:00.000",
+      "verdict": "accept"
+    },
+    {
+      "fraction": 9,
+      "text": "2026-11-19T23:59:59.999999999",
+      "verdict": "accept"
+    },
+    {
+      "fraction": 0,
+      "text": "0001-01-01T00:00:00",
+      "verdict": "accept"
+    },
+    {
+      "fraction": 0,
+      "text": "2024-02-29T00:00:00",
+      "verdict": "accept"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00.000",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "temporal-fraction-mismatch"
+    },
+    {
+      "fraction": 3,
+      "text": "2026-11-19T08:30:00",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "temporal-fraction-mismatch"
+    },
+    {
+      "fraction": 3,
+      "text": "2026-11-19T08:30:00.00",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "temporal-fraction-mismatch"
+    },
+    {
+      "fraction": 3,
+      "text": "2026-11-19T08:30:00.0000",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "temporal-fraction-mismatch"
+    },
+    {
+      "fraction": 3,
+      "text": "2026-11-19T08:30:00.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed",
+      "note": "A point with no digit is not a fraction of any width."
+    },
+    {
+      "fraction": 3,
+      "text": "2026-11-19T08:30:00,000",
+      "note": "A comma is not a decimal point, so no fraction is present and what follows the seconds is not an offset. No timestamp column accepts this text.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-offset"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00Z",
+      "note": "A well-formed offset timestamp in a local-timestamp column: a mismatch with the schema, not malformed input.",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "temporal-offset-mismatch"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00+01:00",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "temporal-offset-mismatch"
+    },
+    {
+      "fraction": 3,
+      "text": "2026-11-19T08:30:00.000Z",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "temporal-offset-mismatch",
+      "note": "The fraction fits; only the offset does not belong."
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19t08:30:00",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19 08:30:00",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T8:30:00",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T0a:30:00",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00 ",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-offset",
+      "note": "What follows the seconds is neither nothing nor an offset."
+    },
+    {
+      "fraction": 0,
+      "text": "",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08.30.00",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T24:00:00",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-time"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T23:60:00",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-time"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T23:59:60",
+      "note": "Leap seconds are not representable.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-time"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-02-30T00:00:00",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-date"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-02-30T24:00:00",
+      "note": "The date is judged before the time of day.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-date"
+    },
+    {
+      "fraction": 3,
+      "text": "2026-11-19T24:00:00",
+      "note": "The time of day is judged before the fraction.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-time"
+    },
+    {
+      "fraction": 9,
+      "text": "2026-11-19T08:30:00.123456789+05:30",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "temporal-offset-mismatch"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00+00:00",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "temporal-offset-mismatch"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00+24:00",
+      "note": "A malformed offset is invalid input in a column of either timestamp type.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-offset"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00+05:60",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-offset"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00z",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-offset"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00-00:00",
+      "note": "Refused in every column, so not a value of the other type.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-negative-zero-offset"
+    },
+    {
+      "fraction": 3,
+      "text": "2026-11-19T08:30:00.123-00:00",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-negative-zero-offset"
+    },
+    {
+      "fraction": 3,
+      "text": "2026-11-19T08:30:00.12Z",
+      "note": "Well formed. The fraction width and the offset are both wrong for the column; the fraction is judged first.",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "temporal-fraction-mismatch"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00.5",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "temporal-fraction-mismatch"
+    },
+    {
+      "fraction": 3,
+      "text": "2026-11-19T08:30:00.0000000000",
+      "note": "Ten digits: well formed, and no column declares that width.",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "temporal-fraction-mismatch"
+    },
+    {
+      "fraction": 3,
+      "text": "2026-11-19T08:30:00.12+24:00",
+      "note": "The malformed offset is judged before the width of the fraction.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-offset"
+    },
+    {
+      "fraction": 3,
+      "text": "2026-11-19T08:30:00-00:00",
+      "note": "The forbidden offset is judged before the absent fraction.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-negative-zero-offset"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-02-30T00:00:00Z",
+      "note": "The calendar is judged before the kind of timestamp.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-date"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T24:00:00Z",
+      "note": "The clock is judged before the kind of timestamp.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-time"
+    }
+  ],
+  "offset-timestamp": [
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00Z",
+      "verdict": "accept"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00+00:00",
+      "note": "Distinct from the same instant written with Z.",
+      "verdict": "accept"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00+05:30",
+      "verdict": "accept"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00-08:00",
+      "verdict": "accept"
+    },
+    {
+      "fraction": 3,
+      "text": "2026-11-19T08:30:00.123+23:59",
+      "verdict": "accept"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00-23:59",
+      "verdict": "accept"
+    },
+    {
+      "fraction": 6,
+      "text": "2026-11-19T08:30:00.000000Z",
+      "verdict": "accept"
+    },
+    {
+      "fraction": 9,
+      "text": "2026-11-19T08:30:00.000000001-00:01",
+      "verdict": "accept"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00",
+      "note": "A well-formed local timestamp in an offset-timestamp column: a mismatch with the schema, not malformed input.",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "temporal-offset-mismatch"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00z",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-offset"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00+24:00",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-offset"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00+05:60",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-offset"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00+0530",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-offset"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00+05",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-offset"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00+5:30",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-offset"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00 +05:30",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-offset"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00UTC",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-offset"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00+01:00[Europe/Paris]",
+      "note": "Named zones are not representable.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-offset"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00+05:30:00",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-offset"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00Z ",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-offset"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00-00:00",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-negative-zero-offset"
+    },
+    {
+      "fraction": 3,
+      "text": "2026-11-19T08:30:00Z",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "temporal-fraction-mismatch"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00.5Z",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "temporal-fraction-mismatch"
+    },
+    {
+      "fraction": 3,
+      "text": "2026-11-19T08:30:00.12Z",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "temporal-fraction-mismatch"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T24:00:00Z",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-time"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-02-30T00:00:00Z",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-date"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19 08:30:00Z",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    },
+    {
+      "fraction": 3,
+      "text": "2026-11-19T08:30:00.123",
+      "note": "The fraction fits; only the offset is absent.",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "temporal-offset-mismatch"
+    },
+    {
+      "fraction": 9,
+      "text": "2026-11-19T08:30:00.123456789",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "temporal-offset-mismatch"
+    },
+    {
+      "fraction": 3,
+      "text": "2026-11-19T08:30:00",
+      "note": "The fraction and the offset are both absent; the fraction is judged first.",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "temporal-fraction-mismatch"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00.5",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "temporal-fraction-mismatch"
+    },
+    {
+      "fraction": 3,
+      "text": "2026-11-19T08:30:00.12+99:99",
+      "note": "The malformed offset is judged before the width of the fraction.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-offset"
+    },
+    {
+      "fraction": 3,
+      "text": "2026-11-19T08:30:00+99:99",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-offset"
+    },
+    {
+      "fraction": 3,
+      "text": "2026-11-19T08:30:00.12-00:00",
+      "note": "The forbidden offset is judged before the width of the fraction.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-negative-zero-offset"
+    },
+    {
+      "fraction": 3,
+      "text": "2026-11-19T08:30:00.123-00:00",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-negative-zero-offset"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-11-19T08:30:00.",
+      "note": "A point with no digit is not a fraction of any width.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    },
+    {
+      "fraction": 3,
+      "text": "2026-11-19T08:30:00.Z",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    },
+    {
+      "fraction": 0,
+      "text": "2026-02-30T00:00:00",
+      "note": "The calendar is judged before the kind of timestamp.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-invalid-date"
+    }
+  ],
+  "cells": [
+    {
+      "column": {
+        "type": "string",
+        "nullable": false
+      },
+      "value": "",
+      "verdict": "accept"
+    },
+    {
+      "column": {
+        "type": "string",
+        "nullable": false
+      },
+      "value": "000123",
+      "note": "A string column keeps text that looks like a number.",
+      "verdict": "accept"
+    },
+    {
+      "column": {
+        "type": "string",
+        "nullable": false
+      },
+      "value": " -0 ",
+      "verdict": "accept"
+    },
+    {
+      "column": {
+        "type": "string",
+        "nullable": false
+      },
+      "value": "null",
+      "verdict": "accept"
+    },
+    {
+      "column": {
+        "type": "string",
+        "nullable": true
+      },
+      "value": null,
+      "verdict": "accept"
+    },
+    {
+      "column": {
+        "type": "boolean",
+        "nullable": false
+      },
+      "value": true,
+      "verdict": "accept"
+    },
+    {
+      "column": {
+        "type": "boolean",
+        "nullable": false
+      },
+      "value": false,
+      "verdict": "accept"
+    },
+    {
+      "column": {
+        "type": "boolean",
+        "nullable": true
+      },
+      "value": null,
+      "verdict": "accept"
+    },
+    {
+      "column": {
+        "type": "integer",
+        "nullable": true
+      },
+      "value": null,
+      "verdict": "accept"
+    },
+    {
+      "column": {
+        "type": "decimal",
+        "precision": 4,
+        "scale": 2,
+        "nullable": true
+      },
+      "value": null,
+      "verdict": "accept"
+    },
+    {
+      "column": {
+        "type": "date",
+        "nullable": true
+      },
+      "value": null,
+      "verdict": "accept"
+    },
+    {
+      "column": {
+        "type": "offset-timestamp",
+        "fraction": 0,
+        "nullable": true
+      },
+      "value": null,
+      "verdict": "accept"
+    },
+    {
+      "column": {
+        "type": "string",
+        "nullable": false
+      },
+      "value": null,
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "null-not-allowed"
+    },
+    {
+      "column": {
+        "type": "integer",
+        "nullable": false
+      },
+      "value": null,
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "null-not-allowed"
+    },
+    {
+      "column": {
+        "type": "boolean",
+        "nullable": false
+      },
+      "value": null,
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "null-not-allowed"
+    },
+    {
+      "column": {
+        "type": "date",
+        "nullable": false
+      },
+      "value": null,
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "null-not-allowed"
+    },
+    {
+      "column": {
+        "type": "boolean",
+        "nullable": true
+      },
+      "value": "true",
+      "note": "A boolean is the JSON literal, never a string.",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "wrong-scalar-kind"
+    },
+    {
+      "column": {
+        "type": "boolean",
+        "nullable": true
+      },
+      "value": "",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "wrong-scalar-kind"
+    },
+    {
+      "column": {
+        "type": "string",
+        "nullable": true
+      },
+      "value": true,
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "wrong-scalar-kind"
+    },
+    {
+      "column": {
+        "type": "integer",
+        "nullable": true
+      },
+      "value": false,
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "wrong-scalar-kind"
+    },
+    {
+      "column": {
+        "type": "decimal",
+        "precision": 4,
+        "scale": 2,
+        "nullable": true
+      },
+      "value": true,
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "wrong-scalar-kind"
+    },
+    {
+      "column": {
+        "type": "date",
+        "nullable": true
+      },
+      "value": true,
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "wrong-scalar-kind"
+    },
+    {
+      "column": {
+        "type": "local-timestamp",
+        "fraction": 0,
+        "nullable": true
+      },
+      "value": false,
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "wrong-scalar-kind"
+    },
+    {
+      "column": {
+        "type": "integer",
+        "nullable": true
+      },
+      "value": "",
+      "note": "An empty string is not a null.",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "exact-empty"
+    },
+    {
+      "column": {
+        "type": "date",
+        "nullable": true
+      },
+      "value": "",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "temporal-malformed"
+    }
+  ],
+  "quantize": [
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "2.5",
+      "target_scale": 0,
+      "rounding": "half-even",
+      "result": "2",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "2.5",
+      "target_scale": 0,
+      "rounding": "half-away-from-zero",
+      "result": "3",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "2.5",
+      "target_scale": 0,
+      "rounding": "toward-zero",
+      "result": "2",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "2.5",
+      "target_scale": 0,
+      "rounding": "toward-positive",
+      "result": "3",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "2.5",
+      "target_scale": 0,
+      "rounding": "toward-negative",
+      "result": "2",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "3.5",
+      "target_scale": 0,
+      "rounding": "half-even",
+      "result": "4",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "3.5",
+      "target_scale": 0,
+      "rounding": "half-away-from-zero",
+      "result": "4",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "3.5",
+      "target_scale": 0,
+      "rounding": "toward-zero",
+      "result": "3",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "3.5",
+      "target_scale": 0,
+      "rounding": "toward-positive",
+      "result": "4",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "3.5",
+      "target_scale": 0,
+      "rounding": "toward-negative",
+      "result": "3",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "-2.5",
+      "target_scale": 0,
+      "rounding": "half-even",
+      "result": "-2",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "-2.5",
+      "target_scale": 0,
+      "rounding": "half-away-from-zero",
+      "result": "-3",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "-2.5",
+      "target_scale": 0,
+      "rounding": "toward-zero",
+      "result": "-2",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "-2.5",
+      "target_scale": 0,
+      "rounding": "toward-positive",
+      "result": "-2",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "-2.5",
+      "target_scale": 0,
+      "rounding": "toward-negative",
+      "result": "-3",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "-3.5",
+      "target_scale": 0,
+      "rounding": "half-even",
+      "result": "-4",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "-3.5",
+      "target_scale": 0,
+      "rounding": "half-away-from-zero",
+      "result": "-4",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "-3.5",
+      "target_scale": 0,
+      "rounding": "toward-zero",
+      "result": "-3",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "-3.5",
+      "target_scale": 0,
+      "rounding": "toward-positive",
+      "result": "-3",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "-3.5",
+      "target_scale": 0,
+      "rounding": "toward-negative",
+      "result": "-4",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "2.4",
+      "target_scale": 0,
+      "rounding": "half-even",
+      "result": "2",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "2.4",
+      "target_scale": 0,
+      "rounding": "half-away-from-zero",
+      "result": "2",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "2.4",
+      "target_scale": 0,
+      "rounding": "toward-zero",
+      "result": "2",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "2.4",
+      "target_scale": 0,
+      "rounding": "toward-positive",
+      "result": "3",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "2.4",
+      "target_scale": 0,
+      "rounding": "toward-negative",
+      "result": "2",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "2.6",
+      "target_scale": 0,
+      "rounding": "half-even",
+      "result": "3",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "2.6",
+      "target_scale": 0,
+      "rounding": "half-away-from-zero",
+      "result": "3",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "2.6",
+      "target_scale": 0,
+      "rounding": "toward-zero",
+      "result": "2",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "2.6",
+      "target_scale": 0,
+      "rounding": "toward-positive",
+      "result": "3",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "2.6",
+      "target_scale": 0,
+      "rounding": "toward-negative",
+      "result": "2",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "-2.4",
+      "target_scale": 0,
+      "rounding": "half-even",
+      "result": "-2",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "-2.4",
+      "target_scale": 0,
+      "rounding": "half-away-from-zero",
+      "result": "-2",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "-2.4",
+      "target_scale": 0,
+      "rounding": "toward-zero",
+      "result": "-2",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "-2.4",
+      "target_scale": 0,
+      "rounding": "toward-positive",
+      "result": "-2",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "-2.4",
+      "target_scale": 0,
+      "rounding": "toward-negative",
+      "result": "-3",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "-2.6",
+      "target_scale": 0,
+      "rounding": "half-even",
+      "result": "-3",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "-2.6",
+      "target_scale": 0,
+      "rounding": "half-away-from-zero",
+      "result": "-3",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "-2.6",
+      "target_scale": 0,
+      "rounding": "toward-zero",
+      "result": "-2",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "-2.6",
+      "target_scale": 0,
+      "rounding": "toward-positive",
+      "result": "-2",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "-2.6",
+      "target_scale": 0,
+      "rounding": "toward-negative",
+      "result": "-3",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "0.5",
+      "target_scale": 0,
+      "rounding": "half-even",
+      "result": "0",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "0.5",
+      "target_scale": 0,
+      "rounding": "half-away-from-zero",
+      "result": "1",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "0.5",
+      "target_scale": 0,
+      "rounding": "toward-zero",
+      "result": "0",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "0.5",
+      "target_scale": 0,
+      "rounding": "toward-positive",
+      "result": "1",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "0.5",
+      "target_scale": 0,
+      "rounding": "toward-negative",
+      "result": "0",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "-0.5",
+      "target_scale": 0,
+      "rounding": "half-even",
+      "result": "0",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "-0.5",
+      "target_scale": 0,
+      "rounding": "half-away-from-zero",
+      "result": "-1",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "-0.5",
+      "target_scale": 0,
+      "rounding": "toward-zero",
+      "result": "0",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "-0.5",
+      "target_scale": 0,
+      "rounding": "toward-positive",
+      "result": "0",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "-0.5",
+      "target_scale": 0,
+      "rounding": "toward-negative",
+      "result": "-1",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "2.0",
+      "target_scale": 0,
+      "rounding": "half-even",
+      "result": "2",
+      "value_changed": false,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "2.0",
+      "target_scale": 0,
+      "rounding": "half-away-from-zero",
+      "result": "2",
+      "value_changed": false,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "2.0",
+      "target_scale": 0,
+      "rounding": "toward-zero",
+      "result": "2",
+      "value_changed": false,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "2.0",
+      "target_scale": 0,
+      "rounding": "toward-positive",
+      "result": "2",
+      "value_changed": false,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "2.0",
+      "target_scale": 0,
+      "rounding": "toward-negative",
+      "result": "2",
+      "value_changed": false,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "0.0",
+      "target_scale": 0,
+      "rounding": "half-even",
+      "result": "0",
+      "value_changed": false,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "0.0",
+      "target_scale": 0,
+      "rounding": "half-away-from-zero",
+      "result": "0",
+      "value_changed": false,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "0.0",
+      "target_scale": 0,
+      "rounding": "toward-zero",
+      "result": "0",
+      "value_changed": false,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "0.0",
+      "target_scale": 0,
+      "rounding": "toward-positive",
+      "result": "0",
+      "value_changed": false,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "0.0",
+      "target_scale": 0,
+      "rounding": "toward-negative",
+      "result": "0",
+      "value_changed": false,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 4,
+      "scale": 3,
+      "text": "1.245",
+      "target_scale": 2,
+      "rounding": "half-even",
+      "result": "1.24",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 4,
+      "scale": 3,
+      "text": "-1.245",
+      "target_scale": 2,
+      "rounding": "half-even",
+      "result": "-1.24",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 4,
+      "scale": 3,
+      "text": "1.255",
+      "target_scale": 2,
+      "rounding": "half-even",
+      "result": "1.26",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 4,
+      "scale": 3,
+      "text": "1.245",
+      "target_scale": 2,
+      "rounding": "half-away-from-zero",
+      "result": "1.25",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 4,
+      "scale": 3,
+      "text": "-1.245",
+      "target_scale": 2,
+      "rounding": "half-away-from-zero",
+      "result": "-1.25",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 2,
+      "text": "1.50",
+      "target_scale": 2,
+      "rounding": "half-even",
+      "result": "1.50",
+      "value_changed": false,
+      "scale_changed": false,
+      "note": "The target scale equals the declared scale: nothing changes.",
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 2,
+      "text": "1.50",
+      "target_scale": 1,
+      "rounding": "half-even",
+      "result": "1.5",
+      "value_changed": false,
+      "scale_changed": true,
+      "note": "The scale changes and the value does not.",
+      "verdict": "accept"
+    },
+    {
+      "precision": 5,
+      "scale": 1,
+      "text": "1.5",
+      "target_scale": 4,
+      "rounding": "toward-zero",
+      "result": "1.5000",
+      "value_changed": false,
+      "scale_changed": true,
+      "note": "Raising the scale pads exactly.",
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 3,
+      "text": "-0.004",
+      "target_scale": 2,
+      "rounding": "half-even",
+      "result": "0.00",
+      "value_changed": true,
+      "scale_changed": true,
+      "note": "A negative value that rounds to zero is written without a sign.",
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 3,
+      "text": "-0.004",
+      "target_scale": 2,
+      "rounding": "toward-negative",
+      "result": "-0.01",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 2,
+      "scale": 1,
+      "text": "9.5",
+      "target_scale": 0,
+      "rounding": "half-away-from-zero",
+      "result": "10",
+      "value_changed": true,
+      "scale_changed": true,
+      "note": "Two digits fit the declared precision of 2.",
+      "verdict": "accept"
+    },
+    {
+      "precision": 38,
+      "scale": 38,
+      "text": "0.99999999999999999999999999999999999999",
+      "target_scale": 0,
+      "rounding": "half-even",
+      "result": "1",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 38,
+      "scale": 38,
+      "text": "0.50000000000000000000000000000000000000",
+      "target_scale": 0,
+      "rounding": "half-even",
+      "result": "0",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 38,
+      "scale": 38,
+      "text": "0.50000000000000000000000000000000000000",
+      "target_scale": 0,
+      "rounding": "half-away-from-zero",
+      "result": "1",
+      "value_changed": true,
+      "scale_changed": true,
+      "verdict": "accept"
+    },
+    {
+      "precision": 38,
+      "scale": 38,
+      "text": "0.50000000000000000000000000000000000001",
+      "target_scale": 0,
+      "rounding": "half-even",
+      "result": "1",
+      "value_changed": true,
+      "scale_changed": true,
+      "note": "Just above a tie.",
+      "verdict": "accept"
+    },
+    {
+      "precision": 3,
+      "scale": 1,
+      "text": "12.5",
+      "target_scale": 3,
+      "rounding": "half-even",
+      "note": "12.500 needs five digits and the declared precision is 3. Nothing is clipped.",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "quantize-overflow"
+    },
+    {
+      "precision": 38,
+      "scale": 0,
+      "text": "99999999999999999999999999999999999999",
+      "target_scale": 1,
+      "rounding": "half-even",
+      "verdict": "refuse",
+      "category": "schema-mismatch",
+      "rule": "quantize-overflow"
+    }
+  ]
+}

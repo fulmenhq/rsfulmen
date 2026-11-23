@@ -401,11 +401,12 @@ Must follow this canonical outline structure:
 ### All Parameterization Points
 
 Table listing every place the template identity appears:
-| Location | Before (Template) | After (Your App) | Required |
-|----------|-------------------|------------------|----------|
-| `.fulmen/app.yaml` | `binary_name: groningen` | `binary_name: myapi` | Yes |
-| `go.mod` | `module github.com/fulmenhq/...` | `module github.com/me/myapi` | Yes |
-| ... | ... | ... | ... |
+
+| Location           | Before (Template)                | After (Your App)             | Required |
+| ------------------ | -------------------------------- | ---------------------------- | -------- |
+| `.fulmen/app.yaml` | `binary_name: groningen`         | `binary_name: myapi`         | Yes      |
+| `go.mod`           | `module github.com/fulmenhq/...` | `module github.com/me/myapi` | Yes      |
+| ...                | ...                              | ...                          | ...      |
 
 ## Verification Checklist
 

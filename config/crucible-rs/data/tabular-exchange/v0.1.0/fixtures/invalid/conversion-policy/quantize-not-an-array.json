@@ -1,0 +1,9 @@
+{
+  "format": "tabular-exchange.policy/0",
+  "exact_numbers": "require-exact",
+  "quantize": {
+    "column": "amount",
+    "scale": 2,
+    "rounding": "half-even"
+  }
+}

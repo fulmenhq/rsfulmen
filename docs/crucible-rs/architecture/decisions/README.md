@@ -83,6 +83,18 @@ Standardized histogram bucket definitions for latency and size metrics across al
 
 ### Data Modeling & Configuration
 
+#### [ADR-0015: Tabular Exchange Contract in a New Data Domain](ADR-0015-tabular-exchange-contract.md)
+
+**Status**: Experimental | **Date**: 2026-11-19
+
+Crucible publishes the format-neutral Tabular Exchange Standard (`tabular-exchange/0.1.0`) under a new `data` domain: value grammar, table schema, rows encoding, conversion policy and conversion result, with schemas, fixtures, vectors and a reference checker.
+
+**Impact**: New schemas under `schemas/data/tabular-exchange/v0.1.0/`; consumers pin the exact contract revision below 1.0.
+
+**Related**: [ADR-0012](ADR-0012-schema-ref-ids.md)
+
+---
+
 #### [ADR-0006: Error Data Models](ADR-0006-error-data-models.md)
 
 **Status**: Accepted | **Date**: 2025-10-23
@@ -209,7 +221,7 @@ ADRs can have the following statuses:
 ## Creating a New ADR
 
 1. **Copy the template**: Use [template.md](template.md) as starting point
-2. **Number sequentially**: Next available number (currently ADR-0011)
+2. **Number sequentially**: Next available number (currently ADR-0016)
 3. **Fill out sections**: Problem, decision, consequences, alternatives
 4. **Open discussion**: https://github.com/fulmenhq/crucible/discussions
 5. **Submit PR**: Include ADR in `docs/architecture/decisions/`

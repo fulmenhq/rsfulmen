@@ -111,11 +111,11 @@ Every repository MUST include:
 
 ## Operating Model
 
-| Aspect         | Setting                                  |
-| -------------- | ---------------------------------------- | ------------------ | --------------- |
-| Mode           | Supervised (human reviews before commit) |
-| Classification | <code-substantive                        | security-sensitive | data-integrity> |
-| Role Required  | Yes                                      |
+| Aspect         | Setting                                                       |
+| -------------- | ------------------------------------------------------------- |
+| Mode           | Supervised (human reviews before commit)                      |
+| Classification | `code-substantive`, `security-sensitive`, or `data-integrity` |
+| Role Required  | Yes                                                           |
 
 ## Roles
 

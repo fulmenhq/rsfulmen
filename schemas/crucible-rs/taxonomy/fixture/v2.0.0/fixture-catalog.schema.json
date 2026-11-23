@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fulmenhq.dev/crucible/taxonomy/fixture/v2.0.0/fixture-catalog.schema.json",
+  "title": "Fixture Scenario Catalog Schema",
+  "description": "Fixture registry with scenario arrays and i18n metadata. The v1 variant-map contract remains separately available.",
+  "type": "object",
+  "required": [
+    "version",
+    "fixtures"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "https://schemas.fulmenhq.dev/crucible/taxonomy/fixture/v2.0.0/fixture-catalog.schema.json",
+      "description": "Optional schema declaration"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Catalog content version; independent of the schema version"
+    },
+    "fixtures": {
+      "type": "object",
+      "description": "Map of fixture names to their definitions",
+      "additionalProperties": {
+        "$ref": "#/$defs/fixture"
+      },
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9]{1,20}$",
+        "description": "Fixture name: ASCII lowercase, starts with letter, 2-21 chars"
+      }
+    }
+  },
+  "$defs": {
+    "fixture": {
+      "type": "object",
+      "required": [
+        "category",
+        "mode",
+        "default_lang",
+        "summary",
+        "scenarios"
+      ],
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": [
+            "proving",
+            "utility",
+            "chaos"
+          ],
+          "description": "Behavioral category of the fixture"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "server",
+            "client",
+            "datastore",
+            "identity"
+          ],
+          "description": "Fixture mode"
+        },
+        "default_lang": {
+          "type": "string",
+          "pattern": "^[a-z]{2}$",
+          "description": "ISO 639-1 language code for primary language of summary/descriptions"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 200,
+          "description": "Brief description in default_lang"
+        },
+        "summary_i18n": {
+          "type": "object",
+          "description": "Translations of summary (keyed by ISO 639-1 code, excludes default_lang)",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 200
+          },
+          "propertyNames": {
+            "pattern": "^[a-z]{2}$"
+          }
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional extended description in default_lang"
+        },
+        "aliases": {
+          "type": "array",
+          "description": "Alternative names (UTF-8), typo corrections, i18n nicknames",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "uniqueItems": true
+        },
+        "scenarios": {
+          "type": "array",
+          "description": "Configurations available within a single fixture repository",
+          "items": {
+            "$ref": "#/$defs/scenario"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "planned",
+            "deprecated"
+          ],
+          "default": "active",
+          "description": "Lifecycle status of the fixture"
+        }
+      },
+      "additionalProperties": false
+    },
+    "scenario": {
+      "type": "object",
+      "required": [
+        "name",
+        "description"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,30}$",
+          "description": "Short scenario identifier (ASCII, kebab-case)"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 500,
+          "description": "Description in fixture's default_lang"
+        },
+        "description_i18n": {
+          "type": "object",
+          "description": "Translations of description (keyed by ISO 639-1 code)",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 500
+          },
+          "propertyNames": {
+            "pattern": "^[a-z]{2}$"
+          }
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "planned",
+            "deprecated"
+          ],
+          "default": "active",
+          "description": "Lifecycle status of the scenario"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

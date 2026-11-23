@@ -1,0 +1,43 @@
+{
+  "format": "tabular-exchange.schema/0",
+  "columns": [
+    {
+      "id": "widest",
+      "label": "Widest",
+      "type": "decimal",
+      "precision": 38,
+      "scale": 38,
+      "nullable": true
+    },
+    {
+      "id": "narrowest",
+      "label": "Narrowest",
+      "type": "decimal",
+      "precision": 1,
+      "scale": 0,
+      "nullable": true
+    },
+    {
+      "id": "whole",
+      "label": "Whole",
+      "type": "decimal",
+      "precision": 38,
+      "scale": 0,
+      "nullable": true
+    },
+    {
+      "id": "coarse",
+      "label": "Coarse",
+      "type": "offset-timestamp",
+      "fraction": 0,
+      "nullable": true
+    },
+    {
+      "id": "fine",
+      "label": "Fine",
+      "type": "local-timestamp",
+      "fraction": 9,
+      "nullable": true
+    }
+  ]
+}

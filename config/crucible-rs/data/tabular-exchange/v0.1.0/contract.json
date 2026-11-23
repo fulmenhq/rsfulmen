@@ -1,0 +1,685 @@
+{
+  "contract": "tabular-exchange/0.1.0",
+  "description": "Machine-readable summary of the Tabular Exchange Standard at this revision: the wire formats it defines, its schemas, its closed lists, its bounds, the rule identifiers it registers and the matching procedure. The standard is the authority; this file restates it for tooling.",
+  "formats": {
+    "table-schema": "tabular-exchange.schema/0",
+    "conversion-policy": "tabular-exchange.policy/0",
+    "conversion-result": "tabular-exchange.result/0"
+  },
+  "schemas": {
+    "table-schema": "https://schemas.fulmenhq.dev/crucible/data/tabular-exchange/v0.1.0/table-schema.schema.json",
+    "conversion-policy": "https://schemas.fulmenhq.dev/crucible/data/tabular-exchange/v0.1.0/conversion-policy.schema.json",
+    "conversion-result": "https://schemas.fulmenhq.dev/crucible/data/tabular-exchange/v0.1.0/conversion-result.schema.json",
+    "row": "https://schemas.fulmenhq.dev/crucible/data/tabular-exchange/v0.1.0/row.schema.json"
+  },
+  "types": [
+    "string",
+    "boolean",
+    "integer",
+    "decimal",
+    "date",
+    "local-timestamp",
+    "offset-timestamp"
+  ],
+  "exact_number_policies": [
+    "require-exact",
+    "text-if-needed",
+    "text-always"
+  ],
+  "rounding_modes": [
+    "half-even",
+    "half-away-from-zero",
+    "toward-zero",
+    "toward-positive",
+    "toward-negative"
+  ],
+  "representations": [
+    "native",
+    "text-fallback",
+    "text-forced",
+    "text"
+  ],
+  "statuses": {
+    "ok": [],
+    "refused": [
+      "invalid-input",
+      "schema-mismatch",
+      "unsupported-type",
+      "unsupported-representation",
+      "resource-limit"
+    ],
+    "failed": [
+      "resource-limit",
+      "io-failure",
+      "internal"
+    ],
+    "cancelled": [
+      "cancelled"
+    ]
+  },
+  "categories": [
+    "invalid-input",
+    "schema-mismatch",
+    "unsupported-type",
+    "unsupported-representation",
+    "resource-limit",
+    "io-failure",
+    "cancelled",
+    "internal"
+  ],
+  "bounds": {
+    "max_significant_digits": 38,
+    "max_precision": 38,
+    "max_fraction_digits": 9,
+    "min_year": 1,
+    "max_year": 9999,
+    "max_offset_minutes": 1439,
+    "max_run_id_length": 128,
+    "max_rule_length": 64,
+    "max_count": 9007199254740991,
+    "max_nesting": {
+      "table-schema": 3,
+      "conversion-policy": 6,
+      "conversion-result": 6
+    },
+    "extensions": {
+      "max_namespaces": 8,
+      "max_namespace_length": 64,
+      "max_values": 256,
+      "max_string_code_points": 256,
+      "max_number": 9007199254740991,
+      "max_document_depth": 6,
+      "namespace_object_depth": 3
+    }
+  },
+  "rules": [
+    {
+      "rule": "schema-too-large",
+      "category": "resource-limit",
+      "scope": "document"
+    },
+    {
+      "rule": "schema-not-utf8",
+      "category": "invalid-input",
+      "scope": "document"
+    },
+    {
+      "rule": "schema-malformed",
+      "category": "invalid-input",
+      "scope": "document"
+    },
+    {
+      "rule": "schema-not-an-object",
+      "category": "invalid-input",
+      "scope": "document"
+    },
+    {
+      "rule": "schema-format-unsupported",
+      "category": "invalid-input",
+      "scope": "document"
+    },
+    {
+      "rule": "schema-member-missing",
+      "category": "invalid-input",
+      "scope": "document"
+    },
+    {
+      "rule": "schema-member-unknown",
+      "category": "invalid-input",
+      "scope": "document"
+    },
+    {
+      "rule": "schema-member-invalid",
+      "category": "invalid-input",
+      "scope": "document"
+    },
+    {
+      "rule": "policy-too-large",
+      "category": "resource-limit",
+      "scope": "document"
+    },
+    {
+      "rule": "policy-not-utf8",
+      "category": "invalid-input",
+      "scope": "document"
+    },
+    {
+      "rule": "policy-malformed",
+      "category": "invalid-input",
+      "scope": "document"
+    },
+    {
+      "rule": "policy-not-an-object",
+      "category": "invalid-input",
+      "scope": "document"
+    },
+    {
+      "rule": "policy-format-unsupported",
+      "category": "invalid-input",
+      "scope": "document"
+    },
+    {
+      "rule": "policy-member-missing",
+      "category": "invalid-input",
+      "scope": "document"
+    },
+    {
+      "rule": "policy-member-unknown",
+      "category": "invalid-input",
+      "scope": "document"
+    },
+    {
+      "rule": "policy-member-invalid",
+      "category": "invalid-input",
+      "scope": "document"
+    },
+    {
+      "rule": "result-too-large",
+      "category": "resource-limit",
+      "scope": "document"
+    },
+    {
+      "rule": "result-not-utf8",
+      "category": "invalid-input",
+      "scope": "document"
+    },
+    {
+      "rule": "result-malformed",
+      "category": "invalid-input",
+      "scope": "document"
+    },
+    {
+      "rule": "result-not-an-object",
+      "category": "invalid-input",
+      "scope": "document"
+    },
+    {
+      "rule": "result-format-unsupported",
+      "category": "invalid-input",
+      "scope": "document"
+    },
+    {
+      "rule": "result-member-missing",
+      "category": "invalid-input",
+      "scope": "document"
+    },
+    {
+      "rule": "result-member-unknown",
+      "category": "invalid-input",
+      "scope": "document"
+    },
+    {
+      "rule": "result-member-invalid",
+      "category": "invalid-input",
+      "scope": "document"
+    },
+    {
+      "rule": "schema-type-unsupported",
+      "category": "unsupported-type",
+      "scope": "table-schema"
+    },
+    {
+      "rule": "schema-columns-invalid",
+      "category": "invalid-input",
+      "scope": "table-schema"
+    },
+    {
+      "rule": "policy-quantize-duplicate",
+      "category": "invalid-input",
+      "scope": "conversion-policy"
+    },
+    {
+      "rule": "policy-extension-unsupported",
+      "category": "invalid-input",
+      "scope": "conversion-policy"
+    },
+    {
+      "rule": "quantize-unknown-column",
+      "category": "schema-mismatch",
+      "scope": "conversion-policy"
+    },
+    {
+      "rule": "quantize-not-decimal",
+      "category": "schema-mismatch",
+      "scope": "conversion-policy"
+    },
+    {
+      "rule": "quantize-scale-too-large",
+      "category": "schema-mismatch",
+      "scope": "conversion-policy"
+    },
+    {
+      "rule": "quantize-overflow",
+      "category": "schema-mismatch",
+      "scope": "conversion-policy",
+      "located_at": [
+        "row",
+        "column"
+      ]
+    },
+    {
+      "rule": "result-contract-unsupported",
+      "category": "invalid-input",
+      "scope": "conversion-result"
+    },
+    {
+      "rule": "result-counts-inconsistent",
+      "category": "invalid-input",
+      "scope": "conversion-result"
+    },
+    {
+      "rule": "result-schema-mismatch",
+      "category": "invalid-input",
+      "scope": "conversion-result"
+    },
+    {
+      "rule": "result-policy-mismatch",
+      "category": "invalid-input",
+      "scope": "conversion-result"
+    },
+    {
+      "rule": "line-too-long",
+      "category": "resource-limit",
+      "scope": "rows",
+      "located_at": [
+        "row"
+      ]
+    },
+    {
+      "rule": "byte-order-mark",
+      "category": "invalid-input",
+      "scope": "rows"
+    },
+    {
+      "rule": "invalid-utf8",
+      "category": "invalid-input",
+      "scope": "rows",
+      "located_at": [
+        "row"
+      ]
+    },
+    {
+      "rule": "blank-line",
+      "category": "invalid-input",
+      "scope": "rows",
+      "located_at": [
+        "row"
+      ]
+    },
+    {
+      "rule": "not-an-array",
+      "category": "invalid-input",
+      "scope": "rows",
+      "located_at": [
+        "row"
+      ]
+    },
+    {
+      "rule": "numeric-literal",
+      "category": "invalid-input",
+      "scope": "rows",
+      "located_at": [
+        "row"
+      ]
+    },
+    {
+      "rule": "nested-value",
+      "category": "invalid-input",
+      "scope": "rows",
+      "located_at": [
+        "row"
+      ]
+    },
+    {
+      "rule": "invalid-string",
+      "category": "invalid-input",
+      "scope": "rows",
+      "located_at": [
+        "row"
+      ]
+    },
+    {
+      "rule": "trailing-content",
+      "category": "invalid-input",
+      "scope": "rows",
+      "located_at": [
+        "row"
+      ]
+    },
+    {
+      "rule": "malformed-row",
+      "category": "invalid-input",
+      "scope": "rows",
+      "located_at": [
+        "row"
+      ]
+    },
+    {
+      "rule": "arity-mismatch",
+      "category": "schema-mismatch",
+      "scope": "rows",
+      "located_at": [
+        "row",
+        "column when the row is short"
+      ]
+    },
+    {
+      "rule": "null-not-allowed",
+      "category": "schema-mismatch",
+      "scope": "values",
+      "located_at": [
+        "row",
+        "column"
+      ]
+    },
+    {
+      "rule": "wrong-scalar-kind",
+      "category": "schema-mismatch",
+      "scope": "values",
+      "located_at": [
+        "row",
+        "column"
+      ]
+    },
+    {
+      "rule": "exact-empty",
+      "category": "invalid-input",
+      "scope": "values",
+      "located_at": [
+        "row",
+        "column"
+      ]
+    },
+    {
+      "rule": "exact-invalid-character",
+      "category": "invalid-input",
+      "scope": "values",
+      "located_at": [
+        "row",
+        "column"
+      ]
+    },
+    {
+      "rule": "exact-malformed",
+      "category": "invalid-input",
+      "scope": "values",
+      "located_at": [
+        "row",
+        "column"
+      ]
+    },
+    {
+      "rule": "exact-leading-zero",
+      "category": "invalid-input",
+      "scope": "values",
+      "located_at": [
+        "row",
+        "column"
+      ]
+    },
+    {
+      "rule": "exact-negative-zero",
+      "category": "invalid-input",
+      "scope": "values",
+      "located_at": [
+        "row",
+        "column"
+      ]
+    },
+    {
+      "rule": "exact-too-many-digits",
+      "category": "resource-limit",
+      "scope": "values",
+      "located_at": [
+        "row",
+        "column"
+      ]
+    },
+    {
+      "rule": "exact-point-mismatch",
+      "category": "schema-mismatch",
+      "scope": "values",
+      "located_at": [
+        "row",
+        "column"
+      ]
+    },
+    {
+      "rule": "exact-scale-mismatch",
+      "category": "schema-mismatch",
+      "scope": "values",
+      "located_at": [
+        "row",
+        "column"
+      ]
+    },
+    {
+      "rule": "exact-precision-exceeded",
+      "category": "schema-mismatch",
+      "scope": "values",
+      "located_at": [
+        "row",
+        "column"
+      ]
+    },
+    {
+      "rule": "temporal-malformed",
+      "category": "invalid-input",
+      "scope": "values",
+      "located_at": [
+        "row",
+        "column"
+      ]
+    },
+    {
+      "rule": "temporal-invalid-date",
+      "category": "invalid-input",
+      "scope": "values",
+      "located_at": [
+        "row",
+        "column"
+      ]
+    },
+    {
+      "rule": "temporal-invalid-time",
+      "category": "invalid-input",
+      "scope": "values",
+      "located_at": [
+        "row",
+        "column"
+      ]
+    },
+    {
+      "rule": "temporal-invalid-offset",
+      "category": "invalid-input",
+      "scope": "values",
+      "located_at": [
+        "row",
+        "column"
+      ]
+    },
+    {
+      "rule": "temporal-negative-zero-offset",
+      "category": "invalid-input",
+      "scope": "values",
+      "located_at": [
+        "row",
+        "column"
+      ]
+    },
+    {
+      "rule": "temporal-fraction-mismatch",
+      "category": "schema-mismatch",
+      "scope": "values",
+      "located_at": [
+        "row",
+        "column"
+      ]
+    },
+    {
+      "rule": "temporal-offset-mismatch",
+      "category": "schema-mismatch",
+      "scope": "values",
+      "located_at": [
+        "row",
+        "column"
+      ]
+    }
+  ],
+  "reserved_namespaces": {
+    "exact": [
+      "example"
+    ],
+    "prefix": [
+      "example-"
+    ]
+  },
+  "counts": [
+    {
+      "name": "rows",
+      "defined_by": "contract"
+    },
+    {
+      "name": "null",
+      "defined_by": "contract"
+    },
+    {
+      "name": "empty",
+      "defined_by": "contract"
+    },
+    {
+      "name": "quantized",
+      "defined_by": "contract"
+    },
+    {
+      "name": "scale_changed",
+      "defined_by": "contract"
+    },
+    {
+      "name": "text_forced",
+      "defined_by": "contract"
+    },
+    {
+      "name": "numeric",
+      "defined_by": "adapter-profile"
+    },
+    {
+      "name": "text_fallback",
+      "defined_by": "adapter-profile"
+    },
+    {
+      "name": "representation",
+      "defined_by": "adapter-profile",
+      "except": "text-forced and the text of a string column follow from the contract alone"
+    }
+  ],
+  "result_reading_order": [
+    "document",
+    "contract",
+    "status",
+    "presence",
+    "other"
+  ],
+  "matching": {
+    "expectations": [
+      "run_id",
+      "source",
+      "schema",
+      "policy"
+    ],
+    "verdicts": [
+      "requested-run-completed",
+      "output-agreement",
+      "not-established"
+    ],
+    "steps": [
+      {
+        "step": "M-01",
+        "rule": "expectations-incomplete",
+        "applies": "always"
+      },
+      {
+        "step": "M-02",
+        "rule": "expectation-invalid",
+        "applies": "always"
+      },
+      {
+        "step": "M-03",
+        "rule": "result-missing",
+        "applies": "always"
+      },
+      {
+        "step": "M-04",
+        "rule": null,
+        "applies": "always",
+        "note": "the rule that refuses the result as a document"
+      },
+      {
+        "step": "M-05",
+        "rule": "result-not-ok",
+        "applies": "always"
+      },
+      {
+        "step": "M-06",
+        "rule": "binding-run-id-mismatch",
+        "applies": "all-expectations"
+      },
+      {
+        "step": "M-07",
+        "rule": "binding-source-length-mismatch",
+        "applies": "all-expectations"
+      },
+      {
+        "step": "M-08",
+        "rule": "binding-source-digest-mismatch",
+        "applies": "all-expectations"
+      },
+      {
+        "step": "M-09",
+        "rule": "binding-schema-length-mismatch",
+        "applies": "all-expectations"
+      },
+      {
+        "step": "M-10",
+        "rule": "binding-schema-digest-mismatch",
+        "applies": "all-expectations"
+      },
+      {
+        "step": "M-11",
+        "rule": "binding-policy-length-mismatch",
+        "applies": "all-expectations"
+      },
+      {
+        "step": "M-12",
+        "rule": "binding-policy-digest-mismatch",
+        "applies": "all-expectations"
+      },
+      {
+        "step": "M-13",
+        "rule": "output-missing",
+        "applies": "always"
+      },
+      {
+        "step": "M-14",
+        "rule": "output-length-mismatch",
+        "applies": "always"
+      },
+      {
+        "step": "M-15",
+        "rule": "output-digest-mismatch",
+        "applies": "always"
+      }
+    ],
+    "verdict_when_all_steps_pass": {
+      "all-expectations": "requested-run-completed",
+      "no-expectations": "output-agreement"
+    }
+  },
+  "vectors": [
+    "value-vectors.json",
+    "row-vectors.json",
+    "document-vectors.json",
+    "matching-vectors.json"
+  ],
+  "fixtures": "fixtures/manifest.json"
+}

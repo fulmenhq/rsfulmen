@@ -1,4 +1,4 @@
-//! Simplified exit-code mappings from the Crucible v0.4.19 catalog.
+//! Simplified exit-code mappings from the Crucible v0.5.1 catalog.
 //!
 //! Workhorses may collapse the full Fulmen exit-code space for novice CLIs
 //! or limited environments. Mapping is **opt-in**: callers must request a

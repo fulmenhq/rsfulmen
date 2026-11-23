@@ -1,0 +1,15 @@
+{
+  "format": "tabular-exchange.policy/0",
+  "exact_numbers": "text-always",
+  "extensions": {
+    "example-n1": {},
+    "example-n2": {},
+    "example-n3": {},
+    "example-n4": {},
+    "example-n5": {},
+    "example-n6": {},
+    "example-n7": {},
+    "example-n8": {},
+    "example-n9": {}
+  }
+}

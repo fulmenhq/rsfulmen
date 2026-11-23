@@ -1,0 +1,21 @@
+{
+  "format": "tabular-exchange.policy/0",
+  "exact_numbers": "require-exact",
+  "quantize": [
+    {
+      "column": "widest",
+      "scale": 0,
+      "rounding": "half-even"
+    },
+    {
+      "column": "narrowest",
+      "scale": 0,
+      "rounding": "half-away-from-zero"
+    },
+    {
+      "column": "whole",
+      "scale": 0,
+      "rounding": "toward-zero"
+    }
+  ]
+}

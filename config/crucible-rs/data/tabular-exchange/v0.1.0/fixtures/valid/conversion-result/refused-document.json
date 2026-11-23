@@ -1,0 +1,20 @@
+{
+  "format": "tabular-exchange.result/0",
+  "contract": "tabular-exchange/0.1.0",
+  "status": "refused",
+  "run_id": "case-0001",
+  "profile": {
+    "id": "example-destination/r1",
+    "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+  },
+  "inputs": {
+    "schema": {
+      "sha256": "df0ad6e43880f09c90ebf95f19110178aba6890df0010ebda7485029e2b543b4",
+      "bytes": 812
+    }
+  },
+  "refusal": {
+    "category": "invalid-input",
+    "rule": "schema-member-unknown"
+  }
+}

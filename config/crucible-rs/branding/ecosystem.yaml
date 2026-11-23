@@ -1,6 +1,6 @@
 # Fulmen Ecosystem Brand Summary
 #
-# Accessible via helper libraries: crucible.GetBrandSummary()
+# Shared branding data for consumers of this catalog.
 #
 # Display options (tools implement one or both):
 #   - CLI: `<binary> version --extended` or `<binary> about`

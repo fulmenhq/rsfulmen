@@ -5,6 +5,23 @@
   "title": "Fulmen Server Management Configuration",
   "description": "Configuration schema for orchestrating local development, testing, and preview servers with predictable ports, health checks, and cleanup routines",
   "properties": {
+    "$schema": {
+      "type": "string",
+      "enum": [
+        "https://schemas.fulmenhq.dev/crucible/server/management/v1.0.0/server-management.schema.json",
+        "https://schemas.fulmenhq.dev/server/management/v1.0.0/server-management.schema.json"
+      ],
+      "description": "Optional schema declaration using the canonical ID or published alias"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[vV]?[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Optional configuration version, with an optional v prefix"
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional human-readable configuration description"
+    },
     "envPrefix": {
       "type": "string",
       "pattern": "^[A-Z][A-Z0-9_]*$",

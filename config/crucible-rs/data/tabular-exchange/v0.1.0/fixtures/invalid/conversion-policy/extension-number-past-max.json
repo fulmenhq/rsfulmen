@@ -1,0 +1,11 @@
+{
+  "format": "tabular-exchange.policy/0",
+  "exact_numbers": "text-always",
+  "extensions": {
+    "example-destination": {
+      "limits": {
+        "max_rows": 9007199254740992
+      }
+    }
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "format": "tabular-exchange.schema/0",
+  "columns": [
+    {
+      "id": "invoice",
+      "label": "Invoice",
+      "type": "string",
+      "nullable": false
+    },
+    {
+      "id": "qty",
+      "label": "Qty",
+      "type": "integer",
+      "nullable": false
+    },
+    {
+      "id": "amount",
+      "label": "Amount",
+      "type": "decimal",
+      "precision": 12,
+      "scale": 4,
+      "nullable": true
+    },
+    {
+      "id": "paid",
+      "label": "Paid",
+      "type": "boolean",
+      "nullable": true
+    },
+    {
+      "id": "day",
+      "label": "",
+      "type": "date",
+      "nullable": true
+    },
+    {
+      "id": "seen",
+      "label": "Seen",
+      "type": "local-timestamp",
+      "fraction": 3,
+      "nullable": true
+    },
+    {
+      "id": "sent",
+      "label": "Seen",
+      "type": "offset-timestamp",
+      "fraction": 0,
+      "nullable": true
+    }
+  ]
+}

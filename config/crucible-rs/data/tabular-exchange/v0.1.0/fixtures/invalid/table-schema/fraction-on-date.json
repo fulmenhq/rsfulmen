@@ -1,0 +1,12 @@
+{
+  "format": "tabular-exchange.schema/0",
+  "columns": [
+    {
+      "id": "a",
+      "label": "A",
+      "type": "date",
+      "fraction": 0,
+      "nullable": true
+    }
+  ]
+}

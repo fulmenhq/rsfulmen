@@ -1,0 +1,248 @@
+{
+  "contract": "tabular-exchange/0.1.0",
+  "description": "Table schema documents as exact text or bytes, and what a conforming reader does with each. These cover the rules about bytes and JSON grammar that a fixture file checked by a JSON Schema validator cannot carry. The same rules apply to a policy and to a result, with the rule prefix of that kind. input is the exact text, encoded as UTF-8; input_hex gives bytes.",
+  "cases": [
+    {
+      "name": "compact",
+      "document": "table-schema",
+      "input": "{\"format\":\"tabular-exchange.schema/0\",\"columns\":[{\"id\":\"a\",\"label\":\"A\",\"type\":\"string\",\"nullable\":true}]}",
+      "verdict": "accept"
+    },
+    {
+      "name": "whitespace around the value",
+      "document": "table-schema",
+      "input": " \t\r\n{\"format\":\"tabular-exchange.schema/0\",\"columns\":[{\"id\":\"a\",\"label\":\"A\",\"type\":\"string\",\"nullable\":true}]}\r\n\t ",
+      "verdict": "accept"
+    },
+    {
+      "name": "whitespace between tokens",
+      "document": "table-schema",
+      "input": "{\"format\" :\n\"tabular-exchange.schema/0\" ,\t\"columns\" :\n[{\"id\" :\n\"a\" ,\t\"label\" :\n\"A\" ,\t\"type\" :\n\"string\" ,\t\"nullable\" :\ntrue}]}",
+      "verdict": "accept"
+    },
+    {
+      "name": "escaped member name",
+      "document": "table-schema",
+      "input": "{\"\\u0066ormat\":\"tabular-exchange.schema/0\",\"columns\":[{\"id\":\"a\",\"label\":\"A\",\"type\":\"string\",\"nullable\":true}]}",
+      "verdict": "accept",
+      "note": "Member names are compared after escapes are decoded."
+    },
+    {
+      "name": "escaped characters in a label",
+      "document": "table-schema",
+      "input": "{\"format\":\"tabular-exchange.schema/0\",\"columns\":[{\"id\":\"a\",\"label\":\"caf\\u00e9 \\ud83d\\ude00 \\\"A\\\" \\\\ \\/\",\"type\":\"string\",\"nullable\":true}]}",
+      "verdict": "accept"
+    },
+    {
+      "name": "byte order mark",
+      "document": "table-schema",
+      "input_hex": "efbbbf7b22666f726d6174223a22746162756c61722d65786368616e67652e736368656d612f30222c22636f6c756d6e73223a5b7b226964223a2261222c226c6162656c223a2241222c2274797065223a22737472696e67222c226e756c6c61626c65223a747275657d5d7d",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "schema-malformed"
+    },
+    {
+      "name": "invalid UTF-8",
+      "document": "table-schema",
+      "input_hex": "7b22666f726d6174223a22746162756c61722d65786368616e67652e736368656d612f30222c22636f6c756d6e73223a5b7b226964223a2261222c226c6162656c223a22ff222c2274797065223a22737472696e67222c226e756c6c61626c65223a747275657d5d7d",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "schema-not-utf8"
+    },
+    {
+      "name": "empty",
+      "document": "table-schema",
+      "input": "",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "schema-malformed"
+    },
+    {
+      "name": "only whitespace",
+      "document": "table-schema",
+      "input": " \n",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "schema-malformed"
+    },
+    {
+      "name": "two values",
+      "document": "table-schema",
+      "input": "{\"format\":\"tabular-exchange.schema/0\",\"columns\":[{\"id\":\"a\",\"label\":\"A\",\"type\":\"string\",\"nullable\":true}]}{\"format\":\"tabular-exchange.schema/0\",\"columns\":[{\"id\":\"a\",\"label\":\"A\",\"type\":\"string\",\"nullable\":true}]}",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "schema-malformed"
+    },
+    {
+      "name": "text after the value",
+      "document": "table-schema",
+      "input": "{\"format\":\"tabular-exchange.schema/0\",\"columns\":[{\"id\":\"a\",\"label\":\"A\",\"type\":\"string\",\"nullable\":true}]} x",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "schema-malformed"
+    },
+    {
+      "name": "unclosed object",
+      "document": "table-schema",
+      "input": "{\"format\":\"tabular-exchange.schema/0\",\"columns\":[{\"id\":\"a\",\"label\":\"A\",\"type\":\"string\",\"nullable\":true}]",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "schema-malformed"
+    },
+    {
+      "name": "trailing comma",
+      "document": "table-schema",
+      "input": "{\"format\":\"tabular-exchange.schema/0\",\"columns\":[{\"id\":\"a\",\"label\":\"A\",\"type\":\"string\",\"nullable\":true},]}",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "schema-malformed"
+    },
+    {
+      "name": "comment",
+      "document": "table-schema",
+      "input": "// schema\n{\"format\":\"tabular-exchange.schema/0\",\"columns\":[{\"id\":\"a\",\"label\":\"A\",\"type\":\"string\",\"nullable\":true}]}",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "schema-malformed"
+    },
+    {
+      "name": "single quotes",
+      "document": "table-schema",
+      "input": "{'format':'tabular-exchange.schema/0','columns':[{'id':'a','label':'A','type':'string','nullable':true}]}",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "schema-malformed"
+    },
+    {
+      "name": "key repeated",
+      "document": "table-schema",
+      "input": "{\"format\":\"tabular-exchange.schema/0\",\"columns\":[{\"id\":\"a\",\"label\":\"A\",\"label\":\"A\",\"type\":\"string\",\"nullable\":true}]}",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "schema-malformed"
+    },
+    {
+      "name": "key repeated through an escape",
+      "document": "table-schema",
+      "input": "{\"format\":\"tabular-exchange.schema/0\",\"columns\":[{\"id\":\"a\",\"label\":\"A\",\"\\u006cabel\":\"B\",\"type\":\"string\",\"nullable\":true}]}",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "schema-malformed",
+      "note": "Keys are compared after escapes are decoded."
+    },
+    {
+      "name": "key repeated at the top",
+      "document": "table-schema",
+      "input": "{\"format\":\"tabular-exchange.schema/0\",\"format\":\"tabular-exchange.schema/0\",\"columns\":[{\"id\":\"a\",\"label\":\"A\",\"type\":\"string\",\"nullable\":true}]}",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "schema-malformed"
+    },
+    {
+      "name": "unescaped control character",
+      "document": "table-schema",
+      "input": "{\"format\":\"tabular-exchange.schema/0\",\"columns\":[{\"id\":\"a\",\"label\":\"A\u0001\",\"type\":\"string\",\"nullable\":true}]}",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "schema-malformed"
+    },
+    {
+      "name": "unknown escape",
+      "document": "table-schema",
+      "input": "{\"format\":\"tabular-exchange.schema/0\",\"columns\":[{\"id\":\"a\",\"label\":\"\\q\",\"type\":\"string\",\"nullable\":true}]}",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "schema-malformed"
+    },
+    {
+      "name": "lone surrogate",
+      "document": "table-schema",
+      "input": "{\"format\":\"tabular-exchange.schema/0\",\"columns\":[{\"id\":\"a\",\"label\":\"\\ud800\",\"type\":\"string\",\"nullable\":true}]}",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "schema-malformed"
+    },
+    {
+      "name": "number with a leading zero",
+      "document": "table-schema",
+      "input": "{\"format\":\"tabular-exchange.schema/0\",\"columns\":[{\"id\":\"a\",\"label\":\"A\",\"type\":\"decimal\",\"precision\":012,\"scale\":0,\"nullable\":true}]}",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "schema-malformed"
+    },
+    {
+      "name": "number with a sign",
+      "document": "table-schema",
+      "input": "{\"format\":\"tabular-exchange.schema/0\",\"columns\":[{\"id\":\"a\",\"label\":\"A\",\"type\":\"decimal\",\"precision\":-1,\"scale\":0,\"nullable\":true}]}",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "schema-malformed"
+    },
+    {
+      "name": "number with a plus sign",
+      "document": "table-schema",
+      "input": "{\"format\":\"tabular-exchange.schema/0\",\"columns\":[{\"id\":\"a\",\"label\":\"A\",\"type\":\"decimal\",\"precision\":+12,\"scale\":0,\"nullable\":true}]}",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "schema-malformed"
+    },
+    {
+      "name": "number with a fraction",
+      "document": "table-schema",
+      "input": "{\"format\":\"tabular-exchange.schema/0\",\"columns\":[{\"id\":\"a\",\"label\":\"A\",\"type\":\"decimal\",\"precision\":12.0,\"scale\":0,\"nullable\":true}]}",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "schema-malformed"
+    },
+    {
+      "name": "number with an exponent",
+      "document": "table-schema",
+      "input": "{\"format\":\"tabular-exchange.schema/0\",\"columns\":[{\"id\":\"a\",\"label\":\"A\",\"type\":\"decimal\",\"precision\":1e1,\"scale\":0,\"nullable\":true}]}",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "schema-malformed"
+    },
+    {
+      "name": "number in an unknown member",
+      "document": "table-schema",
+      "input": "{\"format\":\"tabular-exchange.schema/0\",\"columns\":[{\"id\":\"a\",\"label\":\"A\",\"type\":\"string\",\"nullable\":true,\"weight\":1.5}]}",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "schema-malformed",
+      "note": "The document grammar is judged before members are examined."
+    },
+    {
+      "name": "a bare string",
+      "document": "table-schema",
+      "input": "\"tabular-exchange.schema/0\"",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "schema-not-an-object"
+    },
+    {
+      "name": "null",
+      "document": "table-schema",
+      "input": "null",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "schema-not-an-object"
+    },
+    {
+      "name": "repeated key and unsupported format",
+      "document": "table-schema",
+      "input": "{\"format\":\"other/9\",\"format\":\"other/9\"}",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "schema-malformed",
+      "note": "The document grammar is judged before format."
+    },
+    {
+      "name": "unsupported format and unknown member",
+      "document": "table-schema",
+      "input": "{\"format\":\"other/9\",\"x\":1}",
+      "verdict": "refuse",
+      "category": "invalid-input",
+      "rule": "schema-format-unsupported"
+    }
+  ]
+}

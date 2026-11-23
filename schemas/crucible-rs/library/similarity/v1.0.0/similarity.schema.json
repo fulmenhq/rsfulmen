@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.fulmenhq.dev/crucible/library/similarity/v1.0.0/similarity.schema.json",
   "title": "Similarity Fixtures",
-  "description": "Test fixtures for text similarity and normalization utilities (v2.0)",
+  "description": "Test fixtures for text similarity and normalization utilities",
   "type": "object",
   "required": [
     "version",
@@ -41,14 +41,11 @@
         "category": {
           "type": "string",
           "enum": [
-            "levenshtein",
-            "damerau",
-            "jaro_winkler",
-            "substring",
+            "distance",
             "normalization",
             "suggestions"
           ],
-          "description": "Test case category (v2.0: split distance into specific metrics)"
+          "description": "Test case category"
         },
         "cases": {
           "type": "array",
@@ -56,16 +53,7 @@
           "items": {
             "oneOf": [
               {
-                "$ref": "#/definitions/LevenshteinTestCase"
-              },
-              {
-                "$ref": "#/definitions/DamerauTestCase"
-              },
-              {
-                "$ref": "#/definitions/JaroWinklerTestCase"
-              },
-              {
-                "$ref": "#/definitions/SubstringTestCase"
+                "$ref": "#/definitions/DistanceTestCase"
               },
               {
                 "$ref": "#/definitions/NormalizationTestCase"

@@ -195,7 +195,7 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Crucible SSOT version this library was synced from.
 ///
 /// Updated automatically by `make sync-ssot`.
-pub const CRUCIBLE_VERSION: &str = "v0.4.19";
+pub const CRUCIBLE_VERSION: &str = "v0.5.1";
 
 /// Crate-wide lock for tests that read or mutate the process environment.
 ///

@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Rust: 1.88+](https://img.shields.io/badge/rust-1.88%2B-orange.svg)](https://www.rust-lang.org/)
-[![Crucible: v0.4.19](https://img.shields.io/badge/crucible-v0.4.19-purple.svg)](https://github.com/fulmenhq/crucible)
+[![Crucible: v0.5.1](https://img.shields.io/badge/crucible-v0.5.1-purple.svg)](https://github.com/fulmenhq/crucible)
 
 **Stop reinventing catalogs. Start shipping.**
 
@@ -102,7 +102,7 @@ fn main() {
 
 | Field         | Description                                                  |
 | ------------- | ------------------------------------------------------------ |
-| `version`     | CalVer Crucible version (e.g., `0.4.19`)                     |
+| `version`     | CalVer Crucible version (e.g., `0.5.1`)                      |
 | `commit`      | Git commit SHA of the synced Crucible snapshot               |
 | `dirty`       | `true` if synced from uncommitted changes (development only) |
 | `synced_at`   | RFC3339 timestamp when sync occurred                         |
@@ -596,7 +596,7 @@ rsfulmen is part of the Fulmen helper library family. All libraries derive their
 | [gofulmen](https://github.com/fulmenhq/gofulmen) | Go         | Reference impl | v0.4.x           |
 | [tsfulmen](https://github.com/fulmenhq/tsfulmen) | TypeScript | Stable         | v0.4.x           |
 | [pyfulmen](https://github.com/fulmenhq/pyfulmen) | Python     | Stable         | v0.4.x           |
-| rsfulmen                                         | Rust       | Alpha          | v0.4.19          |
+| rsfulmen                                         | Rust       | Alpha          | v0.5.1           |
 
 **Why this matters**: A Rust service using `EXIT_CONFIG_INVALID` (code 20) will match a Go service using the same exit code. Your alerting rules and runbooks work across the entire stack.
 

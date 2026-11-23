@@ -1,0 +1,18 @@
+{
+  "format": "tabular-exchange.result/0",
+  "contract": "tabular-exchange/0.1.0",
+  "status": "refused",
+  "run_id": "case-0001",
+  "profile": {
+    "id": "example-destination/r1",
+    "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+  },
+  "inputs": {},
+  "refusal": {
+    "category": "schema-mismatch",
+    "rule": "null-not-allowed",
+    "row": 1,
+    "column": "a",
+    "value": "x"
+  }
+}

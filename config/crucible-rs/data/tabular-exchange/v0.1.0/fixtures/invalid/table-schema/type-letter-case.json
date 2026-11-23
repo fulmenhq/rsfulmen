@@ -1,0 +1,11 @@
+{
+  "format": "tabular-exchange.schema/0",
+  "columns": [
+    {
+      "id": "a",
+      "label": "A",
+      "type": "String",
+      "nullable": true
+    }
+  ]
+}

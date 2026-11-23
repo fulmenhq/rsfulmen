@@ -60,7 +60,9 @@ This SOP defines the operational guidelines, safety protocols, and guardrails fo
 
 - [ ] Verify working tree is clean with `git status` (no unstaged or uncommitted files)
   - **Exception**: Emergency bypass with explicit maintainer approval and incident tracking
-- [ ] Run `make prepush` or `make check-all` to validate quality gates
+- [ ] For repositories adopting the check-only push profile, run `make prepush`, matching the git pre-push hook. The goneat command is `goneat assess --mode check --hook pre-push`; any additional manifest or scope arguments must also match. This gate must not run mutating formatting. Run full tests and release checks through their separate declared targets (`make test`, `make check-all`, or `make release-check` as applicable).
+- [ ] Use the consumer repository's declared reference toolchain. For Go, place that compiler on `PATH` and set the matching `GOTOOLCHAIN` where applicable; the assess command uses that compiler and does not select the reference toolchain for you.
+- [ ] Check the repository's actual target definitions before assuming this profile is adopted. Crucible's current legacy `prepush` depends on `precommit`, which runs sync and `check-all`; it is a preparation target and is not check-only or hook-equivalent. Run that preparation before the final clean-tree check. The consumer profile above does not change these legacy targets.
 - [ ] Review commit history to be pushed: `git log origin/main..HEAD`
 - [ ] Verify all commits have proper attribution (agent + supervisor)
 - [ ] Confirm push target is correct branch: `git branch --show-current`
@@ -75,13 +77,13 @@ This SOP defines the operational guidelines, safety protocols, and guardrails fo
 
 ### Common Pre-Operation Mistakes to Avoid
 
-| Mistake                                      | Impact                                             | Prevention                                                                   |
-| -------------------------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------- |
-| Committing with unstaged files (no approval) | Incomplete changes committed, confusion in history | Always check `git status` before commit; obtain approval for partial commits |
-| Pushing with dirty working tree              | Local changes not in remote, desync risk           | Run `git status` before push; ensure clean state                             |
-| Skipping quality gates                       | Broken code in main branch, failing CI             | Always run `make check-all` or `make prepush`                                |
-| Not verifying operation results              | Failed operations go unnoticed, compounding issues | Always check return codes and run `git status` after operations              |
-| Committing without format/sync               | Format churn in subsequent builds                  | Ensure `make build` includes sync + format steps                             |
+| Mistake                                      | Impact                                             | Prevention                                                                                                                                              |
+| -------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Committing with unstaged files (no approval) | Incomplete changes committed, confusion in history | Always check `git status` before commit; obtain approval for partial commits                                                                            |
+| Pushing with dirty working tree              | Local changes not in remote, desync risk           | Run `git status` before push; ensure clean state                                                                                                        |
+| Skipping quality gates                       | Broken code in main branch, failing CI             | Follow the repository's declared gate profile and reference toolchain; check-only adopters run `make prepush`, with tests and release checks separately |
+| Not verifying operation results              | Failed operations go unnoticed, compounding issues | Always check return codes and run `git status` after operations                                                                                         |
+| Committing without format/sync               | Format churn in subsequent builds                  | Ensure `make build` includes sync + format steps                                                                                                        |
 
 ## Commit Message Style
 

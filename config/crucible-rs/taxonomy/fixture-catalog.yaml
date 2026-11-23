@@ -6,7 +6,7 @@
 #
 # Naming pattern: fixture-<mode>-<category>-<name>
 # Example: fixture-server-proving-gauntlet
-$schema: "https://schemas.fulmenhq.dev/crucible/taxonomy/fixture/v1.0.0/fixture-catalog.schema.json"
+$schema: "https://schemas.fulmenhq.dev/crucible/taxonomy/fixture/v2.0.0/fixture-catalog.schema.json"
 version: "1.1.0"
 # Behavioral categories (for reference - not editable here)
 # - proving: Real execution, test-purpose data, validates caller

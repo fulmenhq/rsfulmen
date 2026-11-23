@@ -443,7 +443,7 @@ static BSD_MAPPINGS: Lazy<Vec<BsdMapping>> = Lazy::new(|| {
 /// not the numeric coincidence.
 ///
 /// **gofulmen divergence:** gofulmen `MapFromBSD` searches each exit row's
-/// `bsd_equivalent` instead of this table. On Crucible v0.4.19 that yields
+/// `bsd_equivalent` instead of this table. On Crucible v0.5.1 that yields
 /// a different answer for four sysexits codes:
 ///
 /// | BSD | name | this crate | gofulmen |

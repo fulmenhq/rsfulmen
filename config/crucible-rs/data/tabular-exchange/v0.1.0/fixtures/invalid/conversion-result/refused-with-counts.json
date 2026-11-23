@@ -1,0 +1,72 @@
+{
+  "format": "tabular-exchange.result/0",
+  "contract": "tabular-exchange/0.1.0",
+  "status": "refused",
+  "run_id": "case-0001",
+  "profile": {
+    "id": "example-destination/r1",
+    "sha256": "c3d9a65211404789bdc66fb4b0ce9a6103489e4b56e6169f252aed532c77be06"
+  },
+  "inputs": {},
+  "counts": {
+    "rows": 3,
+    "columns": [
+      {
+        "id": "invoice",
+        "representation": "text",
+        "null": 0,
+        "empty": 1
+      },
+      {
+        "id": "qty",
+        "representation": "native",
+        "null": 0,
+        "empty": 0,
+        "numeric": 3,
+        "text_fallback": 0,
+        "text_forced": 0,
+        "quantized": 0,
+        "scale_changed": 0
+      },
+      {
+        "id": "amount",
+        "representation": "native",
+        "null": 1,
+        "empty": 0,
+        "numeric": 2,
+        "text_fallback": 0,
+        "text_forced": 0,
+        "quantized": 1,
+        "scale_changed": 2
+      },
+      {
+        "id": "paid",
+        "representation": "native",
+        "null": 1,
+        "empty": 0
+      },
+      {
+        "id": "day",
+        "representation": "text",
+        "null": 0,
+        "empty": 0
+      },
+      {
+        "id": "seen",
+        "representation": "text",
+        "null": 0,
+        "empty": 0
+      },
+      {
+        "id": "sent",
+        "representation": "text",
+        "null": 3,
+        "empty": 0
+      }
+    ]
+  },
+  "refusal": {
+    "category": "invalid-input",
+    "rule": "schema-malformed"
+  }
+}

@@ -103,6 +103,22 @@
                 "python_note": {
                   "type": "string",
                   "description": "Python-specific implementation notes"
+                },
+                "signal_catalog": {
+                  "type": "string",
+                  "format": "uri-reference",
+                  "pattern": "^config/library/foundry/signals\\.yaml#[a-z][a-z0-9-]*$",
+                  "description": "Reference to a signal ID in the canonical signal catalog"
+                },
+                "linux_calculation": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Descriptive Linux exit-code calculation; documentation only, never an executable expression"
+                },
+                "macos_calculation": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Descriptive macOS exit-code calculation; documentation only, never an executable expression"
                 }
               },
               "required": [
