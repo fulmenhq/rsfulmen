@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-23
+
+Patch release. MSRV remains 1.88. The embedded Crucible catalog is now
+v0.5.1. 0.3.1 is the first 0.3 release on crates.io.
+
 ### Changed
 
 - Crucible SSOT assets synced to v0.5.1. `CRUCIBLE_VERSION` and the
@@ -23,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   API are unchanged. A test compares both parsers on each catalog, and CI
   fails if the `foundry-core` dependency tree contains `serde_yaml_ng` or
   `unsafe-libyaml`.
+- `Cargo.lock` updates `url` to 2.5.9 (RUSTSEC-2026-0592).
 
 ### Fixed
 

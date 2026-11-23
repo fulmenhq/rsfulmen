@@ -4,6 +4,51 @@ This document tracks release notes for rsfulmen releases.
 
 > **Convention**: Keep only the latest 3 releases here to prevent file bloat. Older releases are archived in `docs/releases/`.
 
+## [0.3.1] - 2026-11-23
+
+### foundry-core on yamlprims, Crucible v0.5.1, hardening
+
+**Release Type**: Patch Release
+
+#### Overview
+
+Patch release. MSRV remains 1.88. The embedded Crucible catalog is now
+v0.5.1. 0.3.1 is the first 0.3 release on crates.io.
+
+#### Highlights
+
+- **foundry-core without libyaml.** The embedded catalogs load with
+  `yamlprims`. Builds that enable only `foundry-core` no longer depend on
+  `serde_yaml_ng` or `unsafe-libyaml`. Default and `full` feature sets and
+  the public API are unchanged.
+- **Crucible v0.5.1.** SSOT assets and `CRUCIBLE_VERSION` report v0.5.1.
+  The foundry catalogs are unchanged.
+- **Signals.** A second SIGINT inside the double-tap window now calls the
+  `set_force_exit` hook with the double-tap exit code. Without a hook it
+  still calls `process::exit`.
+- **fulpack.** Extract and verify reject entry names with a drive letter in
+  any segment as absolute paths on every platform, and extract rejects any
+  joined path outside the destination.
+- **Redaction.** `Authorization`, `Proxy-Authorization`, and `Cookie` /
+  `Set-Cookie` values are redacted to the end of the line. Long secret keys
+  also match as field-name suffixes. Route normalization maps email-shaped
+  and token-shaped segments.
+- **Config and logging.** Boolean env parse errors omit the raw input.
+  Simple-profile lines escape control characters and Unicode line
+  separators.
+
+#### Behavior Change
+
+- Double-tap force exit goes through `set_force_exit` when a hook is set
+  (0.3.0 always called `process::exit`).
+
+#### Requirements
+
+- **Rust**: 1.88+ (MSRV, unchanged)
+- **Crucible**: v0.5.1 (embedded)
+
+---
+
 ## [0.3.0] - 2026-10-20
 
 ### Catalogs, telemetry, redaction, std config paths
@@ -92,51 +137,3 @@ None for the crate API.
 - **Crucible**: v0.4.19 (embedded)
 
 ---
-
-## [0.2.0] - 2026-09-02
-
-### Stamp-only host identity, producer, goneat v0.6.0
-
-**Release Type**: Breaking / Feature Release
-
-#### Overview
-
-Host `version --extended` no longer reports a launcher's `FULMEN_HOST_*` when
-compile stamps are missing. Application crates can stamp identity from a
-`build.rs` producer. goneat is pinned to v0.6.0. MSRV remains 1.88.
-
-Shipped as **0.2.0** because `resolve()` on 0.1.6 read process environment.
-Cargo `^0.1` would pull a 0.1.7 and change that behavior.
-
-Public commits: [#15](https://github.com/fulmenhq/rsfulmen/pull/15) (`5d35eae`),
-[#16](https://github.com/fulmenhq/rsfulmen/pull/16) (`6cdcfd9`).
-
-#### Highlights
-
-- **Stamp-only `host_identity!()`** — missing stamps use documented defaults;
-  process `FULMEN_HOST_*` is never consulted.
-- **Producer** (`host-identity-producer` feature) — `emit_host_identity()` for
-  application `build.rs`. Git probe uses `CARGO_MANIFEST_DIR` and strips
-  locator/index/object/config overrides.
-- **`resolve_from_process_env()`** — explicit runtime-environment API.
-- **goneat v0.6.0**; flate2 1.1.10; uuid 1.26.0.
-
-#### Breaking Changes
-
-**`resolve()` no longer reads process `FULMEN_HOST_*`.** It returns documented
-defaults when no compile stamps are supplied. Callers that used `resolve()` as
-a runtime-env fallback must call `resolve_from_process_env()`.
-
-`host_identity!()` is stamp-only (the intended identity path).
-
-#### Testing
-
-- `make check-all` — 450 unit tests, 5 host-identity forging tests, 76 doc tests
-- MSRV 1.88 locked build/test
-- clippy `-D warnings` on 1.98.0
-- `cargo audit` clean on the 0.2.0 lockfile
-
-#### Requirements
-
-- **Rust**: 1.88+ (MSRV, unchanged)
-- **Crucible**: v0.4.19 (embedded)
