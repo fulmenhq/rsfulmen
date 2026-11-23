@@ -239,7 +239,7 @@ fn parse_category_id(id: &str) -> Option<ExitCategory> {
 
 impl ExitCodeIndexes {
     fn load() -> FoundryResult<Self> {
-        let catalog: ExitCodeCatalog = serde_yaml::from_str(EXIT_CODES_YAML)
+        let catalog: ExitCodeCatalog = yamlprims::from_str(EXIT_CODES_YAML)
             .map_err(|e| FoundryError::LoadError(format!("Failed to parse exit codes: {}", e)))?;
 
         let mut all = Vec::new();
@@ -418,7 +418,7 @@ struct BsdCatalog {
 }
 
 static BSD_MAPPINGS: Lazy<Vec<BsdMapping>> = Lazy::new(|| {
-    let catalog: BsdCatalog = serde_yaml::from_str(EXIT_CODES_YAML)
+    let catalog: BsdCatalog = yamlprims::from_str(EXIT_CODES_YAML)
         .expect("Failed to parse bsd_compatibility from exit-codes catalog");
     catalog
         .bsd_compatibility

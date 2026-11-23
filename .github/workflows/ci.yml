@@ -124,6 +124,19 @@ jobs:
           else
             cargo test --locked --no-default-features --features "${{ matrix.features }}"
           fi
+      - name: Check foundry-core has no libyaml dependency
+        if: matrix.features == 'foundry-core'
+        run: |
+          tree="$(cargo tree --locked -e normal --no-default-features --features foundry-core)"
+          case "$tree" in
+            *yamlprims*) ;;
+            *) echo "foundry-core dependency tree is missing yamlprims" >&2; exit 1 ;;
+          esac
+          case "$tree" in
+            *serde_yaml_ng*|*unsafe-libyaml*)
+              echo "foundry-core must not depend on serde_yaml_ng or unsafe-libyaml" >&2
+              exit 1 ;;
+          esac
   # MSRV check
   msrv:
     name: MSRV (1.88)
