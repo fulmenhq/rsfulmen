@@ -10,6 +10,8 @@ env:
   RUST_BACKTRACE: 1
 # fulmen-toolbox v0.5.9 glibc runner (goneat v0.6.3). Digest from
 # SHA256SUMS-goneat-tools-runner-glibc on that release.
+# dtolnay/rust-toolchain is pinned to a commit on its master branch; its
+# per-version branches are regenerated. Each step sets `toolchain:`.
 jobs:
   test:
     name: Test
@@ -28,7 +30,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@16c20dfc2b8bc5cd72c3bf5072a9453664776e70 # 1.98.0
+        uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc # master 2026-11-14
         with:
           toolchain: 1.98.0
           components: rustfmt, clippy
@@ -94,7 +96,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@16c20dfc2b8bc5cd72c3bf5072a9453664776e70 # 1.98.0
+        uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc # master 2026-11-14
         with:
           toolchain: 1.98.0
       - name: Cache cargo registry
@@ -138,7 +140,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Rust 1.88
-        uses: dtolnay/rust-toolchain@9c73e2f62269c4b1d0240bd5dd1b81de08099bb6 # 1.88.0
+        uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc # master 2026-11-14
         with:
           toolchain: 1.88.0
       - name: Build
@@ -167,7 +169,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@16c20dfc2b8bc5cd72c3bf5072a9453664776e70 # 1.98.0
+        uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc # master 2026-11-14
         with:
           toolchain: 1.98.0
       - name: cargo deny (licenses bans advisories sources)
@@ -202,7 +204,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@16c20dfc2b8bc5cd72c3bf5072a9453664776e70 # 1.98.0
+        uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc # master 2026-11-14
         with:
           toolchain: 1.98.0
           components: rustfmt, clippy
