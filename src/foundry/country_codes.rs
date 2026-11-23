@@ -77,7 +77,7 @@ struct CountryIndexes {
 
 impl CountryIndexes {
     fn load() -> FoundryResult<Self> {
-        let catalog: CountryCatalog = serde_yaml::from_str(COUNTRY_CODES_YAML).map_err(|e| {
+        let catalog: CountryCatalog = yamlprims::from_str(COUNTRY_CODES_YAML).map_err(|e| {
             FoundryError::LoadError(format!("Failed to parse country codes: {}", e))
         })?;
 

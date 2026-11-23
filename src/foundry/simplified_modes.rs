@@ -98,7 +98,7 @@ static INDEXES: Lazy<Indexes> =
 
 impl Indexes {
     fn load() -> FoundryResult<Self> {
-        let catalog: RawCatalog = serde_yaml::from_str(EXIT_CODES_YAML).map_err(|e| {
+        let catalog: RawCatalog = yamlprims::from_str(EXIT_CODES_YAML).map_err(|e| {
             FoundryError::LoadError(format!("Failed to parse simplified_modes: {e}"))
         })?;
 

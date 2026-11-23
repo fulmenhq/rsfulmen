@@ -141,7 +141,7 @@ fn parse_group_id(id: &str) -> Option<StatusGroup> {
 
 impl HttpStatusIndexes {
     fn load() -> FoundryResult<Self> {
-        let catalog: HttpStatusCatalog = serde_yaml::from_str(HTTP_STATUSES_YAML).map_err(|e| {
+        let catalog: HttpStatusCatalog = yamlprims::from_str(HTTP_STATUSES_YAML).map_err(|e| {
             FoundryError::LoadError(format!("Failed to parse HTTP statuses: {}", e))
         })?;
 

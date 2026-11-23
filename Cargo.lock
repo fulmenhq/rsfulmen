@@ -38,6 +38,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 
 [[package]]
+name = "arraydeque"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d902e3d592a523def97af8f317b08ce16b7ab854c1985a0c671e6f15cebc236"
+
+[[package]]
 name = "autocfg"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -455,6 +461,16 @@ name = "glob"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e4eba85ea1d0a966a983acd07deee566e67395d2d96b6fb39e62b5a833f1eb0b"
+
+[[package]]
+name = "granit-parser"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da55feca5d1625466bae068f9fd4b87892caeae70c3fe671ddb0f50d41aebf37"
+dependencies = [
+ "arraydeque",
+ "smallvec",
+]
 
 [[package]]
 name = "hashbrown"
@@ -997,6 +1013,7 @@ dependencies = [
  "uuid",
  "walkdir",
  "xxhash-rust",
+ "yamlprims",
  "zip",
 ]
 
@@ -1545,6 +1562,16 @@ name = "xxhash-rust"
 version = "0.8.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "550a2b930b62486a393c52d5c3b84bff264b28aa437ed64694d31e93b1757af7"
+
+[[package]]
+name = "yamlprims"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9110155b4c4e65c53c2f1f7e074ead3c842642c855295a6f41bc705e4c35811e"
+dependencies = [
+ "granit-parser",
+ "serde",
+]
 
 [[package]]
 name = "yansi"

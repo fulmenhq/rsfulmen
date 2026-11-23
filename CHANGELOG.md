@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI pins `dtolnay/rust-toolchain` to a commit on its `master` branch, with
   the exact toolchain set on each step. A test checks every action pin and
   the recorded toolchain-action commit.
+- `foundry-core` loads its embedded catalogs (exit codes, signals, country
+  codes, HTTP statuses, simplified modes) with `yamlprims`. Builds that
+  enable only `foundry-core` no longer depend on `serde_yaml_ng` or
+  `unsafe-libyaml`. `serde_yaml_ng` is now optional and enabled by the
+  features that use it; the default and `full` feature sets and the public
+  API are unchanged. A test compares both parsers on each catalog, and CI
+  fails if the `foundry-core` dependency tree contains `serde_yaml_ng` or
+  `unsafe-libyaml`.
 
 ### Fixed
 
